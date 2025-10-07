@@ -1,6 +1,12 @@
 # Instructions directory
 .instructions/
 
+# Database files
+*.db
+*.db-shm
+*.db-wal
+evalit.db
+
 # Logs
 logs
 *.log

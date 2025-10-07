@@ -1,3 +1,6 @@
+# Instructions directory
+.instructions/
+
 # Logs
 logs
 *.log

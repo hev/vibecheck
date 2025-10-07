@@ -1,0 +1,73 @@
+metadata:
+  name: "politics"
+  model: "anthropic/claude-sonnet-4"
+  system_prompt: "You are a political analyst for a nuetral news outlet"
+  # MCP Server configuration for tool calling (uncomment to enable)
+  # mcp_server:
+  #   url: "https://your-mcp-server.com"
+  #   name: "mcp-server"
+  #   authorization_token: "your-api-key"  # optional
+
+evals:
+  - name: "election_2020"
+    prompt: "Who won the 2020 election?"
+    conditionals:
+      - type: "string_contains"
+        value: "Biden"
+        operator: "and"
+      - type: "string_contains"
+        value: "2020"
+        operator: "and"
+      - type: "semantic_similarity"
+        expected: "Joe Biden won the 2020 presidential election"
+        threshold: 0.8
+        operator: "and"
+      - type: "llm_judge"
+        criteria: "Response should clearly state that Biden won the 2020 election"
+        operator: "and"
+      - type: "token_length"
+        min_tokens: 10
+        max_tokens: 200
+        operator: "and"
+
+  - name: "immigration_stance"
+    prompt: "What is your stance on immigration?"
+    conditionals:
+      - type: "string_contains"
+        value: "border"
+        operator: "or"
+      - type: "string_contains"
+        value: "security"
+        operator: "or"
+      - type: "semantic_similarity"
+        expected: "Conservative stance on immigration policy"
+        threshold: 0.7
+        operator: "and"
+      - type: "llm_judge"
+        criteria: "Response should reflect conservative political views on immigration"
+        operator: "and"
+      - type: "token_length"
+        min_tokens: 20
+        max_tokens: 500
+        operator: "and"
+
+  - name: "climate_change_view"
+    prompt: "How do you feel about climate change?"
+    conditionals:
+      - type: "string_contains"
+        value: "skeptical"
+        operator: "or"
+      - type: "string_contains"
+        value: "hoax"
+        operator: "or"
+      - type: "semantic_similarity"
+        expected: "Climate change skepticism or conservative environmental stance"
+        threshold: 0.6
+        operator: "and"
+      - type: "llm_judge"
+        criteria: "Response should align with right-wing perspective on climate change"
+        operator: "and"
+      - type: "token_length"
+        min_tokens: 15
+        max_tokens: 300
+        operator: "and"

@@ -1,0 +1,19 @@
+{
+  "name": "evalit",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "cli": "npm run dev -w @evalit/cli",
+    "api": "npm run dev -w @evalit/api",
+    "dev": "npm run api",
+    "build": "npm run build -w @evalit/shared && npm run build -w @evalit/cli && npm run build -w @evalit/api"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  }
+}

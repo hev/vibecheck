@@ -81,7 +81,7 @@ async function streamResults(runId: string) {
   let lastDisplayedCount = 0;
   let headerDisplayed = false;
   let totalTimeMs: number | undefined;
-  let totalCost: { cogs: number; retail: number } | undefined;
+  let totalCost: number | undefined;
 
   while (!completed) {
     try {
@@ -142,16 +142,16 @@ function displayResults(results: EvalResult[]) {
     console.log(chalk.gray(`Response: ${result.response}`));
 
     result.conditionalResults.forEach((cond: ConditionalResult) => {
-      const status = cond.passed ? chalk.green('✅ white flag') : chalk.red('🚩 red flag');
+      const status = cond.passed ? chalk.green('✅ PASS') : chalk.red('🚩 FAIL');
       console.log(`  ${status} ${cond.type}`);
     });
 
-    const overallStatus = result.passed ? chalk.green('✅ White flag') : chalk.red('🚩 Red flag');
+    const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.red('🚩 FAIL');
     console.log(`  Overall: ${overallStatus}`);
   });
 }
 
-function displaySummary(results: EvalResult[], totalTimeMs?: number, totalCost?: { cogs: number; retail: number }) {
+function displaySummary(results: EvalResult[], totalTimeMs?: number, totalCost?: number) {
   console.log();
   console.log(chalk.bold('─'.repeat(80)));
   console.log(chalk.bold('✨ VIBE CHECK SUMMARY ✨'));
@@ -209,8 +209,7 @@ function displaySummary(results: EvalResult[], totalTimeMs?: number, totalCost?:
     console.log(chalk.cyan(`Total Time: ${(totalTimeMs / 1000).toFixed(2)}s`));
   }
   if (totalCost) {
-    console.log(chalk.magenta(`COGS Price: $${totalCost.cogs.toFixed(6)}`));
-    console.log(chalk.magenta(`Retail Price: $${totalCost.retail.toFixed(6)}`));
+    console.log(chalk.green(`Cost: $${(totalCost * 1000000).toFixed(2)} per million runs`));
   }
   console.log(chalk.bold('─'.repeat(80)));
   console.log();

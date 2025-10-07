@@ -85,10 +85,7 @@ export interface EvalResult {
   conditionalResults: ConditionalResult[];
   passed: boolean;
   executionTimeMs?: number;
-  cost?: {
-    cogs: number;
-    retail: number;
-  };
+  cost?: number; // Retail price per token
 }
 
 export interface EvalRunResult {

@@ -49,8 +49,8 @@ This command:
 - 🚩 **bad vibes** = <80% pass rate
 
 **Individual Conditional Results:**
-- ✅ **white flag** = PASS (conditional passed)
-- 🚩 **red flag** = FAIL (conditional failed)
+- ✅ **PASS** - conditional passed
+- 🚩 **FAIL** - conditional failed
 
 Exit codes:
 - Exits with code 1 if vibe rating is below 80%

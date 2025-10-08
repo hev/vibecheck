@@ -136,9 +136,23 @@ npm run dev
 Create a `.env` file in the project root:
 
 ```bash
-VIBECHECK_API_KEY=your-api-key-here  # Get from vibescheck.io
-VIBECHECK_URL=http://localhost:3000  # API endpoint (default)
+# Required: Get your API key at https://vibescheck.io
+VIBECHECK_API_KEY=your-api-key-here
+
+# Optional: Override the API URL (defaults to http://localhost:3000)
+VIBECHECK_URL=http://localhost:3000
 ```
+
+### Authentication
+
+The CLI uses **bearer token authentication** for all API requests:
+- All requests include: `Authorization: Bearer <VIBECHECK_API_KEY>`
+- The API key is validated on every request
+- Missing or invalid API keys result in 401 errors
+
+Error handling:
+- **401 Unauthorized**: Invalid or missing API key
+- **500 Server Error**: The VibeCheck API encountered an error
 
 ### Adding New Conditional Types
 

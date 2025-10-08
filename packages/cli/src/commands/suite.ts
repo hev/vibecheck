@@ -3,9 +3,23 @@ import * as yaml from 'js-yaml';
 import chalk from 'chalk';
 import ora from 'ora';
 import axios from 'axios';
-import { EvalSuiteSchema } from '@evalit/shared';
+import { EvalSuiteSchema } from '../types';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
+const API_KEY = process.env.VIBECHECK_API_KEY;
+
+function getAuthHeaders() {
+  if (!API_KEY) {
+    console.error(chalk.red('Error: VIBECHECK_API_KEY environment variable is required'));
+    console.error(chalk.gray('Get your API key at https://vibescheck.io'));
+    process.exit(1);
+  }
+
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${API_KEY}`
+  };
+}
 
 interface SaveOptions {
   file?: string;
@@ -50,6 +64,8 @@ export async function saveCommand(options: SaveOptions) {
     const response = await axios.post(`${API_URL}/api/suite/save`, {
       evalSuite,
       yamlContent: fileContent
+    }, {
+      headers: getAuthHeaders()
     });
 
     if (response.data.error) {
@@ -61,12 +77,22 @@ export async function saveCommand(options: SaveOptions) {
     console.log(chalk.cyan(`Suite name: ${evalSuite.metadata.name}`));
   } catch (error: any) {
     spinner.fail(chalk.red('Failed to save suite'));
-    if (error.response?.data?.error) {
+
+    // Handle specific HTTP error codes
+    if (error.response?.status === 401) {
+      console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
+      console.error(chalk.gray('Get your API key at https://vibescheck.io'));
+      process.exit(1);
+    } else if (error.response?.status === 500) {
+      console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));
+      process.exit(1);
+    } else if (error.response?.data?.error) {
       console.error(chalk.red(`\nAPI Error: ${error.response.data.error}`));
+      process.exit(1);
     } else {
       console.error(chalk.red(`\n${error.message}`));
+      process.exit(1);
     }
-    process.exit(1);
   }
 }
 
@@ -74,7 +100,9 @@ export async function listCommand() {
   const spinner = ora('Fetching suites...').start();
 
   try {
-    const response = await axios.get(`${API_URL}/api/suite/list`);
+    const response = await axios.get(`${API_URL}/api/suite/list`, {
+      headers: getAuthHeaders()
+    });
 
     if (response.data.error) {
       spinner.fail(chalk.red(`Error: ${response.data.error}`));
@@ -109,12 +137,22 @@ export async function listCommand() {
     console.log('');
   } catch (error: any) {
     spinner.fail(chalk.red('Failed to list suites'));
-    if (error.response?.data?.error) {
+
+    // Handle specific HTTP error codes
+    if (error.response?.status === 401) {
+      console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
+      console.error(chalk.gray('Get your API key at https://vibescheck.io'));
+      process.exit(1);
+    } else if (error.response?.status === 500) {
+      console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));
+      process.exit(1);
+    } else if (error.response?.data?.error) {
       console.error(chalk.red(`\nAPI Error: ${error.response.data.error}`));
+      process.exit(1);
     } else {
       console.error(chalk.red(`\n${error.message}`));
+      process.exit(1);
     }
-    process.exit(1);
   }
 }
 
@@ -128,7 +166,9 @@ export async function getCommand(name: string) {
   const spinner = ora(`Fetching suite "${name}"...`).start();
 
   try {
-    const response = await axios.get(`${API_URL}/api/suite/${encodeURIComponent(name)}`);
+    const response = await axios.get(`${API_URL}/api/suite/${encodeURIComponent(name)}`, {
+      headers: getAuthHeaders()
+    });
 
     if (response.data.error) {
       spinner.fail(chalk.red(`Error: ${response.data.error}`));
@@ -141,11 +181,21 @@ export async function getCommand(name: string) {
     console.log(suite.yamlContent);
   } catch (error: any) {
     spinner.fail(chalk.red('Failed to get suite'));
-    if (error.response?.data?.error) {
+
+    // Handle specific HTTP error codes
+    if (error.response?.status === 401) {
+      console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
+      console.error(chalk.gray('Get your API key at https://vibescheck.io'));
+      process.exit(1);
+    } else if (error.response?.status === 500) {
+      console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));
+      process.exit(1);
+    } else if (error.response?.data?.error) {
       console.error(chalk.red(`\nAPI Error: ${error.response.data.error}`));
+      process.exit(1);
     } else {
       console.error(chalk.red(`\n${error.message}`));
+      process.exit(1);
     }
-    process.exit(1);
   }
 }

@@ -8,7 +8,8 @@
   "scripts": {
     "cli": "npm run dev -w @evalit/cli",
     "dev": "npm run dev -w @evalit/cli",
-    "build": "npm run build -w @evalit/shared && npm run build -w @evalit/cli",
+    "build": "npm run build -w @evalit/cli",
+    "build:link": "npm run build && npm link -w @evalit/cli",
     "start": "npm run start -w @evalit/cli"
   },
   "devDependencies": {

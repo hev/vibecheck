@@ -6,8 +6,10 @@ import { Command } from 'commander';
 import { runCommand } from './commands/run';
 import { saveCommand, listCommand, getCommand } from './commands/suite';
 
-// Load .env from the package directory
-dotenv.config({ path: path.join(__dirname, '../.env') });
+// Load .env from user's home directory
+const os = require('os');
+const homeDir = os.homedir();
+dotenv.config({ path: path.join(homeDir, '.vibecheck', '.env') });
 
 const program = new Command();
 

@@ -128,16 +128,33 @@ npm run build
 npm run start -- check -f examples/evals.yaml
 ```
 
-## Environment Variables
+## Configuration
 
-Create a `.env` file in the project root:
+Create a configuration file at `~/.vibecheck/.env`:
 
 ```bash
-VIBECHECK_API_KEY=your-api-key-here  # Get from vibescheck.io
+# Required: Get your API key at https://vibescheck.io
+VIBECHECK_API_KEY=your-api-key-here
+
+# Optional: Override the API URL (defaults to http://localhost:3000)
+VIBECHECK_URL=http://localhost:3000
 ```
 
-Optional:
-- `VIBECHECK_URL` - API server URL (default: http://localhost:3000)
+Quick setup:
+```bash
+mkdir -p ~/.vibecheck
+cp .env.example ~/.vibecheck/.env
+# Then edit ~/.vibecheck/.env with your API key
+```
+
+The CLI uses bearer token authentication. All API requests include:
+```
+Authorization: Bearer <VIBECHECK_API_KEY>
+```
+
+If the API key is missing or invalid, you'll see:
+- **401 Unauthorized**: Invalid or missing API key
+- **500 Server Error**: The VibeCheck API encountered an error
 
 ## Architecture
 

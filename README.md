@@ -1,12 +1,12 @@
-# VibeCheck ✨
+# VibeCheck CLI ✨
 
 A vibe-themed CLI for running language model evaluations. Check your LLM's vibes with conditional testing!
 
+**Open Source** | **MIT Licensed**
+
 ## Quick Start
 
-### Prerequisites
-
-**Start the API server first** - see [API Documentation](./packages/api/README.md) for setup instructions.
+**Get your API key at [vibescheck.io](https://vibescheck.io)**
 
 ### Installation
 
@@ -106,25 +106,26 @@ See `examples/` directory for more examples.
 - ✨ Vibe-themed output and terminology
 - 🎯 Multiple conditional types:
   - `string_contains` - Check if response contains specific text
-  - `semantic_similarity` - Compare semantic meaning using local embeddings
+  - `semantic_similarity` - Compare semantic meaning
   - `llm_judge` - Use LLM to evaluate response quality
   - `token_length` - Validate response length
 - 🌊 Streaming results in real-time
 - 📊 Visual summary with +/- bar charts
 - 🎨 Colored CLI output (prompts in blue, responses in gray, status indicators)
-- 💾 SQLite database for storing results
-- 🔌 OpenRouter integration for model inference
 
 ## Development
 
-Start the API in watch mode:
-```bash
-npm run dev
-```
+The CLI can be developed independently:
 
-Then run the CLI:
 ```bash
-npm run cli -- check -f examples/evals.yaml
+# Watch mode for CLI development
+npm run dev
+
+# Build the CLI
+npm run build
+
+# Run the CLI
+npm run start -- check -f examples/evals.yaml
 ```
 
 ## Environment Variables
@@ -132,20 +133,23 @@ npm run cli -- check -f examples/evals.yaml
 Create a `.env` file in the project root:
 
 ```bash
-OPENROUTER_API_KEY=sk-or-v1-xxxxx  # Your OpenRouter API key
+VIBECHECK_API_KEY=your-api-key-here  # Get from vibescheck.io
 ```
 
 Optional:
-- `EVALIT_API_URL` - API server URL (default: http://localhost:3000)
+- `EVALIT_API_URL` - API server URL (default: https://vibescheck.io/api)
 
 ## Architecture
 
-This is a microservices-based platform:
+This is the CLI component of the VibeCheck platform:
 
-- **@evalit/cli** - The vibe-checking CLI you're using
-- **@evalit/api** - Express API server for processing evaluations
-- **@evalit/semantic-checker** - Local embeddings service (@xenova/transformers)
-- **@evalit/shared** - Shared TypeScript types and schemas
+- **@evalit/cli** - The vibe-checking CLI (this repo)
+- **@evalit/shared** - Shared TypeScript types and Zod schemas
+- **VibeCheck API** - API service at vibescheck.io (get your API key there)
+
+## Contributing
+
+Contributions are welcome! This is the open-source CLI component.
 
 ## License
 

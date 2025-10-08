@@ -118,7 +118,7 @@ export interface OpenAITool {
   };
 }
 
-// OpenRouter/OpenAI message types
+// OpenAI message types
 export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;

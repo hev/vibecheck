@@ -5,7 +5,7 @@ import ora from 'ora';
 import axios from 'axios';
 import { EvalSuiteSchema, EvalResult, ConditionalResult } from '@evalit/shared';
 
-const API_URL = process.env.EVALIT_API_URL || 'http://localhost:3000';
+const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 
 interface RunOptions {
   file?: string;
@@ -81,17 +81,13 @@ async function streamResults(runId: string) {
   let lastDisplayedCount = 0;
   let headerDisplayed = false;
   let totalTimeMs: number | undefined;
-  let totalCost: number | undefined;
 
   while (!completed) {
     try {
       const response = await axios.get(`${API_URL}/api/eval/status/${runId}`);
-      const { status, results, isUpdate, suiteName, model, systemPrompt, totalTimeMs: totalTime, totalCost: cost } = response.data;
+      const { status, results, isUpdate, suiteName, model, systemPrompt, totalTimeMs: totalTime } = response.data;
       if (totalTime) {
         totalTimeMs = totalTime;
-      }
-      if (cost) {
-        totalCost = cost;
       }
 
       // Display header once when we get the data
@@ -118,7 +114,7 @@ async function streamResults(runId: string) {
           displayResults(results.slice(lastDisplayedCount));
         }
         completed = true;
-        displaySummary(results, totalTimeMs, totalCost);
+        displaySummary(results, totalTimeMs);
       } else if (status === 'error') {
         console.error(chalk.red('\n🚩 Vibe check failed'));
         completed = true;
@@ -151,7 +147,7 @@ function displayResults(results: EvalResult[]) {
   });
 }
 
-function displaySummary(results: EvalResult[], totalTimeMs?: number, totalCost?: number) {
+function displaySummary(results: EvalResult[], totalTimeMs?: number) {
   console.log();
   console.log(chalk.bold('─'.repeat(80)));
   console.log(chalk.bold('✨ VIBE CHECK SUMMARY ✨'));
@@ -207,9 +203,6 @@ function displaySummary(results: EvalResult[], totalTimeMs?: number, totalCost?:
   console.log(passRateColor(`Vibe Rating: ${passedEvals}/${totalEvals} (${passRate.toFixed(1)}%) - ${vibeStatus}`));
   if (totalTimeMs) {
     console.log(chalk.cyan(`Total Time: ${(totalTimeMs / 1000).toFixed(2)}s`));
-  }
-  if (totalCost) {
-    console.log(chalk.green(`Cost: $${(totalCost * 1000000).toFixed(2)} per million runs`));
   }
   console.log(chalk.bold('─'.repeat(80)));
   console.log();

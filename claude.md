@@ -137,7 +137,7 @@ Create a `.env` file in the project root:
 
 ```bash
 VIBECHECK_API_KEY=your-api-key-here  # Get from vibescheck.io
-EVALIT_API_URL=https://vibescheck.io/api  # API endpoint (default)
+VIBECHECK_URL=http://localhost:3000  # API endpoint (default)
 ```
 
 ### Adding New Conditional Types

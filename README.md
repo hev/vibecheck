@@ -137,7 +137,7 @@ VIBECHECK_API_KEY=your-api-key-here  # Get from vibescheck.io
 ```
 
 Optional:
-- `EVALIT_API_URL` - API server URL (default: https://vibescheck.io/api)
+- `VIBECHECK_URL` - API server URL (default: http://localhost:3000)
 
 ## Architecture
 

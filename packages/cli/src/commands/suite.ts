@@ -5,7 +5,7 @@ import ora from 'ora';
 import axios from 'axios';
 import { EvalSuiteSchema } from '@evalit/shared';
 
-const API_URL = process.env.EVALIT_API_URL || 'http://localhost:3000';
+const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 
 interface SaveOptions {
   file?: string;

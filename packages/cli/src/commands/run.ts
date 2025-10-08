@@ -139,12 +139,112 @@ function displayResults(results: EvalResult[]) {
 
     result.conditionalResults.forEach((cond: ConditionalResult) => {
       const status = cond.passed ? chalk.green('✅ PASS') : chalk.red('🚩 FAIL');
-      console.log(`  ${status} ${cond.type}`);
+      const details = formatConditionalDetails(cond, result.response);
+
+      // Apply different coloring based on conditional type
+      if (cond.type === 'llm_judge') {
+        // Show llm_judge details on the line below in gray
+        console.log(`  ${status} ${cond.type.padEnd(25)}`);
+        if (typeof details === 'string') {
+          console.log(`      ${chalk.gray(details)}`);
+        }
+      } else if (cond.type === 'string_contains') {
+        // Handle string_contains with snippet in gray (no highlighting)
+        if (typeof details === 'object' && 'text' in details) {
+          const { text } = details;
+          console.log(`  ${status} ${cond.type.padEnd(25)} ${chalk.gray(text)}`);
+        } else {
+          console.log(`  ${status} ${cond.type.padEnd(25)} ${chalk.gray(details as string)}`);
+        }
+      } else if (cond.type === 'semantic_similarity') {
+        // Green for passed, red only for failed
+        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.red(details as string);
+        console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
+      } else {
+        // Default: use pass/fail colors
+        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.red(details as string);
+        console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
+      }
     });
 
     const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.red('🚩 FAIL');
     console.log(`  Overall: ${overallStatus}`);
   });
+}
+
+function formatConditionalDetails(cond: ConditionalResult, response: string): string | { text: string; highlight: string } {
+  const message = cond.message || '';
+
+  // Parse the message to extract details
+  if (cond.type === 'string_contains') {
+    // Extract the string that was found (or not found)
+    const match = message.match(/contains? ['"](.+?)['"]/i) || message.match(/found ['"](.+?)['"]/i);
+    if (match) {
+      const searchString = match[1];
+      // Find the search string in the response to get context
+      const index = response.toLowerCase().indexOf(searchString.toLowerCase());
+      if (index !== -1) {
+        // Get surrounding context
+        const start = Math.max(0, index - 10);
+        const end = Math.min(response.length, index + searchString.length + 10);
+        const snippet = response.substring(start, end);
+        const highlightText = response.substring(index, index + searchString.length);
+        return { text: truncateText(snippet, 50), highlight: highlightText };
+      }
+      return truncateText(searchString, 50);
+    }
+    return truncateText(message, 60);
+  }
+
+  if (cond.type === 'semantic_similarity') {
+    // Extract similarity percentage and threshold
+    const simMatch = message.match(/similarity[:\s]+(\d+(?:\.\d+)?)/i);
+
+    if (simMatch) {
+      const similarity = parseFloat(simMatch[1]);
+      // Convert to percentage if needed (values between 0-1)
+      const simPercent = similarity <= 1 ? (similarity * 100).toFixed(0) : similarity.toFixed(0);
+      return `${simPercent}%`;
+    }
+    return truncateText(message, 60);
+  }
+
+  if (cond.type === 'llm_judge') {
+    // Just show PASS or the reason - the message already contains it
+    return cond.passed ? 'PASS' : truncateText(message, 80);
+  }
+
+  if (cond.type === 'token_length') {
+    // Extract token count and min/max
+    const countMatch = message.match(/(\d+)\s+tokens?/i);
+    const minMatch = message.match(/min[:\s]+(\d+)/i);
+    const maxMatch = message.match(/max[:\s]+(\d+)/i);
+
+    if (countMatch) {
+      const count = countMatch[1];
+      const min = minMatch ? minMatch[1] : null;
+      const max = maxMatch ? maxMatch[1] : null;
+
+      if (min && max) {
+        return `Token count ${count} (min: ${min}, max: ${max})`;
+      } else if (min) {
+        return `Token count ${count} (min: ${min})`;
+      } else if (max) {
+        return `Token count ${count} (max: ${max})`;
+      }
+      return `Token count ${count}`;
+    }
+    return truncateText(message, 60);
+  }
+
+  return truncateText(message, 60);
+}
+
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return text.substring(0, maxLength - 3) + '...';
 }
 
 function displaySummary(results: EvalResult[], totalTimeMs?: number) {
@@ -207,10 +307,9 @@ function displaySummary(results: EvalResult[], totalTimeMs?: number) {
   console.log(chalk.bold('─'.repeat(80)));
   console.log();
 
-  // Exit with error code if pass rate < 80%
+  // Display vibe status (don't exit with error code - failed evals are valid results)
   if (passRate < 80) {
     console.log(chalk.red('🚩 Bad vibes detected: Vibe rating below 80%\n'));
-    process.exit(1);
   } else {
     console.log(chalk.green('✨ Good vibes all around!\n'));
   }

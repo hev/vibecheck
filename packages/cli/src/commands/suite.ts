@@ -58,6 +58,7 @@ export async function saveCommand(options: SaveOptions) {
     }
 
     spinner.succeed(chalk.green(`Suite "${evalSuite.metadata.name}" saved successfully`));
+    console.log(chalk.cyan(`Suite name: ${evalSuite.metadata.name}`));
   } catch (error: any) {
     spinner.fail(chalk.red('Failed to save suite'));
     if (error.response?.data?.error) {

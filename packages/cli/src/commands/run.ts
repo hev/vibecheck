@@ -4,29 +4,46 @@ import chalk from 'chalk';
 import ora from 'ora';
 import axios from 'axios';
 import { EvalSuiteSchema, EvalResult, ConditionalResult } from '../types';
+import { runInteractiveCommand } from './interactive-run';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
-  if (!API_KEY) {
+  const isLocal = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+
+  // Only require API key for non-local URLs
+  if (!isLocal && !API_KEY) {
     console.error(chalk.red('Error: VIBECHECK_API_KEY environment variable is required'));
     console.error(chalk.gray('Get your API key at https://vibescheck.io'));
     process.exit(1);
   }
 
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${API_KEY}`
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
   };
+
+  // Only add X-API-KEY header for non-local URLs
+  if (!isLocal && API_KEY) {
+    headers['X-API-KEY'] = API_KEY;
+  }
+
+  return headers;
 }
 
 interface RunOptions {
   file?: string;
+  debug?: boolean;
+  interactive?: boolean;
 }
 
 export async function runCommand(options: RunOptions) {
-  const { file } = options;
+  // Use interactive UI mode when the interactive flag is set or when file is provided
+  if (options.interactive !== false && options.file) {
+    return runInteractiveCommand(options);
+  }
+
+  const { file, debug } = options;
 
   if (!file) {
     console.error(chalk.red('Error: --file option is required'));
@@ -60,12 +77,32 @@ export async function runCommand(options: RunOptions) {
     const evalSuite = parseResult.data;
     spinner.succeed(chalk.green('Evaluation file loaded successfully ✨'));
 
-    const response = await axios.post(`${API_URL}/api/eval/run`, {
+    const requestPayload = {
       evalSuite,
       yamlContent: fileContent
-    }, {
+    };
+
+    if (debug) {
+      const headers = getAuthHeaders();
+      const debugHeaders = { ...headers };
+      if (debugHeaders['X-API-KEY']) {
+        debugHeaders['X-API-KEY'] = `${debugHeaders['X-API-KEY'].substring(0, 10)}...`;
+      }
+      console.log(chalk.cyan('\n[DEBUG] Request to:'), `${API_URL}/api/eval/run`);
+      console.log(chalk.cyan('[DEBUG] Headers:'), JSON.stringify(debugHeaders, null, 2));
+      console.log(chalk.cyan('[DEBUG] Request payload:'), JSON.stringify(requestPayload, null, 2));
+      console.log();
+    }
+
+    const response = await axios.post(`${API_URL}/api/eval/run`, requestPayload, {
       headers: getAuthHeaders()
     });
+
+    if (debug) {
+      console.log(chalk.cyan('[DEBUG] Response status:'), response.status);
+      console.log(chalk.cyan('[DEBUG] Response data:'), JSON.stringify(response.data, null, 2));
+      console.log();
+    }
 
     if (response.data.error) {
       console.error(chalk.red(`API Error 🚩: ${response.data.error}`));
@@ -76,7 +113,7 @@ export async function runCommand(options: RunOptions) {
     console.log(chalk.blue(`Checking vibes... Run ID: ${runId}\n`));
 
     // Stream results using EventSource or polling
-    await streamResults(runId);
+    await streamResults(runId, debug);
 
   } catch (error: any) {
     spinner.fail(chalk.red('Failed to check vibes 🚩'));
@@ -99,7 +136,7 @@ export async function runCommand(options: RunOptions) {
   }
 }
 
-async function streamResults(runId: string) {
+async function streamResults(runId: string, debug?: boolean) {
   const pollInterval = 1000; // 1 second
   let completed = false;
   let lastDisplayedCount = 0;
@@ -111,6 +148,12 @@ async function streamResults(runId: string) {
       const response = await axios.get(`${API_URL}/api/eval/status/${runId}`, {
         headers: getAuthHeaders()
       });
+
+      if (debug) {
+        console.log(chalk.cyan('[DEBUG] Poll response:'), JSON.stringify(response.data, null, 2));
+        console.log();
+      }
+
       const { status, results, isUpdate, suiteName, model, systemPrompt, totalTimeMs: totalTime } = response.data;
       if (totalTime) {
         totalTimeMs = totalTime;

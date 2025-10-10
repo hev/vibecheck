@@ -23,6 +23,8 @@ program
   .command('check')
   .description('Check vibes by running evaluations from a YAML file')
   .option('-f, --file <path>', 'Path to the YAML file containing evaluations')
+  .option('-d, --debug', 'Enable debug logging (shows full request/response)')
+  .option('--no-interactive', 'Run in traditional CLI mode instead of interactive UI')
   .action(runCommand);
 
 program

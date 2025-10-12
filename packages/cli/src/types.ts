@@ -58,6 +58,7 @@ export const EvalSuiteMetadataSchema = z.object({
   name: z.string(),
   model: z.string(),
   system_prompt: z.string(),
+  threads: z.number().optional(),
   mcp_server: MCPServerSchema.optional()
 });
 

@@ -83,6 +83,13 @@ export async function saveCommand(options: SaveOptions) {
       console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
       console.error(chalk.gray('Get your API key at https://vibescheck.io'));
       process.exit(1);
+    } else if (error.response?.status === 403) {
+      const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
+      console.error(chalk.red('\n🔒 Forbidden: Access denied'));
+      console.error(chalk.gray(`URL: ${API_URL}/api/suite/save`));
+      console.error(chalk.gray(`API Key: ${truncatedKey}`));
+      console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
+      process.exit(1);
     } else if (error.response?.status === 500) {
       console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));
       process.exit(1);
@@ -143,6 +150,13 @@ export async function listCommand() {
       console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
       console.error(chalk.gray('Get your API key at https://vibescheck.io'));
       process.exit(1);
+    } else if (error.response?.status === 403) {
+      const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
+      console.error(chalk.red('\n🔒 Forbidden: Access denied'));
+      console.error(chalk.gray(`URL: ${API_URL}/api/suite/list`));
+      console.error(chalk.gray(`API Key: ${truncatedKey}`));
+      console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
+      process.exit(1);
     } else if (error.response?.status === 500) {
       console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));
       process.exit(1);
@@ -186,6 +200,13 @@ export async function getCommand(name: string) {
     if (error.response?.status === 401) {
       console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
       console.error(chalk.gray('Get your API key at https://vibescheck.io'));
+      process.exit(1);
+    } else if (error.response?.status === 403) {
+      const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
+      console.error(chalk.red('\n🔒 Forbidden: Access denied'));
+      console.error(chalk.gray(`URL: ${API_URL}/api/suite/${encodeURIComponent(name)}`));
+      console.error(chalk.gray(`API Key: ${truncatedKey}`));
+      console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
       process.exit(1);
     } else if (error.response?.status === 500) {
       console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));

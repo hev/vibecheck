@@ -1,6 +1,12 @@
 # Instructions directory
 .instructions/
 
+# Eval files (user-specific)
+eval.yaml
+eval.yml
+evals.yaml
+evals.yml
+
 # Database files
 *.db
 *.db-shm

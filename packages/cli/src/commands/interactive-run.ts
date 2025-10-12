@@ -3,35 +3,30 @@ import * as yaml from 'js-yaml';
 import axios from 'axios';
 import { EvalSuiteSchema, EvalResult } from '../types';
 import { InteractiveUI } from '../ui/interactive';
+import { runOnboarding } from './onboarding';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
-  const isLocal = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
-
-  if (!isLocal && !API_KEY) {
+  if (!API_KEY) {
     throw new Error('VIBECHECK_API_KEY environment variable is required. Get your API key at https://vibescheck.io');
   }
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
+  return {
+    'Content-Type': 'application/json',
+    'X-API-KEY': API_KEY
   };
-
-  if (!isLocal && API_KEY) {
-    headers['X-API-KEY'] = API_KEY;
-  }
-
-  return headers;
 }
 
 interface RunOptions {
   file?: string;
   debug?: boolean;
+  outputDir?: string;
 }
 
 export async function runInteractiveCommand(options: RunOptions) {
-  const ui = new InteractiveUI();
+  const ui = new InteractiveUI(options.outputDir);
   let currentFile = options.file;
 
   // Set up command handler
@@ -58,16 +53,13 @@ export async function runInteractiveCommand(options: RunOptions) {
 
       currentFile = filePath;
       await runEvaluation(filePath, ui, options.debug);
-    } else if (cmd === 'list') {
-      // List command - show available suites
-      await listSuites(ui);
-    } else if (cmd === 'exit' || cmd === 'quit') {
+    } else if (cmd === 'exit' || cmd === 'quit' || cmd === 'q') {
       // Print summary to console before exiting
       ui.printSummaryToConsole();
       ui.destroy();
       process.exit(0);
     } else if (trimmedCommand !== '') {
-      ui.displayError(`Unknown command: ${cmd}. Available commands: check, list, exit`);
+      ui.displayError(`Unknown command: ${cmd}. Available commands: check, exit`);
     }
   });
 
@@ -80,6 +72,17 @@ export async function runInteractiveCommand(options: RunOptions) {
       }
     } catch (error: any) {
       ui.displayError(`Error reading file: ${error.message}`);
+    }
+  } else {
+    // No file found - start onboarding
+    const createdFile = await runOnboarding(ui);
+    if (createdFile) {
+      currentFile = createdFile;
+      ui.exitOnboarding();
+
+      // Display the created file
+      const fileContent = fs.readFileSync(createdFile, 'utf8');
+      ui.displayFileContent(createdFile, fileContent);
     }
   }
 
@@ -97,6 +100,10 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
     ui.displayInfo(`Reading evaluation file: ${file}`);
 
     const fileContent = fs.readFileSync(file, 'utf8');
+
+    // Store YAML content for logging
+    ui.setYamlContent(fileContent);
+
     const data = yaml.load(fileContent);
 
     // Validate YAML structure
@@ -123,11 +130,15 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
     });
 
     if (response.data.error) {
-      ui.displayError(`API Error: ${response.data.error}`);
+      const errorMsg = typeof response.data.error === 'string'
+        ? response.data.error
+        : response.data.error.message || JSON.stringify(response.data.error);
+      ui.displayError(`API Error: ${errorMsg}`);
       return;
     }
 
     const runId = response.data.runId;
+    ui.setRunId(runId);
     ui.displayInfo(`Checking vibes... Run ID: ${runId}`);
 
     // Stream results
@@ -136,11 +147,26 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
   } catch (error: any) {
     if (error.response?.status === 401) {
       ui.displayError('Unauthorized: Invalid or missing API key');
-      ui.displayInfo('Get your API key at https://vibescheck.io');
+      ui.displayError('Get your API key at https://vibescheck.io');
+    } else if (error.response?.status === 402) {
+      const errorMsg = error.response.data?.error?.message ||
+                       error.response.data?.error ||
+                       'Payment required: Your credits are running low';
+      ui.displayError(errorMsg);
+      ui.displayError('Visit https://vibescheck.io to add credits');
+    } else if (error.response?.status === 403) {
+      const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
+      ui.displayError('🔒 Forbidden: Access denied');
+      ui.displayError(`URL: ${API_URL}/api/eval/run`);
+      ui.displayError(`API Key: ${truncatedKey}`);
+      ui.displayError('Verify your API key at https://vibescheck.io');
     } else if (error.response?.status === 500) {
       ui.displayError('Server error: The VibeCheck API encountered an error');
     } else if (error.response?.data?.error) {
-      ui.displayError(`API Error: ${error.response.data.error}`);
+      const errorMsg = typeof error.response.data.error === 'string'
+        ? error.response.data.error
+        : error.response.data.error.message || JSON.stringify(error.response.data.error);
+      ui.displayError(`API Error: ${errorMsg}`);
     } else {
       ui.displayError(error.message);
     }
@@ -160,7 +186,7 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
         headers: getAuthHeaders()
       });
 
-      const { status, results, isUpdate, suiteName, model, systemPrompt, totalTimeMs: totalTime } = response.data;
+      const { status, results, isUpdate, suiteName, model, systemPrompt, totalTimeMs: totalTime, error: statusError } = response.data;
       if (totalTime) {
         totalTimeMs = totalTime;
       }
@@ -185,7 +211,8 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
         completed = true;
         ui.displaySummary(results, totalTimeMs);
       } else if (status === 'error') {
-        ui.displayError('Vibe check failed');
+        const errorMsg = statusError?.message || statusError || 'Vibe check failed';
+        ui.displayError(errorMsg);
         completed = true;
       }
 
@@ -195,9 +222,26 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
     } catch (error: any) {
       if (error.response?.status === 401) {
         ui.displayError('Unauthorized: Invalid or missing API key');
-        ui.displayInfo('Get your API key at https://vibescheck.io');
+        ui.displayError('Get your API key at https://vibescheck.io');
+      } else if (error.response?.status === 402) {
+        const errorMsg = error.response.data?.error?.message ||
+                         error.response.data?.error ||
+                         'Payment required: Your credits are running low';
+        ui.displayError(errorMsg);
+        ui.displayError('Visit https://vibescheck.io to add credits');
+      } else if (error.response?.status === 403) {
+        const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
+        ui.displayError('🔒 Forbidden: Access denied');
+        ui.displayError(`URL: ${API_URL}/api/eval/status/${runId}`);
+        ui.displayError(`API Key: ${truncatedKey}`);
+        ui.displayError('Verify your API key at https://vibescheck.io');
       } else if (error.response?.status === 500) {
         ui.displayError('Server error: The VibeCheck API encountered an error');
+      } else if (error.response?.data?.error) {
+        const errorMsg = typeof error.response.data.error === 'string'
+          ? error.response.data.error
+          : error.response.data.error.message || JSON.stringify(error.response.data.error);
+        ui.displayError(errorMsg);
       } else {
         ui.displayError(`Error polling results: ${error.message}`);
       }

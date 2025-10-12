@@ -1,4 +1,7 @@
 import * as blessed from 'blessed';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { EvalResult, ConditionalResult } from '../types';
 
 export class InteractiveUI {
@@ -9,11 +12,25 @@ export class InteractiveUI {
   private commandPromptLabel: blessed.Widgets.TextElement;
   private resultsContent: string[] = [];
   private onCommand: ((cmd: string) => Promise<void>) | null = null;
+  private onboardingHandler: ((input: string) => void) | null = null;
+  private isOnboarding: boolean = false;
   private currentFilePath: string | null = null;
   private lastResults: EvalResult[] | null = null;
   private lastTotalTime: number | null = null;
+  private runLog: string[] = [];
+  private currentRunId: string | null = null;
+  private yamlContent: string | null = null;
+  private outputDir: string;
 
-  constructor() {
+  constructor(outputDir?: string) {
+    // Set up output directory
+    this.outputDir = outputDir || path.join(os.homedir(), '.vibecheck', 'runs');
+
+    // Create output directory if it doesn't exist
+    if (!fs.existsSync(this.outputDir)) {
+      fs.mkdirSync(this.outputDir, { recursive: true });
+    }
+
     // Create screen
     this.screen = blessed.screen({
       smartCSR: true,
@@ -129,6 +146,17 @@ export class InteractiveUI {
     // Set up command input handler
     this.commandInput.on('submit', async (value: string) => {
       const command = value.trim();
+
+      // If in onboarding mode, use onboarding handler
+      if (this.isOnboarding && this.onboardingHandler) {
+        this.onboardingHandler(command);
+        this.commandInput.clearValue();
+        this.commandInput.focus();
+        this.screen.render();
+        return;
+      }
+
+      // Otherwise use normal command handler
       if (command && this.onCommand) {
         await this.onCommand(command);
       }
@@ -144,13 +172,7 @@ export class InteractiveUI {
       process.exit(0);
     });
 
-    // Handle escape to go back to command input
-    this.screen.key(['escape'], () => {
-      this.commandInput.focus();
-      this.screen.render();
-    });
-
-    // Tab to cycle between results box and command input
+    // Tab to toggle focus between results and command input
     this.screen.key(['tab'], () => {
       if (this.screen.focused === this.summaryBox) {
         this.commandInput.focus();
@@ -160,7 +182,13 @@ export class InteractiveUI {
       this.screen.render();
     });
 
-    // Up/Down arrows to scroll results when focused
+    // Escape always goes back to command input
+    this.screen.key(['escape'], () => {
+      this.commandInput.focus();
+      this.screen.render();
+    });
+
+    // Scroll keys - only work when results box is focused
     this.summaryBox.key(['up', 'k'], () => {
       this.summaryBox.scroll(-1);
       this.screen.render();
@@ -171,7 +199,6 @@ export class InteractiveUI {
       this.screen.render();
     });
 
-    // Page up/down for faster scrolling
     this.summaryBox.key(['pageup'], () => {
       this.summaryBox.scroll(-10);
       this.screen.render();
@@ -182,7 +209,7 @@ export class InteractiveUI {
       this.screen.render();
     });
 
-    // Focus on command input by default
+    // Start with focus on command input
     this.commandInput.focus();
   }
 
@@ -190,11 +217,35 @@ export class InteractiveUI {
     this.onCommand = handler;
   }
 
+  setOnboardingHandler(handler: (input: string) => void) {
+    this.onboardingHandler = handler;
+    this.isOnboarding = true;
+  }
+
+  exitOnboarding() {
+    this.isOnboarding = false;
+    this.onboardingHandler = null;
+  }
+
   appendResults(text: string) {
     this.resultsContent.push(text);
     this.resultsBox.setContent(this.resultsContent.join('\n'));
     this.resultsBox.setScrollPerc(100); // Auto-scroll to bottom
     this.screen.render();
+
+    // Add to run log (strip blessed tags for plain text)
+    const plainText = text.replace(/\{[^}]+\}/g, '');
+    this.runLog.push(plainText);
+  }
+
+  setRunId(runId: string) {
+    this.currentRunId = runId;
+    this.runLog.push(`\n=== Run ID: ${runId} ===`);
+    this.runLog.push(`Timestamp: ${new Date().toISOString()}\n`);
+  }
+
+  setYamlContent(yaml: string) {
+    this.yamlContent = yaml;
   }
 
   clearResults() {
@@ -256,6 +307,9 @@ export class InteractiveUI {
     // Store results for later use when exiting
     this.lastResults = results;
     this.lastTotalTime = totalTimeMs || null;
+
+    // Write run output to file
+    this.writeRunOutput(results, totalTimeMs);
 
     const lines: string[] = [];
 
@@ -323,10 +377,10 @@ export class InteractiveUI {
     }
 
     this.summaryBox.setContent(lines.join('\n'));
+    this.summaryBox.setScrollPerc(100); // Auto-scroll to bottom
 
     // Auto-focus the results box so user can scroll immediately
     this.summaryBox.focus();
-    this.summaryBox.setScrollPerc(0); // Scroll to top of results
     this.screen.render();
   }
 
@@ -409,7 +463,8 @@ export class InteractiveUI {
   }
 
   displayInfo(message: string) {
-    this.summaryBox.setContent('{cyan-fg}' + this.escapeText(message) + '{/cyan-fg}');
+    this.summaryBox.setContent(message);
+    this.summaryBox.setScrollPerc(100); // Auto-scroll to bottom
     this.screen.render();
   }
 
@@ -501,21 +556,25 @@ export class InteractiveUI {
       '',
       '{bold}{yellow-fg}Available Commands:{/yellow-fg}{/bold}',
       '',
-      '{cyan-fg}:check{/cyan-fg}           - Run the loaded evaluation file',
-      '{cyan-fg}:list{/cyan-fg}            - List all available evaluation suites',
-      '{cyan-fg}:exit{/cyan-fg} or {cyan-fg}:quit{/cyan-fg} - Exit the interactive mode',
+      '{cyan-fg}:check{/cyan-fg}              - Run the loaded evaluation file',
+      '{cyan-fg}:exit, :quit, :q{/cyan-fg} - Exit the interactive mode',
       '',
       '{bold}{yellow-fg}Navigation:{/yellow-fg}{/bold}',
       '',
-      '{cyan-fg}Tab{/cyan-fg}              - Switch focus to Results pane to scroll',
-      '{cyan-fg}↑/↓ or j/k{/cyan-fg}      - Scroll Results pane when focused',
-      '{cyan-fg}Page Up/Down{/cyan-fg}    - Fast scroll in Results pane',
-      '{cyan-fg}Escape{/cyan-fg}           - Return focus to command prompt',
+      '{cyan-fg}Tab{/cyan-fg}              - Toggle focus between Results and command input',
+      '{cyan-fg}↑/↓ or j/k{/cyan-fg}      - Scroll Results pane (when focused)',
+      '{cyan-fg}Page Up/Down{/cyan-fg}    - Fast scroll in Results pane (when focused)',
+      '{cyan-fg}Escape{/cyan-fg}           - Return to command input',
       '{cyan-fg}Ctrl+C{/cyan-fg}           - Exit and show summary in terminal',
+      '',
+      '{bold}{yellow-fg}Output:{/yellow-fg}{/bold}',
+      '',
+      `{gray-fg}Run outputs saved to: ${this.outputDir}{/gray-fg}`,
       ''
     ];
 
     this.summaryBox.setContent(helpText.join('\n'));
+    this.summaryBox.setScrollPerc(100); // Auto-scroll to bottom
     this.screen.render();
   }
 
@@ -523,6 +582,101 @@ export class InteractiveUI {
     this.currentFilePath = filePath;
     this.resultsBox.setLabel(' ' + filePath + ' ');
     this.screen.render();
+  }
+
+  writeRunOutput(results: EvalResult[], totalTimeMs?: number) {
+    if (!this.currentRunId) {
+      return;
+    }
+
+    const outputPath = path.join(this.outputDir, `${this.currentRunId}.txt`);
+    const output: string[] = [];
+
+    // Header
+    output.push('='.repeat(80));
+    output.push('VIBECHECK RUN OUTPUT');
+    output.push('='.repeat(80));
+    output.push('');
+    output.push(`Run ID: ${this.currentRunId}`);
+    output.push(`Timestamp: ${new Date().toISOString()}`);
+    output.push('');
+
+    // YAML content
+    if (this.yamlContent) {
+      output.push('='.repeat(80));
+      output.push('EVALUATION YAML');
+      output.push('='.repeat(80));
+      output.push('');
+      output.push(this.yamlContent);
+      output.push('');
+    }
+
+    // Streamed logs
+    output.push('='.repeat(80));
+    output.push('EXECUTION LOG');
+    output.push('='.repeat(80));
+    output.push('');
+    output.push(...this.runLog);
+    output.push('');
+
+    // Summary
+    output.push('='.repeat(80));
+    output.push('SUMMARY');
+    output.push('='.repeat(80));
+    output.push('');
+
+    const maxNameLength = Math.max(...results.map(r => r.evalName.length), 20);
+
+    results.forEach((result) => {
+      const paddedName = result.evalName.padEnd(maxNameLength);
+      const passedConditionals = result.conditionalResults.filter(c => c.passed).length;
+      const failedConditionals = result.conditionalResults.filter(c => !c.passed).length;
+      const failBar = '-'.repeat(failedConditionals);
+      const passBar = '+'.repeat(passedConditionals);
+      const timeStr = result.executionTimeMs ? `in ${(result.executionTimeMs / 1000).toFixed(1)}s` : '';
+      const status = result.passed ? '✅' : '🚩';
+
+      output.push(`${paddedName}  ${failBar}|${passBar}  ${status} ${timeStr}`);
+    });
+
+    const totalEvals = results.length;
+    const passedEvals = results.filter(r => r.passed).length;
+    const passRate = totalEvals > 0 ? (passedEvals / totalEvals) * 100 : 0;
+
+    output.push('');
+    output.push('-'.repeat(80));
+
+    let vibeStatus = '🚩 bad vibes';
+    if (passRate === 100) {
+      vibeStatus = '✨ good vibes';
+    } else if (passRate >= 80) {
+      vibeStatus = '😬 sketchy vibes';
+    }
+
+    output.push(`Vibe Rating: ${passedEvals}/${totalEvals} (${passRate.toFixed(1)}%) - ${vibeStatus}`);
+    if (totalTimeMs) {
+      output.push(`Total Time: ${(totalTimeMs / 1000).toFixed(2)}s`);
+    }
+    output.push('-'.repeat(80));
+    output.push('');
+
+    if (passRate < 80) {
+      output.push('🚩 Bad vibes detected: Vibe rating below 80%');
+    } else {
+      output.push('✨ Good vibes all around!');
+    }
+
+    output.push('');
+    output.push(`Output saved to: ${outputPath}`);
+    output.push('');
+
+    // Write to file
+    try {
+      fs.writeFileSync(outputPath, output.join('\n'));
+      this.displayInfo(`Output saved to: ${outputPath}`);
+    } catch (error: any) {
+      this.displayError(`Failed to write output file: ${error.message}`);
+    }
   }
 
   render() {

@@ -10,39 +10,30 @@ const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
-  const isLocal = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
-
-  // Only require API key for non-local URLs
-  if (!isLocal && !API_KEY) {
+  if (!API_KEY) {
     console.error(chalk.red('Error: VIBECHECK_API_KEY environment variable is required'));
     console.error(chalk.gray('Get your API key at https://vibescheck.io'));
     process.exit(1);
   }
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
+  return {
+    'Content-Type': 'application/json',
+    'X-API-KEY': API_KEY
   };
-
-  // Only add X-API-KEY header for non-local URLs
-  if (!isLocal && API_KEY) {
-    headers['X-API-KEY'] = API_KEY;
-  }
-
-  return headers;
 }
 
 interface RunOptions {
   file?: string;
   debug?: boolean;
   interactive?: boolean;
+  outputDir?: string;
+}
+
+export async function runInteractiveMode(options: RunOptions) {
+  return runInteractiveCommand(options);
 }
 
 export async function runCommand(options: RunOptions) {
-  // Use interactive UI mode when the interactive flag is set or when file is provided
-  if (options.interactive !== false && options.file) {
-    return runInteractiveCommand(options);
-  }
-
   const { file, debug } = options;
 
   if (!file) {
@@ -105,7 +96,10 @@ export async function runCommand(options: RunOptions) {
     }
 
     if (response.data.error) {
-      console.error(chalk.red(`API Error 🚩: ${response.data.error}`));
+      const errorMsg = typeof response.data.error === 'string'
+        ? response.data.error
+        : response.data.error.message || JSON.stringify(response.data.error);
+      console.error(chalk.red(`API Error 🚩: ${errorMsg}`));
       process.exit(1);
     }
 
@@ -123,11 +117,28 @@ export async function runCommand(options: RunOptions) {
       console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
       console.error(chalk.gray('Get your API key at https://vibescheck.io'));
       process.exit(1);
+    } else if (error.response?.status === 402) {
+      const errorMsg = error.response.data?.error?.message ||
+                       error.response.data?.error ||
+                       'Payment required: Your credits are running low';
+      console.error(chalk.red(`\n${errorMsg}`));
+      console.error(chalk.gray('Visit https://vibescheck.io to add credits'));
+      process.exit(1);
+    } else if (error.response?.status === 403) {
+      const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
+      console.error(chalk.red('\n🔒 Forbidden: Access denied'));
+      console.error(chalk.gray(`URL: ${API_URL}/api/eval/run`));
+      console.error(chalk.gray(`API Key: ${truncatedKey}`));
+      console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
+      process.exit(1);
     } else if (error.response?.status === 500) {
       console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));
       process.exit(1);
     } else if (error.response?.data?.error) {
-      console.error(chalk.red(`\nAPI Error: ${error.response.data.error}`));
+      const errorMsg = typeof error.response.data.error === 'string'
+        ? error.response.data.error
+        : error.response.data.error.message || JSON.stringify(error.response.data.error);
+      console.error(chalk.red(`\nAPI Error: ${errorMsg}`));
       process.exit(1);
     } else {
       console.error(chalk.red(`\n${error.message}`));
@@ -154,7 +165,7 @@ async function streamResults(runId: string, debug?: boolean) {
         console.log();
       }
 
-      const { status, results, isUpdate, suiteName, model, systemPrompt, totalTimeMs: totalTime } = response.data;
+      const { status, results, isUpdate, suiteName, model, systemPrompt, totalTimeMs: totalTime, error: statusError } = response.data;
       if (totalTime) {
         totalTimeMs = totalTime;
       }
@@ -185,7 +196,8 @@ async function streamResults(runId: string, debug?: boolean) {
         completed = true;
         displaySummary(results, totalTimeMs);
       } else if (status === 'error') {
-        console.error(chalk.red('\n🚩 Vibe check failed'));
+        const errorMsg = statusError?.message || statusError || 'Vibe check failed';
+        console.error(chalk.red(`\n🚩 ${errorMsg}`));
         completed = true;
         process.exit(1);
       }
@@ -199,8 +211,28 @@ async function streamResults(runId: string, debug?: boolean) {
         console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
         console.error(chalk.gray('Get your API key at https://vibescheck.io'));
         process.exit(1);
+      } else if (error.response?.status === 402) {
+        const errorMsg = error.response.data?.error?.message ||
+                         error.response.data?.error ||
+                         'Payment required: Your credits are running low';
+        console.error(chalk.red(`\n${errorMsg}`));
+        console.error(chalk.gray('Visit https://vibescheck.io to add credits'));
+        process.exit(1);
+      } else if (error.response?.status === 403) {
+        const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
+        console.error(chalk.red('\n🔒 Forbidden: Access denied'));
+        console.error(chalk.gray(`URL: ${API_URL}/api/eval/status/${runId}`));
+        console.error(chalk.gray(`API Key: ${truncatedKey}`));
+        console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
+        process.exit(1);
       } else if (error.response?.status === 500) {
         console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));
+        process.exit(1);
+      } else if (error.response?.data?.error) {
+        const errorMsg = typeof error.response.data.error === 'string'
+          ? error.response.data.error
+          : error.response.data.error.message || JSON.stringify(error.response.data.error);
+        console.error(chalk.red(`\n${errorMsg}`));
         process.exit(1);
       } else {
         console.error(chalk.red(`Error polling results: ${error.message}`));

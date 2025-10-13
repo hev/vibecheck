@@ -18,13 +18,27 @@ function getAuthHeaders() {
   };
 }
 
-export async function orgCommand() {
+export async function orgCommand(debug: boolean = false) {
   const spinner = ora('Fetching organization info...').start();
 
   try {
-    const response = await axios.get(`${API_URL}/api/orginfo`, {
+    const url = `${API_URL}/api/orginfo`;
+    if (debug) {
+      spinner.stop();
+      console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));
+      spinner.start();
+    }
+
+    const response = await axios.get(url, {
       headers: getAuthHeaders()
     });
+
+    if (debug) {
+      spinner.stop();
+      console.log(chalk.gray(`[DEBUG] Response status: ${response.status}`));
+      console.log(chalk.gray(`[DEBUG] Response data:`), JSON.stringify(response.data, null, 2));
+      spinner.start();
+    }
 
     if (response.data.error) {
       spinner.fail(chalk.red(`Error: ${response.data.error}`));
@@ -39,7 +53,16 @@ export async function orgCommand() {
     console.log(chalk.cyan('Organization:') + ' ' + chalk.white(orgInfo.name));
     console.log(chalk.cyan('Slug:') + ' ' + chalk.white(orgInfo.slug));
     console.log(chalk.cyan('Status:') + ' ' + chalk.white(orgInfo.status));
-    console.log(chalk.cyan('Available Credits:') + ' ' + chalk.white(orgInfo.credits.toFixed(2)));
+
+    // Color code credits based on amount
+    const creditsAmount = `$${orgInfo.credits.toFixed(2)}`;
+    const creditsColor = orgInfo.credits < 1.00 ? chalk.red : chalk.white;
+    console.log(
+      chalk.cyan('Available Credits:') + ' ' +
+      creditsColor(creditsAmount) +
+      chalk.gray(' (Credit balance may be delayed.)')
+    );
+
     console.log(chalk.cyan('Created:') + ' ' + chalk.gray(new Date(orgInfo.created_at).toLocaleString()));
     console.log('');
   } catch (error: any) {

@@ -23,10 +23,11 @@ function getAuthHeaders() {
 
 interface SaveOptions {
   file?: string;
+  debug?: boolean;
 }
 
 export async function saveCommand(options: SaveOptions) {
-  const { file } = options;
+  const { file, debug } = options;
 
   if (!file) {
     console.error(chalk.red('Error: --file option is required'));
@@ -60,13 +61,30 @@ export async function saveCommand(options: SaveOptions) {
     const evalSuite = parseResult.data;
     spinner.text = 'Saving suite...';
 
-    // Send to API
-    const response = await axios.post(`${API_URL}/api/suite/save`, {
+    const url = `${API_URL}/api/suite/save`;
+    const requestBody = {
       evalSuite,
       yamlContent: fileContent
-    }, {
+    };
+
+    if (debug) {
+      spinner.stop();
+      console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));
+      console.log(chalk.gray(`[DEBUG] Request body: ${JSON.stringify(requestBody, null, 2)}`));
+      spinner.start();
+    }
+
+    // Send to API
+    const response = await axios.post(url, requestBody, {
       headers: getAuthHeaders()
     });
+
+    if (debug) {
+      spinner.stop();
+      console.log(chalk.gray(`[DEBUG] Response status: ${response.status}`));
+      console.log(chalk.gray(`[DEBUG] Response data:`), JSON.stringify(response.data, null, 2));
+      spinner.start();
+    }
 
     if (response.data.error) {
       spinner.fail(chalk.red(`Error: ${response.data.error}`));

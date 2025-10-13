@@ -71,10 +71,9 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
       chalk.bold('Suite Name'.padEnd(30)) +
       chalk.bold('Status'.padEnd(12)) +
       chalk.bold('Pass/Fail'.padEnd(20)) +
-      chalk.bold('Time'.padEnd(10)) +
-      chalk.bold('Cost')
+      chalk.bold('Time')
     );
-    console.log('='.repeat(120));
+    console.log('='.repeat(110));
 
     runs.forEach((run: any) => {
       const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.red : chalk.yellow;
@@ -102,9 +101,6 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         passRate = chalk.red(passRateText.padEnd(20));
       }
 
-      // Cost not yet available
-      const cost = 'N/A';
-
       // Use duration_seconds from API response
       const time = !isNaN(durationSeconds)
         ? `${durationSeconds.toFixed(1)}s`
@@ -115,8 +111,7 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         chalk.white(run.suite_name.padEnd(30)) +
         statusColor(run.status.padEnd(12)) +
         passRate +
-        chalk.gray(time.padEnd(10)) +
-        chalk.gray(cost)
+        chalk.gray(time)
       );
     });
 
@@ -166,10 +161,9 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
       chalk.bold('Status'.padEnd(12)) +
       chalk.bold('Pass/Fail'.padEnd(20)) +
       chalk.bold('Time'.padEnd(10)) +
-      chalk.bold('Cost'.padEnd(15)) +
       chalk.bold('Started At')
     );
-    console.log('='.repeat(120));
+    console.log('='.repeat(100));
 
     runs.forEach((run: any) => {
       const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.red : chalk.yellow;
@@ -197,9 +191,6 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
         passRate = chalk.red(passRateText.padEnd(20));
       }
 
-      // Cost not yet available
-      const cost = 'N/A';
-
       // Use duration_seconds from API response
       const time = !isNaN(durationSeconds)
         ? `${durationSeconds.toFixed(1)}s`
@@ -213,7 +204,6 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
         statusColor(run.status.padEnd(12)) +
         passRate +
         chalk.gray(time.padEnd(10)) +
-        chalk.gray(cost.padEnd(15)) +
         chalk.gray(startedAt)
       );
     });

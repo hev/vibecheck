@@ -88,14 +88,15 @@ program
   .command('set')
   .description('Set/save an evaluation suite from a YAML file')
   .option('-f, --file <path>', 'Path to the YAML file containing evaluations')
+  .option('-d, --debug', 'Enable debug logging (shows full request/response)')
   .action(saveCommand);
 
 program
   .command('get')
   .alias('list')
   .alias('ls')
-  .description('Get suites, runs, or logs')
-  .argument('<noun>', 'Type of resource: suites|suite|evals|eval|runs|run')
+  .description('Get suites, runs, logs, or organization info')
+  .argument('<noun>', 'Type of resource: suites|suite|evals|eval|runs|run|logs|org')
   .argument('[identifier]', 'Optional: suite name or run ID')
   .argument('[subcommand]', 'Optional: subcommand (e.g., "logs" for runs)')
   .option('-d, --debug', 'Enable debug logging (shows full request/response)')
@@ -150,15 +151,16 @@ program
       return;
     }
 
+    // Handle org - vibe get org
+    if (['org', 'organization'].includes(normalizedNoun)) {
+      orgCommand(debug);
+      return;
+    }
+
     // Unknown noun
     console.error(chalk.red(`Error: Unknown resource type "${noun}"`));
-    console.error(chalk.gray('Valid types: suites, suite, evals, eval, runs, run'));
+    console.error(chalk.gray('Valid types: suites, suite, evals, eval, runs, run, org'));
     process.exit(1);
   });
-
-program
-  .command('org')
-  .description('Get organization information')
-  .action(orgCommand);
 
 program.parse(process.argv);

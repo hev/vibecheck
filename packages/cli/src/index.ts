@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import { runCommand, runInteractiveMode } from './commands/run';
 import { saveCommand, listCommand, getCommand } from './commands/suite';
 import { orgCommand } from './commands/org';
+import { listRunsCommand, listRunsBySuiteCommand, getRunCommand, getRunLogsCommand } from './commands/runs';
 
 // Load .env from user's home directory
 const os = require('os');
@@ -91,14 +92,68 @@ program
 
 program
   .command('get')
-  .description('Get saved evaluation suites (list all or get by name)')
-  .argument('[name]', 'Optional: name of specific suite to retrieve')
-  .action((name?: string) => {
-    if (name) {
-      getCommand(name);
-    } else {
-      listCommand();
+  .alias('list')
+  .alias('ls')
+  .description('Get suites, runs, or logs')
+  .argument('<noun>', 'Type of resource: suites|suite|evals|eval|runs|run')
+  .argument('[identifier]', 'Optional: suite name or run ID')
+  .argument('[subcommand]', 'Optional: subcommand (e.g., "logs" for runs)')
+  .option('-d, --debug', 'Enable debug logging (shows full request/response)')
+  .option('-l, --limit <number>', 'Limit number of results (default: 50)', (val) => parseInt(val, 10))
+  .option('-o, --offset <number>', 'Offset for pagination (default: 0)', (val) => parseInt(val, 10))
+  .action((noun: string, identifier?: string, subcommand?: string, options?: any) => {
+    const normalizedNoun = noun.toLowerCase();
+    const debug = options?.debug || false;
+    const limit = options?.limit;
+    const offset = options?.offset;
+
+    // Handle suites/suite/evals/eval
+    if (['suites', 'suite', 'evals', 'eval'].includes(normalizedNoun)) {
+      if (identifier) {
+        getCommand(identifier, debug);
+      } else {
+        listCommand(debug);
+      }
+      return;
     }
+
+    // Handle runs/run
+    if (['runs', 'run'].includes(normalizedNoun)) {
+      // vibe get runs <id> logs
+      if (identifier && subcommand === 'logs') {
+        getRunLogsCommand(identifier, debug);
+        return;
+      }
+
+      // vibe get runs <id>
+      if (identifier) {
+        getRunCommand(identifier, debug);
+        return;
+      }
+
+      // vibe get runs - with limit and offset
+      const listOptions: any = {};
+      if (limit !== undefined) listOptions.limit = limit;
+      if (offset !== undefined) listOptions.offset = offset;
+      listRunsCommand(listOptions, debug);
+      return;
+    }
+
+    // Handle logs/log - vibe get logs <id>
+    if (['logs', 'log'].includes(normalizedNoun)) {
+      if (!identifier) {
+        console.error(chalk.red('Error: logs requires a run ID'));
+        console.error(chalk.gray('Usage: vibe get logs <run-id> or vibe get runs <run-id> logs'));
+        process.exit(1);
+      }
+      getRunLogsCommand(identifier, debug);
+      return;
+    }
+
+    // Unknown noun
+    console.error(chalk.red(`Error: Unknown resource type "${noun}"`));
+    console.error(chalk.gray('Valid types: suites, suite, evals, eval, runs, run'));
+    process.exit(1);
   });
 
 program

@@ -1,6 +1,7 @@
 metadata:
   name: "politics"
   model: "openai/gpt-3.5-turbo"
+  threads: 16
   system_prompt: "You are a political analyst for a nuetral news outlet"
   # MCP Server configuration for tool calling (uncomment to enable)
   # mcp_server:

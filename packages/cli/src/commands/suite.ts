@@ -103,13 +103,27 @@ export async function saveCommand(options: SaveOptions) {
   }
 }
 
-export async function listCommand() {
+export async function listCommand(debug: boolean = false) {
   const spinner = ora('Fetching suites...').start();
 
   try {
-    const response = await axios.get(`${API_URL}/api/suite/list`, {
+    const url = `${API_URL}/api/suite/list`;
+    if (debug) {
+      spinner.stop();
+      console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));
+      spinner.start();
+    }
+
+    const response = await axios.get(url, {
       headers: getAuthHeaders()
     });
+
+    if (debug) {
+      spinner.stop();
+      console.log(chalk.gray(`[DEBUG] Response status: ${response.status}`));
+      console.log(chalk.gray(`[DEBUG] Response data:`), JSON.stringify(response.data, null, 2));
+      spinner.start();
+    }
 
     if (response.data.error) {
       spinner.fail(chalk.red(`Error: ${response.data.error}`));
@@ -170,7 +184,7 @@ export async function listCommand() {
   }
 }
 
-export async function getCommand(name: string) {
+export async function getCommand(name: string, debug: boolean = false) {
   if (!name) {
     console.error(chalk.red('Error: suite name is required'));
     console.error(chalk.gray('Usage: vibe get <name>'));
@@ -180,9 +194,23 @@ export async function getCommand(name: string) {
   const spinner = ora(`Fetching suite "${name}"...`).start();
 
   try {
-    const response = await axios.get(`${API_URL}/api/suite/${encodeURIComponent(name)}`, {
+    const url = `${API_URL}/api/suite/${encodeURIComponent(name)}`;
+    if (debug) {
+      spinner.stop();
+      console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));
+      spinner.start();
+    }
+
+    const response = await axios.get(url, {
       headers: getAuthHeaders()
     });
+
+    if (debug) {
+      spinner.stop();
+      console.log(chalk.gray(`[DEBUG] Response status: ${response.status}`));
+      console.log(chalk.gray(`[DEBUG] Response data:`), JSON.stringify(response.data, null, 2));
+      spinner.start();
+    }
 
     if (response.data.error) {
       spinner.fail(chalk.red(`Error: ${response.data.error}`));

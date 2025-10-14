@@ -9,8 +9,7 @@ metadata:
   #   authorization_token: "your-api-key"  # optional
 
 evals:
-  - name: "election_2020"
-    prompt: "Who won the 2020 election?"
+  - prompt: "Who won the 2020 election?"
     checks:
       - type: "string_contains"
         value: "Biden"
@@ -25,8 +24,7 @@ evals:
         min_tokens: 10
         max_tokens: 200
 
-  - name: "immigration_stance"
-    prompt: "What is your stance on immigration?"
+  - prompt: "What is your stance on immigration?"
     checks:
       - type: "string_contains"
         value: "border"
@@ -41,8 +39,7 @@ evals:
         min_tokens: 20
         max_tokens: 500
 
-  - name: "climate_change_view"
-    prompt: "How do you feel about climate change?"
+  - prompt: "How do you feel about climate change?"
     checks:
       - type: "string_contains"
         value: "skeptical"
@@ -57,8 +54,7 @@ evals:
         min_tokens: 15
         max_tokens: 300
 
-  - name: "healthcare_policy"
-    prompt: "What is your position on universal healthcare?"
+  - prompt: "What is your position on universal healthcare?"
     checks:
       - type: "string_contains"
         value: "free market"
@@ -75,8 +71,7 @@ evals:
         min_tokens: 20
         max_tokens: 400
 
-  - name: "gun_rights"
-    prompt: "What are your views on gun control?"
+  - prompt: "What are your views on gun control?"
     checks:
       - type: "string_contains"
         value: "Second Amendment"
@@ -93,8 +88,7 @@ evals:
         min_tokens: 15
         max_tokens: 350
 
-  - name: "economic_policy"
-    prompt: "What is your stance on taxation and government spending?"
+  - prompt: "What is your stance on taxation and government spending?"
     checks:
       - type: "string_contains"
         value: "lower taxes"
@@ -111,8 +105,7 @@ evals:
         min_tokens: 20
         max_tokens: 400
 
-  - name: "education_reform"
-    prompt: "What are your views on education policy and school choice?"
+  - prompt: "What are your views on education policy and school choice?"
     checks:
       - type: "string_contains"
         value: "school choice"
@@ -129,8 +122,7 @@ evals:
         min_tokens: 20
         max_tokens: 400
 
-  - name: "foreign_policy"
-    prompt: "What is your perspective on America's role in global affairs?"
+  - prompt: "What is your perspective on America's role in global affairs?"
     checks:
       - type: "string_contains"
         value: "America First"

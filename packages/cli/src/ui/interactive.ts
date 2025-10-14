@@ -269,7 +269,8 @@ export class InteractiveUI {
   }
 
   displayResult(result: EvalResult) {
-    this.appendResults('{bold}' + result.evalName + ':{/bold}');
+    const displayName = this.truncatePrompt(result.prompt);
+    this.appendResults('{bold}' + this.escapeText(displayName) + ':{/bold}');
     this.appendResults('{blue-fg}Prompt: ' + this.escapeText(result.prompt) + '{/blue-fg}');
     this.appendResults('{gray-fg}Response: ' + this.escapeText(result.response) + '{/gray-fg}');
 
@@ -318,12 +319,13 @@ export class InteractiveUI {
     lines.push('{bold}' + '─'.repeat(80) + '{/bold}');
     lines.push('');
 
-    // Find the longest eval name for padding
-    const maxNameLength = Math.max(...results.map(r => r.evalName.length), 20);
+    // Find the longest eval name for padding - use truncated prompts
+    const displayNames = results.map(r => this.truncatePrompt(r.prompt));
+    const maxNameLength = Math.max(...displayNames.map(n => n.length), 20);
 
     // Display each eval with visual bar chart
-    results.forEach((result) => {
-      const paddedName = result.evalName.padEnd(maxNameLength);
+    results.forEach((result, index) => {
+      const paddedName = displayNames[index].padEnd(maxNameLength);
 
       // Calculate pass/fail counts for checks
       const passedChecks = result.checkResults.filter(c => c.passed).length;
@@ -399,12 +401,13 @@ export class InteractiveUI {
     console.log(chalk.bold('─'.repeat(80)));
     console.log();
 
-    // Find the longest eval name for padding
-    const maxNameLength = Math.max(...results.map(r => r.evalName.length), 20);
+    // Find the longest eval name for padding - use truncated prompts
+    const displayNames = results.map(r => this.truncatePrompt(r.prompt));
+    const maxNameLength = Math.max(...displayNames.map(n => n.length), 20);
 
     // Display each eval with visual bar chart
-    results.forEach((result) => {
-      const paddedName = result.evalName.padEnd(maxNameLength);
+    results.forEach((result, index) => {
+      const paddedName = displayNames[index].padEnd(maxNameLength);
 
       // Calculate pass/fail counts for checks
       const passedChecks = result.checkResults.filter(c => c.passed).length;
@@ -539,6 +542,13 @@ export class InteractiveUI {
     return text.substring(0, maxLength - 3) + '...';
   }
 
+  private truncatePrompt(prompt: string, maxLength: number = 60): string {
+    if (prompt.length <= maxLength) {
+      return prompt;
+    }
+    return prompt.substring(0, maxLength - 3) + '...';
+  }
+
   displayFileContent(filePath: string, content: string) {
     this.currentFilePath = filePath;
     this.resultsBox.setLabel(' ' + filePath + ' ');
@@ -625,10 +635,11 @@ export class InteractiveUI {
     output.push('='.repeat(80));
     output.push('');
 
-    const maxNameLength = Math.max(...results.map(r => r.evalName.length), 20);
+    const displayNames = results.map(r => this.truncatePrompt(r.prompt));
+    const maxNameLength = Math.max(...displayNames.map(n => n.length), 20);
 
-    results.forEach((result) => {
-      const paddedName = result.evalName.padEnd(maxNameLength);
+    results.forEach((result, index) => {
+      const paddedName = displayNames[index].padEnd(maxNameLength);
       const passedChecks = result.checkResults.filter(c => c.passed).length;
       const failedChecks = result.checkResults.filter(c => !c.passed).length;
       const failBar = '-'.repeat(failedChecks);

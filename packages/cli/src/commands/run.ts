@@ -243,9 +243,17 @@ async function streamResults(runId: string, debug?: boolean) {
   }
 }
 
+function truncatePrompt(prompt: string, maxLength: number = 60): string {
+  if (prompt.length <= maxLength) {
+    return prompt;
+  }
+  return prompt.substring(0, maxLength - 3) + '...';
+}
+
 function displayResults(results: EvalResult[]) {
   results.forEach((result) => {
-    console.log(chalk.bold(`\n${result.evalName}:`));
+    const displayName = truncatePrompt(result.prompt);
+    console.log(chalk.bold(`\n${displayName}:`));
     console.log(chalk.blue(`Prompt: ${result.prompt}`));
     console.log(chalk.gray(`Response: ${result.response}`));
 

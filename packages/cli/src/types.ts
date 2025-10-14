@@ -43,7 +43,6 @@ export const ConditionalSchema = z.discriminatedUnion('type', [
 ]);
 
 export const EvalSchema = z.object({
-  name: z.string(),
   prompt: z.string(),
   checks: z.array(ConditionalSchema)
 });

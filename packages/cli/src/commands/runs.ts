@@ -312,8 +312,8 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
 
       // Transform API results to EvalResult format for summary display
       const evalResults: EvalResult[] = run.results.map((result: any) => ({
-        evalName: result.eval_name,
-        prompt: '', // Not included in API response but not needed for summary
+        evalName: result.eval_name || '',
+        prompt: result.prompt || '', // Use prompt from API if available
         response: result.response || '',
         checkResults: (result.check_results || []).map((cond: any) => ({
           type: cond.type,

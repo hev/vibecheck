@@ -1,6 +1,13 @@
 import chalk from 'chalk';
 import { EvalResult } from '../types';
 
+function truncatePrompt(prompt: string, maxLength: number = 60): string {
+  if (prompt.length <= maxLength) {
+    return prompt;
+  }
+  return prompt.substring(0, maxLength - 3) + '...';
+}
+
 export function displaySummary(results: EvalResult[], totalTimeMs?: number) {
   console.log();
   console.log(chalk.bold('─'.repeat(80)));
@@ -8,12 +15,13 @@ export function displaySummary(results: EvalResult[], totalTimeMs?: number) {
   console.log(chalk.bold('─'.repeat(80)));
   console.log();
 
-  // Find the longest eval name for padding
-  const maxNameLength = Math.max(...results.map(r => r.evalName.length), 20);
+  // Find the longest eval name for padding - use truncated prompts
+  const displayNames = results.map(r => truncatePrompt(r.prompt));
+  const maxNameLength = Math.max(...displayNames.map(n => n.length), 20);
 
   // Display each eval with visual bar chart
-  results.forEach((result) => {
-    const paddedName = result.evalName.padEnd(maxNameLength);
+  results.forEach((result, index) => {
+    const paddedName = displayNames[index].padEnd(maxNameLength);
 
     // Calculate pass/fail counts for checks - one character per check
     const passedChecks = result.checkResults.filter(c => c.passed).length;

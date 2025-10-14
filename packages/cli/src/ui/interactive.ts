@@ -273,7 +273,7 @@ export class InteractiveUI {
     this.appendResults('{blue-fg}Prompt: ' + this.escapeText(result.prompt) + '{/blue-fg}');
     this.appendResults('{gray-fg}Response: ' + this.escapeText(result.response) + '{/gray-fg}');
 
-    result.conditionalResults.forEach((cond: ConditionalResult) => {
+    result.checkResults.forEach((cond: ConditionalResult) => {
       const status = cond.passed ? '{green-fg}✅ PASS{/green-fg}' : '{red-fg}🚩 FAIL{/red-fg}';
       const details = this.formatConditionalDetails(cond, result.response);
 
@@ -325,13 +325,13 @@ export class InteractiveUI {
     results.forEach((result) => {
       const paddedName = result.evalName.padEnd(maxNameLength);
 
-      // Calculate pass/fail counts for conditionals
-      const passedConditionals = result.conditionalResults.filter(c => c.passed).length;
-      const failedConditionals = result.conditionalResults.filter(c => !c.passed).length;
+      // Calculate pass/fail counts for checks
+      const passedChecks = result.checkResults.filter(c => c.passed).length;
+      const failedChecks = result.checkResults.filter(c => !c.passed).length;
 
       // Create visual bar
-      const failBar = '-'.repeat(failedConditionals);
-      const passBar = '+'.repeat(passedConditionals);
+      const failBar = '-'.repeat(failedChecks);
+      const passBar = '+'.repeat(passedChecks);
 
       // Format time
       const timeStr = result.executionTimeMs
@@ -406,13 +406,13 @@ export class InteractiveUI {
     results.forEach((result) => {
       const paddedName = result.evalName.padEnd(maxNameLength);
 
-      // Calculate pass/fail counts for conditionals
-      const passedConditionals = result.conditionalResults.filter(c => c.passed).length;
-      const failedConditionals = result.conditionalResults.filter(c => !c.passed).length;
+      // Calculate pass/fail counts for checks
+      const passedChecks = result.checkResults.filter(c => c.passed).length;
+      const failedChecks = result.checkResults.filter(c => !c.passed).length;
 
       // Create visual bar
-      const failBar = '-'.repeat(failedConditionals);
-      const passBar = '+'.repeat(passedConditionals);
+      const failBar = '-'.repeat(failedChecks);
+      const passBar = '+'.repeat(passedChecks);
 
       // Format time
       const timeStr = result.executionTimeMs
@@ -629,10 +629,10 @@ export class InteractiveUI {
 
     results.forEach((result) => {
       const paddedName = result.evalName.padEnd(maxNameLength);
-      const passedConditionals = result.conditionalResults.filter(c => c.passed).length;
-      const failedConditionals = result.conditionalResults.filter(c => !c.passed).length;
-      const failBar = '-'.repeat(failedConditionals);
-      const passBar = '+'.repeat(passedConditionals);
+      const passedChecks = result.checkResults.filter(c => c.passed).length;
+      const failedChecks = result.checkResults.filter(c => !c.passed).length;
+      const failBar = '-'.repeat(failedChecks);
+      const passBar = '+'.repeat(passedChecks);
       const timeStr = result.executionTimeMs ? `in ${(result.executionTimeMs / 1000).toFixed(1)}s` : '';
       const status = result.passed ? '✅' : '🚩';
 

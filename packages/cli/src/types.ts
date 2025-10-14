@@ -12,27 +12,27 @@ export const OperatorSchema = z.enum(['and', 'or']);
 export const StringContainsConditionalSchema = z.object({
   type: z.literal('string_contains'),
   value: z.string(),
-  operator: OperatorSchema
+  operator: OperatorSchema.optional()
 });
 
 export const SemanticSimilarityConditionalSchema = z.object({
   type: z.literal('semantic_similarity'),
   expected: z.string(),
   threshold: z.number().min(0).max(1),
-  operator: OperatorSchema
+  operator: OperatorSchema.optional()
 });
 
 export const LLMJudgeConditionalSchema = z.object({
   type: z.literal('llm_judge'),
   criteria: z.string(),
-  operator: OperatorSchema
+  operator: OperatorSchema.optional()
 });
 
 export const TokenLengthConditionalSchema = z.object({
   type: z.literal('token_length'),
   min_tokens: z.number().optional(),
   max_tokens: z.number().optional(),
-  operator: OperatorSchema
+  operator: OperatorSchema.optional()
 });
 
 export const ConditionalSchema = z.discriminatedUnion('type', [
@@ -45,7 +45,7 @@ export const ConditionalSchema = z.discriminatedUnion('type', [
 export const EvalSchema = z.object({
   name: z.string(),
   prompt: z.string(),
-  conditionals: z.array(ConditionalSchema)
+  checks: z.array(ConditionalSchema)
 });
 
 export const MCPServerSchema = z.object({
@@ -83,7 +83,7 @@ export interface EvalResult {
   evalName: string;
   prompt: string;
   response: string;
-  conditionalResults: ConditionalResult[];
+  checkResults: ConditionalResult[];
   passed: boolean;
   executionTimeMs?: number;
   cost?: number; // Retail price per token

@@ -249,7 +249,7 @@ function displayResults(results: EvalResult[]) {
     console.log(chalk.blue(`Prompt: ${result.prompt}`));
     console.log(chalk.gray(`Response: ${result.response}`));
 
-    result.conditionalResults.forEach((cond: ConditionalResult) => {
+    result.checkResults.forEach((cond: ConditionalResult) => {
       const status = cond.passed ? chalk.green('✅ PASS') : chalk.red('🚩 FAIL');
       const details = formatConditionalDetails(cond, result.response);
 

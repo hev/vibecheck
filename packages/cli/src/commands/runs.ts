@@ -315,7 +315,7 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
         evalName: result.eval_name,
         prompt: '', // Not included in API response but not needed for summary
         response: result.response || '',
-        conditionalResults: (result.conditional_results || []).map((cond: any) => ({
+        checkResults: (result.check_results || []).map((cond: any) => ({
           type: cond.type,
           passed: cond.passed,
           message: cond.message || ''

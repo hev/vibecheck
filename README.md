@@ -39,7 +39,7 @@ vibe check -f examples/evals.yaml
 ```
 
 This command:
-- Checks your conditionals (runs the tests)
+- Checks your checks (runs the tests)
 - Shows real-time vibe ratings
 - Gives you the final verdict
 
@@ -91,7 +91,7 @@ metadata:
 evaluations:
   - name: test-1
     prompt: What is 2+2?
-    conditionals:
+    checks:
       - type: string_contains
         value: "4"
       - type: token_length

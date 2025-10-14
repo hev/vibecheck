@@ -15,13 +15,13 @@ export function displaySummary(results: EvalResult[], totalTimeMs?: number) {
   results.forEach((result) => {
     const paddedName = result.evalName.padEnd(maxNameLength);
 
-    // Calculate pass/fail counts for conditionals - one character per conditional
-    const passedConditionals = result.conditionalResults.filter(c => c.passed).length;
-    const failedConditionals = result.conditionalResults.filter(c => !c.passed).length;
+    // Calculate pass/fail counts for checks - one character per check
+    const passedChecks = result.checkResults.filter(c => c.passed).length;
+    const failedChecks = result.checkResults.filter(c => !c.passed).length;
 
     // Create visual bar - one + or - per conditional
-    const failBar = '-'.repeat(failedConditionals);
-    const passBar = '+'.repeat(passedConditionals);
+    const failBar = '-'.repeat(failedChecks);
+    const passBar = '+'.repeat(passedChecks);
 
     // Format time
     const timeStr = result.executionTimeMs

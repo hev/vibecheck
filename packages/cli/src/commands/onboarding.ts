@@ -184,16 +184,15 @@ function generatePartialYAML(data: Partial<OnboardingData>): string {
     lines.push('{gray-fg}    prompt: <prompt>{/gray-fg}');
   }
 
-  lines.push('{gray-fg}    conditionals:{/gray-fg}');
+  lines.push('{gray-fg}    checks:{/gray-fg}');
 
-  // string_contains conditional
+  // string_contains check
   lines.push('{gray-fg}      - type: string_contains{/gray-fg}');
   if (data.searchString) {
     lines.push(`{gray-fg}        value:{/gray-fg} {cyan-fg}${data.searchString}{/cyan-fg}`);
   } else {
     lines.push('{gray-fg}        value: <expected_string>{/gray-fg}');
   }
-  lines.push('{gray-fg}        operator: and{/gray-fg}');
 
   // semantic_similarity conditional
   lines.push('{gray-fg}      - type: semantic_similarity{/gray-fg}');
@@ -203,7 +202,6 @@ function generatePartialYAML(data: Partial<OnboardingData>): string {
     lines.push('{gray-fg}        expected: <semantic_target>{/gray-fg}');
   }
   lines.push('{gray-fg}        threshold: 0.6{/gray-fg}');
-  lines.push('{gray-fg}        operator: and{/gray-fg}');
 
   // llm_judge conditional
   lines.push('{gray-fg}      - type: llm_judge{/gray-fg}');
@@ -212,7 +210,6 @@ function generatePartialYAML(data: Partial<OnboardingData>): string {
   } else {
     lines.push('{gray-fg}        criteria: <judge_criteria>{/gray-fg}');
   }
-  lines.push('{gray-fg}        operator: and{/gray-fg}');
 
   return lines.join('\n');
 }
@@ -228,22 +225,20 @@ function generateYAML(data: OnboardingData): string {
       {
         name: 'first_eval',
         prompt: data.prompt,
-        conditionals: [
+        checks: [
           {
             type: 'string_contains',
-            value: data.searchString,
-            operator: 'and'
+            value: data.searchString
           },
           {
             type: 'semantic_similarity',
             expected: data.semanticTarget,
-            threshold: 0.6,
-            operator: 'and'
+            threshold: 0.6
           },
           {
             type: 'llm_judge',
             criteria: data.judgeCriteria,
-            operator: 'and'
+
           }
         ]
       }
@@ -266,17 +261,14 @@ function generateFormattedYAML(data: OnboardingData): string {
   lines.push('{gray-fg}evals:{/gray-fg}');
   lines.push('{gray-fg}  - name: first_eval{/gray-fg}');
   lines.push(`{gray-fg}    prompt:{/gray-fg} {cyan-fg}${data.prompt}{/cyan-fg}`);
-  lines.push('{gray-fg}    conditionals:{/gray-fg}');
+  lines.push('{gray-fg}    checks:{/gray-fg}');
   lines.push('{gray-fg}      - type: string_contains{/gray-fg}');
   lines.push(`{gray-fg}        value:{/gray-fg} {cyan-fg}${data.searchString}{/cyan-fg}`);
-  lines.push('{gray-fg}        operator: and{/gray-fg}');
   lines.push('{gray-fg}      - type: semantic_similarity{/gray-fg}');
   lines.push(`{gray-fg}        expected:{/gray-fg} {cyan-fg}${data.semanticTarget}{/cyan-fg}`);
   lines.push('{gray-fg}        threshold: 0.6{/gray-fg}');
-  lines.push('{gray-fg}        operator: and{/gray-fg}');
   lines.push('{gray-fg}      - type: llm_judge{/gray-fg}');
   lines.push(`{gray-fg}        criteria:{/gray-fg} {cyan-fg}${data.judgeCriteria}{/cyan-fg}`);
-  lines.push('{gray-fg}        operator: and{/gray-fg}');
 
   return lines.join('\n');
 }

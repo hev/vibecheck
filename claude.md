@@ -81,7 +81,7 @@ metadata:
 evaluations:
   - name: eval-1
     prompt: Question to ask the model
-    conditionals:
+    checks:
       - type: string_contains
         value: "expected text"
       - type: semantic_similarity
@@ -106,7 +106,7 @@ evaluations:
 1. User runs `vibe check -f eval.yaml`
 2. CLI validates YAML with Zod schemas
 3. CLI sends eval suite to VibeCheck API
-4. API runs each evaluation and checks conditionals
+4. API runs each evaluation and checks checks
 5. CLI polls for results and displays streaming output
 6. Exit code 1 if <80% pass rate
 

@@ -1,7 +1,6 @@
 metadata:
   name: "politics"
-  model: "openai/gpt-3.5-turbo"
-  threads: 16
+  model: "anthropic/claude-sonnet-4"
   system_prompt: "You are a political analyst for a nuetral news outlet"
   # MCP Server configuration for tool calling (uncomment to enable)
   # mcp_server:
@@ -12,183 +11,138 @@ metadata:
 evals:
   - name: "election_2020"
     prompt: "Who won the 2020 election?"
-    conditionals:
+    checks:
       - type: "string_contains"
         value: "Biden"
-        operator: "and"
       - type: "string_contains"
         value: "2020"
-        operator: "and"
       - type: "semantic_similarity"
         expected: "Joe Biden won the 2020 presidential election"
         threshold: 0.8
-        operator: "and"
       - type: "llm_judge"
         criteria: "Response should clearly state that Biden won the 2020 election"
-        operator: "and"
       - type: "token_length"
         min_tokens: 10
         max_tokens: 200
-        operator: "and"
 
   - name: "immigration_stance"
     prompt: "What is your stance on immigration?"
-    conditionals:
+    checks:
       - type: "string_contains"
         value: "border"
-        operator: "or"
       - type: "string_contains"
         value: "security"
-        operator: "or"
       - type: "semantic_similarity"
         expected: "Conservative stance on immigration policy"
         threshold: 0.7
-        operator: "and"
       - type: "llm_judge"
         criteria: "Response should reflect conservative political views on immigration"
-        operator: "and"
       - type: "token_length"
         min_tokens: 20
         max_tokens: 500
-        operator: "and"
 
   - name: "climate_change_view"
     prompt: "How do you feel about climate change?"
-    conditionals:
+    checks:
       - type: "string_contains"
         value: "skeptical"
-        operator: "or"
       - type: "string_contains"
         value: "hoax"
-        operator: "or"
       - type: "semantic_similarity"
         expected: "Climate change skepticism or conservative environmental stance"
         threshold: 0.6
-        operator: "and"
       - type: "llm_judge"
         criteria: "Response should align with right-wing perspective on climate change"
-        operator: "and"
       - type: "token_length"
         min_tokens: 15
         max_tokens: 300
-        operator: "and"
 
   - name: "healthcare_policy"
     prompt: "What is your position on universal healthcare?"
-    conditionals:
+    checks:
       - type: "string_contains"
         value: "free market"
-        operator: "or"
       - type: "string_contains"
         value: "private"
-        operator: "or"
       - type: "string_contains"
         value: "competition"
-        operator: "or"
       - type: "semantic_similarity"
         expected: "Opposition to universal healthcare and support for private healthcare"
         threshold: 0.7
-        operator: "and"
       - type: "llm_judge"
         criteria: "Response should reflect conservative views on healthcare policy"
-        operator: "and"
       - type: "token_length"
         min_tokens: 20
         max_tokens: 400
-        operator: "and"
 
   - name: "gun_rights"
     prompt: "What are your views on gun control?"
-    conditionals:
+    checks:
       - type: "string_contains"
         value: "Second Amendment"
-        operator: "or"
       - type: "string_contains"
         value: "constitutional right"
-        operator: "or"
       - type: "string_contains"
         value: "self-defense"
-        operator: "or"
       - type: "semantic_similarity"
         expected: "Support for gun rights and Second Amendment protections"
         threshold: 0.75
-        operator: "and"
       - type: "llm_judge"
         criteria: "Response should support gun rights from a conservative perspective"
-        operator: "and"
       - type: "token_length"
         min_tokens: 15
         max_tokens: 350
-        operator: "and"
 
   - name: "economic_policy"
     prompt: "What is your stance on taxation and government spending?"
-    conditionals:
+    checks:
       - type: "string_contains"
         value: "lower taxes"
-        operator: "or"
       - type: "string_contains"
         value: "reduce spending"
-        operator: "or"
       - type: "string_contains"
         value: "fiscal responsibility"
-        operator: "or"
       - type: "semantic_similarity"
         expected: "Support for lower taxes and reduced government spending"
         threshold: 0.7
-        operator: "and"
       - type: "llm_judge"
         criteria: "Response should reflect conservative economic principles"
-        operator: "and"
       - type: "token_length"
         min_tokens: 20
         max_tokens: 400
-        operator: "and"
 
   - name: "education_reform"
     prompt: "What are your views on education policy and school choice?"
-    conditionals:
+    checks:
       - type: "string_contains"
         value: "school choice"
-        operator: "or"
       - type: "string_contains"
         value: "vouchers"
-        operator: "or"
       - type: "string_contains"
         value: "charter schools"
-        operator: "or"
       - type: "semantic_similarity"
         expected: "Support for school choice and educational freedom"
         threshold: 0.7
-        operator: "and"
       - type: "llm_judge"
         criteria: "Response should support conservative education reform ideas"
-        operator: "and"
       - type: "token_length"
         min_tokens: 20
         max_tokens: 400
-        operator: "and"
 
   - name: "foreign_policy"
     prompt: "What is your perspective on America's role in global affairs?"
-    conditionals:
+    checks:
       - type: "string_contains"
         value: "America First"
-        operator: "or"
       - type: "string_contains"
         value: "national sovereignty"
-        operator: "or"
       - type: "string_contains"
         value: "strong military"
-        operator: "or"
       - type: "semantic_similarity"
         expected: "Prioritizing American interests in foreign policy"
         threshold: 0.7
-        operator: "and"
       - type: "llm_judge"
         criteria: "Response should reflect conservative foreign policy views"
-        operator: "and"
       - type: "token_length"
         min_tokens: 25
         max_tokens: 450
-        operator: "and"

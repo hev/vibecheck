@@ -23,25 +23,41 @@ function getAuthHeaders() {
 interface ListRunsOptions {
   limit?: number;
   offset?: number;
+  suite?: string;
+  status?: string;
+  successGt?: number;
+  successLt?: number;
+  timeGt?: number;
+  timeLt?: number;
 }
 
 // List all runs with pagination
 export async function listRunsCommand(options: ListRunsOptions = {}, debug: boolean = false) {
-  const { limit = 50, offset = 0 } = options;
+  const { limit = 50, offset = 0, suite, status, successGt, successLt, timeGt, timeLt } = options;
   const spinner = ora('Fetching runs...').start();
 
   try {
     const url = `${API_URL}/api/runs`;
+
+    // Build query params
+    const params: any = { limit, offset };
+    if (suite) params.suite = suite;
+    if (status) params.status = status;
+    if (successGt !== undefined) params.successGt = successGt;
+    if (successLt !== undefined) params.successLt = successLt;
+    if (timeGt !== undefined) params.timeGt = timeGt;
+    if (timeLt !== undefined) params.timeLt = timeLt;
+
     if (debug) {
       spinner.stop();
       console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));
-      console.log(chalk.gray(`[DEBUG] Request params: ${JSON.stringify({ limit, offset })}`));
+      console.log(chalk.gray(`[DEBUG] Request params: ${JSON.stringify(params)}`));
       spinner.start();
     }
 
     const response = await axios.get(url, {
       headers: getAuthHeaders(),
-      params: { limit, offset }
+      params
     });
 
     if (debug) {
@@ -68,12 +84,13 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     console.log(chalk.bold('\nRuns:\n'));
     console.log(
       chalk.bold('ID'.padEnd(38)) +
-      chalk.bold('Suite Name'.padEnd(30)) +
-      chalk.bold('Status'.padEnd(12)) +
+      chalk.bold('Suite Name'.padEnd(20)) +
+      chalk.bold('Model'.padEnd(45)) +
+      chalk.bold('Status'.padEnd(18)) +
       chalk.bold('Pass/Fail'.padEnd(20)) +
       chalk.bold('Time')
     );
-    console.log('='.repeat(110));
+    console.log('='.repeat(150));
 
     runs.forEach((run: any) => {
       const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.redBright : chalk.yellow;
@@ -106,10 +123,17 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         ? `${durationSeconds.toFixed(1)}s`
         : 'N/A';
 
+      // Truncate model name if too long
+      const modelName = run.model || 'N/A';
+      const truncatedModel = modelName.length > 45
+        ? modelName.substring(0, 42) + '...'
+        : modelName;
+
       console.log(
         chalk.cyan(run.id.padEnd(38)) +
-        chalk.white(run.suite_name.padEnd(30)) +
-        statusColor(run.status.padEnd(12)) +
+        chalk.white(run.suite_name.padEnd(20)) +
+        chalk.white(truncatedModel.padEnd(45)) +
+        statusColor(run.status.padEnd(18)) +
         passRate +
         chalk.gray(time)
       );

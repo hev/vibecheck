@@ -103,6 +103,15 @@ program
   .option('-d, --debug', 'Enable debug logging (shows full request/response)')
   .option('-l, --limit <number>', 'Limit number of results (default: 50)', (val) => parseInt(val, 10))
   .option('-o, --offset <number>', 'Offset for pagination (default: 0)', (val) => parseInt(val, 10))
+  .option('--mcp', 'Filter models to only show those with MCP support')
+  .option('--price <quartiles>', 'Filter by price quartile(s): 1,2,3,4 (e.g., "1,2" for cheapest half)')
+  .option('--provider <providers>', 'Filter by provider(s), comma-separated (e.g., "anthropic,openai")')
+  .option('--suite <name>', 'Filter runs by suite name')
+  .option('--status <status>', 'Filter runs by status (completed, pending, failed, partial_failure)')
+  .option('--success-gt <percent>', 'Filter runs with success rate greater than (0-100)', (val) => parseInt(val, 10))
+  .option('--success-lt <percent>', 'Filter runs with success rate less than (0-100)', (val) => parseInt(val, 10))
+  .option('--time-gt <seconds>', 'Filter runs with duration greater than (seconds)', (val) => parseFloat(val))
+  .option('--time-lt <seconds>', 'Filter runs with duration less than (seconds)', (val) => parseFloat(val))
   .action((noun: string, identifier?: string, subcommand?: string, options?: any) => {
     const normalizedNoun = noun.toLowerCase();
     const debug = options?.debug || false;
@@ -133,10 +142,16 @@ program
         return;
       }
 
-      // vibe get runs - with limit and offset
+      // vibe get runs - with limit, offset, and filters
       const listOptions: any = {};
       if (limit !== undefined) listOptions.limit = limit;
       if (offset !== undefined) listOptions.offset = offset;
+      if (options?.suite) listOptions.suite = options.suite;
+      if (options?.status) listOptions.status = options.status;
+      if (options?.successGt !== undefined) listOptions.successGt = options.successGt;
+      if (options?.successLt !== undefined) listOptions.successLt = options.successLt;
+      if (options?.timeGt !== undefined) listOptions.timeGt = options.timeGt;
+      if (options?.timeLt !== undefined) listOptions.timeLt = options.timeLt;
       listRunsCommand(listOptions, debug);
       return;
     }
@@ -160,7 +175,7 @@ program
 
     // Handle models - vibe get models
     if (['models', 'model'].includes(normalizedNoun)) {
-      modelsCommand(debug);
+      modelsCommand(debug, options?.mcp, options?.price, options?.provider);
       return;
     }
 

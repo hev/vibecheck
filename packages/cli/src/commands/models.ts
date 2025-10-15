@@ -88,7 +88,7 @@ function colorizePrice(price: string): string {
   }
 }
 
-export async function modelsCommand(debug: boolean = false) {
+export async function modelsCommand(debug: boolean = false, mcpFilter: boolean = false, priceFilter?: string, providerFilter?: string) {
   const spinner = ora('Fetching available models...').start();
 
   try {
@@ -117,18 +117,71 @@ export async function modelsCommand(debug: boolean = false) {
 
     spinner.stop();
 
-    const models: ModelInfo[] = response.data.models || [];
+    let models: ModelInfo[] = response.data.models || [];
 
     if (models.length === 0) {
       console.log(chalk.yellow('No models available'));
       return;
     }
 
-    // Calculate price tiers
+    // Calculate price tiers for all models first
     const priceTiers = calculatePriceTier(models);
 
+    // Parse price filter
+    let priceQuartiles: number[] = [];
+    if (priceFilter) {
+      priceQuartiles = priceFilter.split(',').map(q => parseInt(q.trim(), 10)).filter(q => q >= 1 && q <= 4);
+    }
+
+    // Parse provider filter
+    let providers: string[] = [];
+    if (providerFilter) {
+      providers = providerFilter.split(',').map(p => p.trim().toLowerCase()).filter(p => p.length > 0);
+    }
+
+    // Apply filters
+    const originalCount = models.length;
+    if (mcpFilter) {
+      models = models.filter(m => hasMcpSupport(m));
+    }
+    if (priceQuartiles.length > 0) {
+      const priceSymbols = priceQuartiles.map(q => '$'.repeat(q));
+      models = models.filter(m => {
+        const tier = priceTiers.get(m.id);
+        return tier && priceSymbols.includes(tier);
+      });
+    }
+    if (providers.length > 0) {
+      models = models.filter(m => {
+        const modelId = m.id.toLowerCase();
+        const providerPrefix = modelId.split('/')[0];
+        return providers.includes(providerPrefix);
+      });
+    }
+
+    // Check if filters resulted in no models
+    if (models.length === 0) {
+      console.log(chalk.yellow('No models match the specified filters'));
+      return;
+    }
+
+    // Build filter description
+    let filterDesc = '';
+    if (mcpFilter || priceQuartiles.length > 0 || providers.length > 0) {
+      const filters: string[] = [];
+      if (mcpFilter) filters.push('MCP only');
+      if (priceQuartiles.length > 0) {
+        const priceSymbols = priceQuartiles.map(q => '$'.repeat(q)).join(', ');
+        filters.push(`Price: ${priceSymbols}`);
+      }
+      if (providers.length > 0) {
+        filters.push(`Provider: ${providers.join(', ')}`);
+      }
+      filterDesc = ` [${filters.join('] [')}]`;
+    }
+
     // Display table
-    console.log(chalk.bold(`\nModels (${models.length})\n`));
+    console.log(chalk.bold(`\nModels (${models.length})${filterDesc}\n`));
 
     // Column widths
     const w1 = 40; // id

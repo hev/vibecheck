@@ -55,7 +55,7 @@ export async function runInteractiveCommand(options: RunOptions) {
       await runEvaluation(filePath, ui, options.debug);
     } else if (cmd === 'exit' || cmd === 'quit' || cmd === 'q') {
       // Print summary to console before exiting
-      ui.printSummaryToConsole();
+      await ui.printSummaryToConsole();
       ui.destroy();
       process.exit(0);
     } else if (trimmedCommand !== '') {
@@ -198,18 +198,18 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
       }
 
       if (status === 'running' && results && results.length > lastDisplayedCount) {
-        results.slice(lastDisplayedCount).forEach((result: EvalResult) => {
-          ui.displayResult(result);
-        });
+        for (const result of results.slice(lastDisplayedCount)) {
+          await ui.displayResult(result);
+        }
         lastDisplayedCount = results.length;
       } else if (status === 'completed') {
         if (results.length > lastDisplayedCount) {
-          results.slice(lastDisplayedCount).forEach((result: EvalResult) => {
-            ui.displayResult(result);
-          });
+          for (const result of results.slice(lastDisplayedCount)) {
+            await ui.displayResult(result);
+          }
         }
         completed = true;
-        ui.displaySummary(results, totalTimeMs);
+        await ui.displaySummary(results, totalTimeMs);
       } else if (status === 'error') {
         const errorMsg = statusError?.message || statusError || 'Vibe check failed';
         ui.displayError(errorMsg);

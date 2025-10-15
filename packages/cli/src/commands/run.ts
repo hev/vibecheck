@@ -195,7 +195,7 @@ async function streamResults(runId: string, debug?: boolean) {
           displayResults(results.slice(lastDisplayedCount));
         }
         completed = true;
-        displaySummary(results, totalTimeMs);
+        await displaySummary(results, totalTimeMs);
       } else if (status === 'error') {
         const errorMsg = statusError?.message || statusError || 'Vibe check failed';
         console.error(chalk.red(`\n🚩 ${errorMsg}`));
@@ -243,7 +243,7 @@ async function streamResults(runId: string, debug?: boolean) {
   }
 }
 
-function truncatePrompt(prompt: string, maxLength: number = 60): string {
+function truncatePrompt(prompt: string, maxLength: number = 100): string {
   if (prompt.length <= maxLength) {
     return prompt;
   }

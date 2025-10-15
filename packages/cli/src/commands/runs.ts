@@ -283,37 +283,112 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
     if (run.results && run.results.length > 0) {
       console.log(chalk.bold('=== Evaluation Results ===\n'));
 
-      run.results.forEach((result: any, idx: number) => {
-        const statusIcon = result.passed ? chalk.green('✅') : chalk.red('🚩');
-        const statusText = result.passed ? 'passed' : 'failed';
-        console.log(`${statusIcon} ${chalk.bold(result.eval_name)}`);
-        console.log(chalk.gray(`   Status: ${statusText}`));
+      const truncate = (text: string, max: number) => {
+        if (!text) return '';
+        return text.length > max ? text.substring(0, max - 3) + '...' : text;
+      };
 
-        if (result.total_tokens !== undefined && result.total_tokens > 0) {
-          console.log(chalk.gray(`   Tokens: ${result.total_tokens} (prompt: ${result.prompt_tokens || 0}, completion: ${result.completion_tokens || 0})`));
+      const formatConditionalDetails = (cond: any, response: string): string | { text: string; highlight: string } => {
+        const message = cond.message || '';
+
+        if (cond.type === 'string_contains') {
+          const match = message.match(/contains? ['"](.+?)['"]/i) || message.match(/found ['"](.+?)['"]/i);
+          if (match) {
+            const searchString = match[1];
+            const index = response.toLowerCase().indexOf(searchString.toLowerCase());
+            if (index !== -1) {
+              const start = Math.max(0, index - 10);
+              const end = Math.min(response.length, index + searchString.length + 10);
+              const snippet = response.substring(start, end);
+              const highlightText = response.substring(index, index + searchString.length);
+              return { text: truncate(snippet, 50), highlight: highlightText };
+            }
+            return truncate(searchString, 50);
+          }
+          return truncate(message, 60);
         }
 
-        if (result.conditional_results && result.conditional_results.length > 0) {
-          console.log(chalk.gray('   Conditionals:'));
-          result.conditional_results.forEach((cond: any) => {
-            const condIcon = cond.passed ? chalk.green('  ✅') : chalk.red('  🚩');
-            const message = cond.message ? ` - ${cond.message}` : '';
-            console.log(`${condIcon} ${cond.type}${message}`);
+        if (cond.type === 'semantic_similarity') {
+          const simMatch = message.match(/similarity[:\s]+(\d+(?:\.\d+)?)/i);
+          if (simMatch) {
+            const similarity = parseFloat(simMatch[1]);
+            const simPercent = similarity <= 1 ? (similarity * 100).toFixed(0) : similarity.toFixed(0);
+            return `${simPercent}%`;
+          }
+          return truncate(message, 60);
+        }
+
+        if (cond.type === 'llm_judge') {
+          return cond.passed ? 'PASS' : truncate(message, 80);
+        }
+
+        if (cond.type === 'token_length') {
+          const countMatch = message.match(/(\d+)\s+tokens?/i);
+          const minMatch = message.match(/min[:\s]+(\d+)/i);
+          const maxMatch = message.match(/max[:\s]+(\d+)/i);
+
+          if (countMatch) {
+            const count = countMatch[1];
+            const min = minMatch ? minMatch[1] : null;
+            const max = maxMatch ? maxMatch[1] : null;
+
+            if (min && max) {
+              return `Token count ${count} (min: ${min}, max: ${max})`;
+            } else if (min) {
+              return `Token count ${count} (min: ${min})`;
+            } else if (max) {
+              return `Token count ${count} (max: ${max})`;
+            }
+            return `Token count ${count}`;
+          }
+          return truncate(message, 60);
+        }
+
+        return truncate(message, 60);
+      };
+
+      run.results.forEach((result: any) => {
+        const displayName = result.eval_name || truncate(result.prompt || '', 60);
+        console.log(chalk.bold(displayName + ':'));
+        console.log(chalk.blue('Prompt: ') + (result.prompt || ''));
+        console.log(chalk.gray('Response: ' + (result.response || '')));
+
+        if (Array.isArray(result.check_results) && result.check_results.length > 0) {
+          result.check_results.forEach((cond: any) => {
+            const status = cond.passed ? chalk.green('✅ PASS') : chalk.red('🚩 FAIL');
+            const details = formatConditionalDetails(cond, result.response || '');
+
+            if (cond.type === 'llm_judge') {
+              console.log(`  ${status} ${(cond.type || '').padEnd(25)}`);
+              if (typeof details === 'string') {
+                console.log(`      ${chalk.gray(details)}`);
+              }
+            } else if (cond.type === 'string_contains') {
+              if (typeof details === 'object' && 'text' in details) {
+                const { text } = details;
+                console.log(`  ${status} ${(cond.type || '').padEnd(25)} ${chalk.gray(text)}`);
+              } else {
+                console.log(`  ${status} ${(cond.type || '').padEnd(25)} ${chalk.gray(details as string)}`);
+              }
+            } else if (cond.type === 'semantic_similarity') {
+              const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.red(details as string);
+              console.log(`  ${status} ${(cond.type || '').padEnd(25)} ${coloredDetails}`);
+            } else {
+              const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.red(details as string);
+              console.log(`  ${status} ${(cond.type || '').padEnd(25)} ${coloredDetails}`);
+            }
           });
         }
 
-        if (result.response) {
-          console.log(chalk.blue('\n   Model Output:'));
-          const preview = result.response.length > 200 ? result.response.substring(0, 200) + '...' : result.response;
-          console.log(chalk.gray(`   ${preview}`));
-        }
+        const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.red('🚩 FAIL');
+        console.log(`  Overall: ${overallStatus}`);
         console.log('');
       });
 
       // Transform API results to EvalResult format for summary display
       const evalResults: EvalResult[] = run.results.map((result: any) => ({
-        evalName: result.eval_name || '',
-        prompt: result.prompt || '', // Use prompt from API if available
+        evalName: (result.eval_name || truncate(result.prompt || '', 60)) as string,
+        prompt: result.prompt || '',
         response: result.response || '',
         checkResults: (result.check_results || []).map((cond: any) => ({
           type: cond.type,
@@ -321,12 +396,12 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
           message: cond.message || ''
         })),
         passed: result.passed,
-        executionTimeMs: undefined // Not included in API response per-eval
+        executionTimeMs: undefined
       }));
 
       // Display summary
       const totalTimeMs = !isNaN(durationSeconds) ? durationSeconds * 1000 : undefined;
-      displaySummary(evalResults, totalTimeMs);
+      await displaySummary(evalResults, totalTimeMs);
     }
   } catch (error: any) {
     spinner.fail(chalk.red('Failed to get run'));

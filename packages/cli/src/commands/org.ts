@@ -7,7 +7,7 @@ const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
   if (!API_KEY) {
-    console.error(chalk.red('Error: VIBECHECK_API_KEY environment variable is required'));
+    console.error(chalk.redBright('Error: VIBECHECK_API_KEY environment variable is required'));
     console.error(chalk.gray('Get your API key at https://vibescheck.io'));
     process.exit(1);
   }
@@ -41,7 +41,7 @@ export async function orgCommand(debug: boolean = false) {
     }
 
     if (response.data.error) {
-      spinner.fail(chalk.red(`Error: ${response.data.error}`));
+      spinner.fail(chalk.redBright(`Error: ${response.data.error}`));
       process.exit(1);
     }
 
@@ -56,7 +56,7 @@ export async function orgCommand(debug: boolean = false) {
 
     // Color code credits based on amount
     const creditsAmount = `$${orgInfo.credits.toFixed(2)}`;
-    const creditsColor = orgInfo.credits < 1.00 ? chalk.red : chalk.white;
+    const creditsColor = orgInfo.credits < 1.00 ? chalk.redBright : chalk.white;
     console.log(
       chalk.cyan('Available Credits:') + ' ' +
       creditsColor(creditsAmount) +
@@ -66,28 +66,28 @@ export async function orgCommand(debug: boolean = false) {
     console.log(chalk.cyan('Created:') + ' ' + chalk.gray(new Date(orgInfo.created_at).toLocaleString()));
     console.log('');
   } catch (error: any) {
-    spinner.fail(chalk.red('Failed to fetch organization info'));
+    spinner.fail(chalk.redBright('Failed to fetch organization info'));
 
     // Handle specific HTTP error codes
     if (error.response?.status === 401) {
-      console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
+      console.error(chalk.redBright('\nUnauthorized: Invalid or missing API key'));
       console.error(chalk.gray('Get your API key at https://vibescheck.io'));
       process.exit(1);
     } else if (error.response?.status === 403) {
       const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
-      console.error(chalk.red('\n🔒 Forbidden: Access denied'));
+      console.error(chalk.redBright('\n🔒 Forbidden: Access denied'));
       console.error(chalk.gray(`URL: ${API_URL}/api/orginfo`));
       console.error(chalk.gray(`API Key: ${truncatedKey}`));
       console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
       process.exit(1);
     } else if (error.response?.status === 500) {
-      console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));
+      console.error(chalk.redBright('\nServer error: The VibeCheck API encountered an error'));
       process.exit(1);
     } else if (error.response?.data?.error) {
-      console.error(chalk.red(`\nAPI Error: ${error.response.data.error}`));
+      console.error(chalk.redBright(`\nAPI Error: ${error.response.data.error}`));
       process.exit(1);
     } else {
-      console.error(chalk.red(`\n${error.message}`));
+      console.error(chalk.redBright(`\n${error.message}`));
       process.exit(1);
     }
   }

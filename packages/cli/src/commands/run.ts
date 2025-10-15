@@ -12,7 +12,7 @@ const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
   if (!API_KEY) {
-    console.error(chalk.red('Error: VIBECHECK_API_KEY environment variable is required'));
+    console.error(chalk.redBright('Error: VIBECHECK_API_KEY environment variable is required'));
     console.error(chalk.gray('Get your API key at https://vibescheck.io'));
     process.exit(1);
   }
@@ -38,7 +38,7 @@ export async function runCommand(options: RunOptions) {
   const { file, debug } = options;
 
   if (!file) {
-    console.error(chalk.red('Error: --file option is required'));
+    console.error(chalk.redBright('Error: --file option is required'));
     process.exit(1);
   }
 
@@ -47,7 +47,7 @@ export async function runCommand(options: RunOptions) {
   try {
     // Read YAML file
     if (!fs.existsSync(file)) {
-      spinner.fail(chalk.red(`File not found: ${file}`));
+      spinner.fail(chalk.redBright(`File not found: ${file}`));
       process.exit(1);
     }
 
@@ -58,10 +58,10 @@ export async function runCommand(options: RunOptions) {
     const parseResult = EvalSuiteSchema.safeParse(data);
 
     if (!parseResult.success) {
-      spinner.fail(chalk.red('Invalid YAML format 🚩'));
-      console.error(chalk.red('\nValidation errors:'));
+      spinner.fail(chalk.redBright('Invalid YAML format 🚩'));
+      console.error(chalk.redBright('\nValidation errors:'));
       parseResult.error.errors.forEach(err => {
-        console.error(chalk.red(`  - ${err.path.join('.')}: ${err.message}`));
+        console.error(chalk.redBright(`  - ${err.path.join('.')}: ${err.message}`));
       });
       process.exit(1);
     }
@@ -100,7 +100,7 @@ export async function runCommand(options: RunOptions) {
       const errorMsg = typeof response.data.error === 'string'
         ? response.data.error
         : response.data.error.message || JSON.stringify(response.data.error);
-      console.error(chalk.red(`API Error 🚩: ${errorMsg}`));
+      console.error(chalk.redBright(`API Error 🚩: ${errorMsg}`));
       process.exit(1);
     }
 
@@ -111,38 +111,38 @@ export async function runCommand(options: RunOptions) {
     await streamResults(runId, debug);
 
   } catch (error: any) {
-    spinner.fail(chalk.red('Failed to check vibes 🚩'));
+    spinner.fail(chalk.redBright('Failed to check vibes 🚩'));
 
     // Handle specific HTTP error codes
     if (error.response?.status === 401) {
-      console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
+      console.error(chalk.redBright('\nUnauthorized: Invalid or missing API key'));
       console.error(chalk.gray('Get your API key at https://vibescheck.io'));
       process.exit(1);
     } else if (error.response?.status === 402) {
       const errorMsg = error.response.data?.error?.message ||
                        error.response.data?.error ||
                        'Payment required: Your credits are running low';
-      console.error(chalk.red(`\n${errorMsg}`));
+      console.error(chalk.redBright(`\n${errorMsg}`));
       console.error(chalk.gray('Visit https://vibescheck.io to add credits'));
       process.exit(1);
     } else if (error.response?.status === 403) {
       const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
-      console.error(chalk.red('\n🔒 Forbidden: Access denied'));
+      console.error(chalk.redBright('\n🔒 Forbidden: Access denied'));
       console.error(chalk.gray(`URL: ${API_URL}/api/eval/run`));
       console.error(chalk.gray(`API Key: ${truncatedKey}`));
       console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
       process.exit(1);
     } else if (error.response?.status === 500) {
-      console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));
+      console.error(chalk.redBright('\nServer error: The VibeCheck API encountered an error'));
       process.exit(1);
     } else if (error.response?.data?.error) {
       const errorMsg = typeof error.response.data.error === 'string'
         ? error.response.data.error
         : error.response.data.error.message || JSON.stringify(error.response.data.error);
-      console.error(chalk.red(`\nAPI Error: ${errorMsg}`));
+      console.error(chalk.redBright(`\nAPI Error: ${errorMsg}`));
       process.exit(1);
     } else {
-      console.error(chalk.red(`\n${error.message}`));
+      console.error(chalk.redBright(`\n${error.message}`));
       process.exit(1);
     }
   }
@@ -198,7 +198,7 @@ async function streamResults(runId: string, debug?: boolean) {
         await displaySummary(results, totalTimeMs);
       } else if (status === 'error') {
         const errorMsg = statusError?.message || statusError || 'Vibe check failed';
-        console.error(chalk.red(`\n🚩 ${errorMsg}`));
+        console.error(chalk.redBright(`\n🚩 ${errorMsg}`));
         completed = true;
         process.exit(1);
       }
@@ -209,34 +209,34 @@ async function streamResults(runId: string, debug?: boolean) {
     } catch (error: any) {
       // Handle specific HTTP error codes
       if (error.response?.status === 401) {
-        console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
+        console.error(chalk.redBright('\nUnauthorized: Invalid or missing API key'));
         console.error(chalk.gray('Get your API key at https://vibescheck.io'));
         process.exit(1);
       } else if (error.response?.status === 402) {
         const errorMsg = error.response.data?.error?.message ||
                          error.response.data?.error ||
                          'Payment required: Your credits are running low';
-        console.error(chalk.red(`\n${errorMsg}`));
+        console.error(chalk.redBright(`\n${errorMsg}`));
         console.error(chalk.gray('Visit https://vibescheck.io to add credits'));
         process.exit(1);
       } else if (error.response?.status === 403) {
         const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
-        console.error(chalk.red('\n🔒 Forbidden: Access denied'));
+        console.error(chalk.redBright('\n🔒 Forbidden: Access denied'));
         console.error(chalk.gray(`URL: ${API_URL}/api/eval/status/${runId}`));
         console.error(chalk.gray(`API Key: ${truncatedKey}`));
         console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
         process.exit(1);
       } else if (error.response?.status === 500) {
-        console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));
+        console.error(chalk.redBright('\nServer error: The VibeCheck API encountered an error'));
         process.exit(1);
       } else if (error.response?.data?.error) {
         const errorMsg = typeof error.response.data.error === 'string'
           ? error.response.data.error
           : error.response.data.error.message || JSON.stringify(error.response.data.error);
-        console.error(chalk.red(`\n${errorMsg}`));
+        console.error(chalk.redBright(`\n${errorMsg}`));
         process.exit(1);
       } else {
-        console.error(chalk.red(`Error polling results: ${error.message}`));
+        console.error(chalk.redBright(`Error polling results: ${error.message}`));
         process.exit(1);
       }
     }
@@ -258,7 +258,7 @@ function displayResults(results: EvalResult[]) {
     console.log(chalk.gray(`Response: ${result.response}`));
 
     result.checkResults.forEach((cond: ConditionalResult) => {
-      const status = cond.passed ? chalk.green('✅ PASS') : chalk.red('🚩 FAIL');
+      const status = cond.passed ? chalk.green('✅ PASS') : chalk.redBright('🚩 FAIL');
       const details = formatConditionalDetails(cond, result.response);
 
       // Apply different coloring based on conditional type
@@ -278,16 +278,16 @@ function displayResults(results: EvalResult[]) {
         }
       } else if (cond.type === 'semantic_similarity') {
         // Green for passed, red only for failed
-        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.red(details as string);
+        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
         console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
       } else {
         // Default: use pass/fail colors
-        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.red(details as string);
+        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
         console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
       }
     });
 
-    const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.red('🚩 FAIL');
+    const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.redBright('🚩 FAIL');
     console.log(`  Overall: ${overallStatus}`);
   });
 }

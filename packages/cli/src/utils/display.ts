@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { EvalResult } from '../types';
 
 // Configurable table width - easy to tweak
-const TABLE_WIDTH = 120;
+const TABLE_WIDTH = 90;
 
 // Cache for stringWidth function to avoid repeated dynamic imports
 let stringWidthCache: any = null;
@@ -84,9 +84,9 @@ export async function displaySummary(results: EvalResult[], totalTimeMs?: number
       : '';
 
     // Color the bar and status
-    const coloredFailBar = chalk.red(failBar);
+    const coloredFailBar = chalk.redBright(failBar);
     const coloredPassBar = chalk.green(passBar);
-    const status = result.passed ? chalk.green('✅') : chalk.red('🚩');
+    const status = result.passed ? chalk.green('✅') : chalk.redBright('🚩');
 
     console.log(`${paddedName}  ${coloredFailBar}|${coloredPassBar}  ${status} ${timeStr}`);
   });
@@ -99,7 +99,7 @@ export async function displaySummary(results: EvalResult[], totalTimeMs?: number
   console.log();
   console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));
 
-  let passRateColor = chalk.red;
+  let passRateColor = chalk.redBright;
   let vibeStatus = '🚩 bad vibes';
   if (passRate === 100) {
     passRateColor = chalk.green;
@@ -118,7 +118,7 @@ export async function displaySummary(results: EvalResult[], totalTimeMs?: number
 
   // Display vibe status (don't exit with error code - failed evals are valid results)
   if (passRate < 80) {
-    console.log(chalk.red('🚩 Bad vibes detected: Vibe rating below 80%\n'));
+    console.log(chalk.redBright('🚩 Bad vibes detected: Vibe rating below 80%\n'));
   } else {
     console.log(chalk.green('✨ Good vibes all around!\n'));
   }

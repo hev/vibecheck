@@ -9,7 +9,7 @@ const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
   if (!API_KEY) {
-    console.error(chalk.red('Error: VIBECHECK_API_KEY environment variable is required'));
+    console.error(chalk.redBright('Error: VIBECHECK_API_KEY environment variable is required'));
     console.error(chalk.gray('Get your API key at https://vibescheck.io'));
     process.exit(1);
   }
@@ -52,7 +52,7 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     }
 
     if (response.data.error) {
-      spinner.fail(chalk.red(`Error: ${response.data.error}`));
+      spinner.fail(chalk.redBright(`Error: ${response.data.error}`));
       process.exit(1);
     }
 
@@ -76,7 +76,7 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     console.log('='.repeat(110));
 
     runs.forEach((run: any) => {
-      const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.red : chalk.yellow;
+      const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.redBright : chalk.yellow;
 
       // Parse fields from API (they come as strings)
       const resultsCount = parseInt(run.results_count, 10) || 0;
@@ -98,7 +98,7 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
       } else if (successPercentage >= 80) {
         passRate = chalk.yellow(passRateText.padEnd(20));
       } else {
-        passRate = chalk.red(passRateText.padEnd(20));
+        passRate = chalk.redBright(passRateText.padEnd(20));
       }
 
       // Use duration_seconds from API response
@@ -125,7 +125,7 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
       console.log('');
     }
   } catch (error: any) {
-    spinner.fail(chalk.red('Failed to list runs'));
+    spinner.fail(chalk.redBright('Failed to list runs'));
     handleError(error, `${API_URL}/api/runs`);
   }
 }
@@ -142,7 +142,7 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
     });
 
     if (response.data.error) {
-      spinner.fail(chalk.red(`Error: ${response.data.error}`));
+      spinner.fail(chalk.redBright(`Error: ${response.data.error}`));
       process.exit(1);
     }
 
@@ -166,7 +166,7 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
     console.log('='.repeat(100));
 
     runs.forEach((run: any) => {
-      const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.red : chalk.yellow;
+      const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.redBright : chalk.yellow;
 
       // Parse fields from API (they come as strings)
       const resultsCount = parseInt(run.results_count, 10) || 0;
@@ -188,7 +188,7 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
       } else if (successPercentage >= 80) {
         passRate = chalk.yellow(passRateText.padEnd(20));
       } else {
-        passRate = chalk.red(passRateText.padEnd(20));
+        passRate = chalk.redBright(passRateText.padEnd(20));
       }
 
       // Use duration_seconds from API response
@@ -218,7 +218,7 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
       console.log('');
     }
   } catch (error: any) {
-    spinner.fail(chalk.red('Failed to list runs'));
+    spinner.fail(chalk.redBright('Failed to list runs'));
     handleError(error, `${API_URL}/api/runs/by-suite/${encodeURIComponent(suiteName)}`);
   }
 }
@@ -247,7 +247,7 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
     }
 
     if (response.data.error) {
-      spinner.fail(chalk.red(`Error: ${response.data.error}`));
+      spinner.fail(chalk.redBright(`Error: ${response.data.error}`));
       process.exit(1);
     }
 
@@ -355,7 +355,7 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
 
         if (Array.isArray(result.check_results) && result.check_results.length > 0) {
           result.check_results.forEach((cond: any) => {
-            const status = cond.passed ? chalk.green('✅ PASS') : chalk.red('🚩 FAIL');
+            const status = cond.passed ? chalk.green('✅ PASS') : chalk.redBright('🚩 FAIL');
             const details = formatConditionalDetails(cond, result.response || '');
 
             if (cond.type === 'llm_judge') {
@@ -371,16 +371,16 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
                 console.log(`  ${status} ${(cond.type || '').padEnd(25)} ${chalk.gray(details as string)}`);
               }
             } else if (cond.type === 'semantic_similarity') {
-              const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.red(details as string);
+              const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
               console.log(`  ${status} ${(cond.type || '').padEnd(25)} ${coloredDetails}`);
             } else {
-              const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.red(details as string);
+              const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
               console.log(`  ${status} ${(cond.type || '').padEnd(25)} ${coloredDetails}`);
             }
           });
         }
 
-        const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.red('🚩 FAIL');
+        const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.redBright('🚩 FAIL');
         console.log(`  Overall: ${overallStatus}`);
         console.log('');
       });
@@ -404,7 +404,7 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
       await displaySummary(evalResults, totalTimeMs);
     }
   } catch (error: any) {
-    spinner.fail(chalk.red('Failed to get run'));
+    spinner.fail(chalk.redBright('Failed to get run'));
     handleError(error, `${API_URL}/api/runs/${runId}`);
   }
 }
@@ -433,7 +433,7 @@ export async function getRunLogsCommand(runId: string, debug: boolean = false) {
     }
 
     if (response.data.error) {
-      spinner.fail(chalk.red(`Error: ${response.data.error}`));
+      spinner.fail(chalk.redBright(`Error: ${response.data.error}`));
       process.exit(1);
     }
 
@@ -454,7 +454,7 @@ export async function getRunLogsCommand(runId: string, debug: boolean = false) {
     logLines.forEach((line: string) => {
       // Try to detect log level from content
       if (line.toLowerCase().includes('error')) {
-        console.log(chalk.red(line));
+        console.log(chalk.redBright(line));
       } else if (line.toLowerCase().includes('warn')) {
         console.log(chalk.yellow(line));
       } else {
@@ -464,7 +464,7 @@ export async function getRunLogsCommand(runId: string, debug: boolean = false) {
 
     console.log('');
   } catch (error: any) {
-    spinner.fail(chalk.red('Failed to get logs'));
+    spinner.fail(chalk.redBright('Failed to get logs'));
     handleError(error, `${API_URL}/api/runs/${runId}/logs`);
   }
 }
@@ -472,27 +472,27 @@ export async function getRunLogsCommand(runId: string, debug: boolean = false) {
 // Error handler
 function handleError(error: any, url: string) {
   if (error.response?.status === 401) {
-    console.error(chalk.red('\nUnauthorized: Invalid or missing API key'));
+    console.error(chalk.redBright('\nUnauthorized: Invalid or missing API key'));
     console.error(chalk.gray('Get your API key at https://vibescheck.io'));
     process.exit(1);
   } else if (error.response?.status === 403) {
     const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
-    console.error(chalk.red('\n🔒 Forbidden: Access denied'));
+    console.error(chalk.redBright('\n🔒 Forbidden: Access denied'));
     console.error(chalk.gray(`URL: ${url}`));
     console.error(chalk.gray(`API Key: ${truncatedKey}`));
     console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
     process.exit(1);
   } else if (error.response?.status === 404) {
-    console.error(chalk.red('\nNot Found: The requested resource does not exist'));
+    console.error(chalk.redBright('\nNot Found: The requested resource does not exist'));
     process.exit(1);
   } else if (error.response?.status === 500) {
-    console.error(chalk.red('\nServer error: The VibeCheck API encountered an error'));
+    console.error(chalk.redBright('\nServer error: The VibeCheck API encountered an error'));
     process.exit(1);
   } else if (error.response?.data?.error) {
-    console.error(chalk.red(`\nAPI Error: ${error.response.data.error}`));
+    console.error(chalk.redBright(`\nAPI Error: ${error.response.data.error}`));
     process.exit(1);
   } else {
-    console.error(chalk.red(`\n${error.message}`));
+    console.error(chalk.redBright(`\n${error.message}`));
     process.exit(1);
   }
 }

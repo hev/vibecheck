@@ -1,0 +1,34 @@
+metadata:
+  name: hello-world
+  model: google/gemini-2.5-flash-lite-preview-09-2025  
+  system_prompt: You are a helpful assistant. Keep your responses short and concise.
+
+evals:
+  - prompt: Say Hello
+    checks:
+      - type: string_contains
+        value: "hello"
+      - type: token_length
+        min_tokens: 1
+        max_tokens: 50
+
+  - prompt: How are you today?
+    checks:
+      - type: semantic_similarity
+        expected: "I'm doing well, thank you for asking"
+        threshold: 0.7
+      - type: llm_judge
+        criteria: "Is this a friendly and appropriate response to 'How are you today?'"
+      - type: token_length
+        min_tokens: 10
+        max_tokens: 100
+
+  - prompt: What is 2+2?
+    checks:
+      - type: string_contains
+        value: "4"
+      - type: llm_judge
+        criteria: "Is this a correct mathematical answer to 2+2?"
+      - type: token_length
+        min_tokens: 1
+        max_tokens: 20

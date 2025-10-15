@@ -9,6 +9,7 @@ import { runCommand, runInteractiveMode } from './commands/run';
 import { saveCommand, listCommand, getCommand } from './commands/suite';
 import { orgCommand } from './commands/org';
 import { listRunsCommand, listRunsBySuiteCommand, getRunCommand, getRunLogsCommand } from './commands/runs';
+import { modelsCommand } from './commands/models';
 
 // Load .env from user's home directory
 const os = require('os');
@@ -59,13 +60,13 @@ program
       }
       // Validate that the specified file exists
       if (!fs.existsSync(foundFile)) {
-        console.error(chalk.red(`Error: File not found: ${foundFile}`));
+        console.error(chalk.redBright(`Error: File not found: ${foundFile}`));
         process.exit(1);
       }
     }
 
     if (!foundFile) {
-      console.error(chalk.red('Error: No evaluation file found or specified'));
+      console.error(chalk.redBright('Error: No evaluation file found or specified'));
       console.error(chalk.gray('Use -f <file> or create one of: evals.yaml, eval.yaml, evals.yml, eval.yml'));
       process.exit(1);
     }
@@ -143,7 +144,7 @@ program
     // Handle logs/log - vibe get logs <id>
     if (['logs', 'log'].includes(normalizedNoun)) {
       if (!identifier) {
-        console.error(chalk.red('Error: logs requires a run ID'));
+        console.error(chalk.redBright('Error: logs requires a run ID'));
         console.error(chalk.gray('Usage: vibe get logs <run-id> or vibe get runs <run-id> logs'));
         process.exit(1);
       }
@@ -157,9 +158,15 @@ program
       return;
     }
 
+    // Handle models - vibe get models
+    if (['models', 'model'].includes(normalizedNoun)) {
+      modelsCommand(debug);
+      return;
+    }
+
     // Unknown noun
-    console.error(chalk.red(`Error: Unknown resource type "${noun}"`));
-    console.error(chalk.gray('Valid types: suites, suite, evals, eval, runs, run, org'));
+    console.error(chalk.redBright(`Error: Unknown resource type "${noun}"`));
+    console.error(chalk.gray('Valid types: suites, suite, evals, eval, runs, run, org, models'));
     process.exit(1);
   });
 

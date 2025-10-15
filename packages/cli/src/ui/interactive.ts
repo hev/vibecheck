@@ -463,9 +463,9 @@ export class InteractiveUI {
         ? `in ${(result.executionTimeMs / 1000).toFixed(1)}s`
         : '';
 
-      const coloredFailBar = chalk.red(failBar);
+      const coloredFailBar = chalk.redBright(failBar);
       const coloredPassBar = chalk.green(passBar);
-      const status = result.passed ? chalk.green('✅') : chalk.red('🚩');
+      const status = result.passed ? chalk.green('✅') : chalk.redBright('🚩');
 
       console.log(`${paddedName}  ${coloredFailBar}|${coloredPassBar}  ${status} ${timeStr}`);
     });
@@ -478,7 +478,7 @@ export class InteractiveUI {
     console.log();
     console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));
 
-    let passRateColor = chalk.red;
+    let passRateColor = chalk.redBright;
     let vibeStatus = '🚩 bad vibes';
     if (passRate === 100) {
       passRateColor = chalk.green;
@@ -496,7 +496,7 @@ export class InteractiveUI {
     console.log();
 
     if (passRate < 80) {
-      console.log(chalk.red('🚩 Bad vibes detected: Vibe rating below 80%\n'));
+      console.log(chalk.redBright('🚩 Bad vibes detected: Vibe rating below 80%\n'));
     } else {
       console.log(chalk.green('✨ Good vibes all around!\n'));
     }

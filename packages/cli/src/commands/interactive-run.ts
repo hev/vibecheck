@@ -210,6 +210,36 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
         }
         completed = true;
         await ui.displaySummary(results, totalTimeMs);
+      } else if (status === 'failed') {
+        const errorMsg = statusError?.message || statusError || 'All evaluations failed due to execution errors';
+        ui.displayError(`🚩 ${errorMsg}`);
+        completed = true;
+      } else if (status === 'partial_failure') {
+        if (results.length > lastDisplayedCount) {
+          for (const result of results.slice(lastDisplayedCount)) {
+            await ui.displayResult(result);
+          }
+        }
+        completed = true;
+        ui.displayInfo('⚠️  Warning: Some evaluations failed to execute');
+        if (statusError?.message || statusError) {
+          const errorMsg = statusError?.message || statusError;
+          ui.displayInfo(`   ${errorMsg}`);
+        }
+        await ui.displaySummary(results, totalTimeMs);
+      } else if (status === 'timed_out') {
+        if (results.length > lastDisplayedCount) {
+          for (const result of results.slice(lastDisplayedCount)) {
+            await ui.displayResult(result);
+          }
+        }
+        completed = true;
+        ui.displayInfo('⏱️  Evaluation suite timed out');
+        if (statusError?.message || statusError) {
+          const errorMsg = statusError?.message || statusError;
+          ui.displayInfo(`   ${errorMsg}`);
+        }
+        await ui.displaySummary(results, totalTimeMs);
       } else if (status === 'error') {
         const errorMsg = statusError?.message || statusError || 'Vibe check failed';
         ui.displayError(errorMsg);

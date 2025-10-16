@@ -196,6 +196,35 @@ async function streamResults(runId: string, debug?: boolean) {
         }
         completed = true;
         await displaySummary(results, totalTimeMs);
+      } else if (status === 'failed') {
+        const errorMsg = statusError?.message || statusError || 'All evaluations failed due to execution errors';
+        console.error(chalk.redBright(`\n🚩 ${errorMsg}`));
+        completed = true;
+        process.exit(1);
+      } else if (status === 'partial_failure') {
+        if (results.length > lastDisplayedCount) {
+          displayResults(results.slice(lastDisplayedCount));
+        }
+        completed = true;
+        console.log(chalk.yellow('\n⚠️  Warning: Some evaluations failed to execute'));
+        if (statusError?.message || statusError) {
+          const errorMsg = statusError?.message || statusError;
+          console.log(chalk.yellow(`   ${errorMsg}`));
+        }
+        await displaySummary(results, totalTimeMs);
+        process.exit(1);
+      } else if (status === 'timed_out') {
+        if (results.length > lastDisplayedCount) {
+          displayResults(results.slice(lastDisplayedCount));
+        }
+        completed = true;
+        console.log(chalk.yellow('\n⏱️  Evaluation suite timed out'));
+        if (statusError?.message || statusError) {
+          const errorMsg = statusError?.message || statusError;
+          console.log(chalk.yellow(`   ${errorMsg}`));
+        }
+        await displaySummary(results, totalTimeMs);
+        process.exit(1);
       } else if (status === 'error') {
         const errorMsg = statusError?.message || statusError || 'Vibe check failed';
         console.error(chalk.redBright(`\n🚩 ${errorMsg}`));

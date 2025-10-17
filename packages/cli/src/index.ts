@@ -15,7 +15,45 @@ import { redeemCommand } from './commands/redeem';
 // Load .env from user's home directory
 const os = require('os');
 const homeDir = os.homedir();
-dotenv.config({ path: path.join(homeDir, '.vibecheck', '.env') });
+const envPath = path.join(homeDir, '.vibecheck', '.env');
+
+// Debug logging for API key loading
+if (process.argv.includes('--debug')) {
+  console.log(chalk.cyan('[DEBUG] Loading .env from:'), envPath);
+  console.log(chalk.cyan('[DEBUG] .env file exists:'), fs.existsSync(envPath));
+  
+  // Check what's in the file
+  if (fs.existsSync(envPath)) {
+    const fileContent = fs.readFileSync(envPath, 'utf8');
+    const apiKeyMatch = fileContent.match(/VIBECHECK_API_KEY=(.+)/);
+    if (apiKeyMatch) {
+      const fileApiKey = apiKeyMatch[1];
+      console.log(chalk.cyan('[DEBUG] API key in file:'), fileApiKey.substring(0, 10) + '...');
+    } else {
+      console.log(chalk.cyan('[DEBUG] No VIBECHECK_API_KEY found in file'));
+    }
+  }
+  
+  // Check what's in environment
+  const envApiKey = process.env.VIBECHECK_API_KEY;
+  if (envApiKey) {
+    console.log(chalk.cyan('[DEBUG] API key in environment:'), envApiKey.substring(0, 10) + '...');
+  } else {
+    console.log(chalk.cyan('[DEBUG] No VIBECHECK_API_KEY in environment'));
+  }
+}
+
+dotenv.config({ path: envPath, override: true });
+
+// Debug logging after dotenv loading
+if (process.argv.includes('--debug')) {
+  const finalApiKey = process.env.VIBECHECK_API_KEY;
+  if (finalApiKey) {
+    console.log(chalk.cyan('[DEBUG] Final API key after dotenv:'), finalApiKey.substring(0, 10) + '...');
+  } else {
+    console.log(chalk.cyan('[DEBUG] No API key loaded after dotenv'));
+  }
+}
 
 const program = new Command();
 

@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import axios from 'axios';
-import { saveApiKey, getConfigPath } from '../utils/config';
+import { saveApiKey, getConfigPath, readApiKey, debugConfig } from '../utils/config';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 
@@ -53,6 +53,14 @@ export async function redeemCommand(code: string, debug: boolean = false) {
 
     // Save API key to config
     saveApiKey(apiKey);
+
+    // Verify the API key was saved correctly
+    if (debug) {
+      const savedApiKey = readApiKey();
+      debugConfig('redeem', `Verifying saved API key: ${savedApiKey ? savedApiKey.substring(0, 10) + '...' : 'null'}`);
+      debugConfig('redeem', `Original API key: ${apiKey.substring(0, 10)}...`);
+      debugConfig('redeem', `Keys match: ${savedApiKey === apiKey}`);
+    }
 
     spinner.succeed(chalk.green('Successfully redeemed invite code!'));
     console.log('');

@@ -36,18 +36,23 @@ export function saveApiKey(apiKey: string): void {
   let envContent = readEnvFile();
   const apiKeyRegex = /^VIBECHECK_API_KEY=.*$/m;
 
+  debugConfig('saveApiKey', `Saving API key to ${ENV_FILE}`);
+
   if (apiKeyRegex.test(envContent)) {
     // Update existing API key
     envContent = envContent.replace(apiKeyRegex, `VIBECHECK_API_KEY=${apiKey}`);
+    debugConfig('saveApiKey', 'Updated existing API key');
   } else {
     // Add new API key
     if (envContent && !envContent.endsWith('\n')) {
       envContent += '\n';
     }
     envContent += `VIBECHECK_API_KEY=${apiKey}\n`;
+    debugConfig('saveApiKey', 'Added new API key');
   }
 
   fs.writeFileSync(ENV_FILE, envContent, 'utf8');
+  debugConfig('saveApiKey', `File written successfully`);
 }
 
 /**
@@ -55,4 +60,23 @@ export function saveApiKey(apiKey: string): void {
  */
 export function getConfigPath(): string {
   return ENV_FILE;
+}
+
+/**
+ * Reads the API key from the .env file
+ */
+export function readApiKey(): string | null {
+  const envContent = readEnvFile();
+  const apiKeyMatch = envContent.match(/^VIBECHECK_API_KEY=(.+)$/m);
+  return apiKeyMatch ? apiKeyMatch[1] : null;
+}
+
+/**
+ * Debug function to log config file operations
+ */
+export function debugConfig(operation: string, details?: any): void {
+  if (process.argv.includes('--debug')) {
+    const chalk = require('chalk');
+    console.log(chalk.cyan(`[DEBUG] Config ${operation}:`), details || '');
+  }
 }

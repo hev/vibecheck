@@ -7,17 +7,18 @@ import { runOnboarding } from './onboarding';
 import { displayInvitePrompt } from '../utils/auth-error';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
-const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
-  if (!API_KEY) {
+  const currentApiKey = process.env.VIBECHECK_API_KEY;
+  
+  if (!currentApiKey) {
     displayInvitePrompt();
     process.exit(1);
   }
 
   return {
     'Content-Type': 'application/json',
-    'X-API-KEY': API_KEY
+    'X-API-KEY': currentApiKey
   };
 }
 
@@ -157,7 +158,7 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
       ui.displayError(errorMsg);
       ui.displayError('Visit https://vibescheck.io to add credits');
     } else if (error.response?.status === 403) {
-      const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
+      const truncatedKey = process.env.VIBECHECK_API_KEY ? `${process.env.VIBECHECK_API_KEY.substring(0, 8)}...` : 'not set';
       ui.displayError('🔒 Forbidden: Access denied');
       ui.displayError(`URL: ${API_URL}/api/eval/run`);
       ui.displayError(`API Key: ${truncatedKey}`);
@@ -262,7 +263,7 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
         ui.displayError(errorMsg);
         ui.displayError('Visit https://vibescheck.io to add credits');
       } else if (error.response?.status === 403) {
-        const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
+        const truncatedKey = process.env.VIBECHECK_API_KEY ? `${process.env.VIBECHECK_API_KEY.substring(0, 8)}...` : 'not set';
         ui.displayError('🔒 Forbidden: Access denied');
         ui.displayError(`URL: ${API_URL}/api/eval/status/${runId}`);
         ui.displayError(`API Key: ${truncatedKey}`);

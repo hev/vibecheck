@@ -10,14 +10,23 @@
     "dev": "npm run dev -w @evalit/cli",
     "build": "npm run build -w @evalit/cli",
     "build:link": "npm run build && npm link -w @evalit/cli",
-    "start": "npm run start -w @evalit/cli"
+    "start": "npm run start -w @evalit/cli",
+    "test": "jest",
+    "test:unit": "jest --selectProjects=unit",
+    "test:integration": "jest --selectProjects=integration",
+    "test:e2e": "jest --selectProjects=e2e",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --maxWorkers=2"
   },
   "devDependencies": {
     "@jest/globals": "^30.2.0",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
+    "@types/nock": "^11.1.0",
     "@types/node": "^20.10.0",
     "jest": "^30.2.0",
+    "nock": "^14.0.10",
     "ts-jest": "^29.4.5",
     "typescript": "^5.3.3"
   },

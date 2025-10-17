@@ -1,0 +1,9 @@
+metadata:
+  name: invalid-suite
+  # Missing required 'model' and 'system_prompt' fields
+
+evals:
+  - prompt: test prompt
+    checks:
+      - type: unknown_type
+        value: test

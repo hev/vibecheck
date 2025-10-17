@@ -1,0 +1,3 @@
+invalid: yaml: syntax: [[[
+  this is not valid yaml
+    - unmatched indentation

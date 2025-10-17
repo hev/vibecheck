@@ -214,6 +214,194 @@ Where `-` = failed conditional, `+` = passed conditional
 
 ## Testing
 
+### Test Structure
+
+The project uses **Jest** with TypeScript for testing. Tests are organized into three layers:
+
+#### 1. Unit Tests (`packages/cli/src/**/*.test.ts`)
+
+**Isolated, no server required.** Test individual functions and utilities:
+
+- **YAML Parsing & Validation** (`utils/yaml-parser.test.ts`)
+  - Valid/invalid YAML schemas
+  - Zod validation errors
+  - All conditional types (string_contains, semantic_similarity, llm_judge, token_length)
+  - Edge cases and optional fields
+
+- **Display Utilities** (`utils/display.test.ts`)
+  - Summary formatting
+  - Pass/fail rate calculations
+  - Vibe rating logic (good/sketchy/bad vibes)
+  - Visual bar charts
+  - Text truncation
+
+#### 2. Integration Tests (`tests/integration/**/*.test.ts`)
+
+**Mocked API, no live server required.** Test full command workflows:
+
+- **Command Integration** (`commands.test.ts`)
+  - `vibe check` with valid/invalid YAML
+  - `vibe set` for saving suites
+  - `vibe get suites` for listing
+  - `vibe get suite <name>` for retrieval
+  - Error handling (401, 403, 500)
+  - Missing API key scenarios
+
+Uses **nock** for HTTP mocking to simulate API responses.
+
+#### 3. E2E Tests (`tests/e2e/**/*.test.ts`)
+
+**Live server required.** Test against real VibeCheck API:
+
+- Full workflow validation
+- Real API integration
+- Actual model evaluations
+
+**Note:** E2E tests are currently disabled pending setup of test helpers. See `tests/e2e/README.md` for setup instructions. The e2e test file exists but requires additional helper utilities to run.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run only unit tests (fast, isolated)
+npm run test:unit
+
+# Run only integration tests (mocked API)
+npm run test:integration
+
+# Run only E2E tests (requires live server - currently disabled)
+# npm run test:e2e
+
+# Watch mode for development
+npm run test:watch
+
+# Generate coverage report
+npm run test:coverage
+
+# CI mode (for automated pipelines)
+npm run test:ci
+```
+
+### Test Fixtures
+
+Test fixtures are located in `tests/fixtures/`:
+
+- `valid-eval.yaml` - Valid evaluation suite
+- `invalid-schema.yaml` - Missing required fields
+- `malformed.yaml` - Invalid YAML syntax
+- `all-check-types.yaml` - All conditional types
+- `mock-responses.ts` - Mock API responses
+
+### Test Helpers
+
+Located in `tests/helpers/`:
+
+- `api-mocks.ts` - HTTP mocking utilities using nock
+- `test-utils.ts` - Common test utilities (env helpers, file operations, etc.)
+
+### Writing New Tests
+
+#### Unit Tests
+
+Place unit tests next to the source files with `.test.ts` extension:
+
+```typescript
+// packages/cli/src/utils/my-util.test.ts
+import { describe, it, expect } from '@jest/globals';
+import { myFunction } from './my-util';
+
+describe('myFunction', () => {
+  it('should do something', () => {
+    expect(myFunction()).toBe(expectedValue);
+  });
+});
+```
+
+#### Integration Tests
+
+Create integration tests in `tests/integration/`:
+
+```typescript
+// tests/integration/my-feature.test.ts
+import { setupApiMock, cleanupApiMocks } from '../helpers/api-mocks';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+
+describe('My Feature Integration', () => {
+  beforeEach(() => {
+    const apiMock = setupApiMock();
+    apiMock.mockRunEval();
+  });
+
+  afterEach(() => {
+    cleanupApiMocks();
+  });
+
+  it('should work with mocked API', async () => {
+    // Test implementation
+  });
+});
+```
+
+### Pre-commit Testing
+
+**IMPORTANT:** Always run tests before committing:
+
+```bash
+# Quick check (unit + integration)
+npm run test:unit && npm run test:integration
+
+# Full check including coverage
+npm run test:coverage
+```
+
+Ensure:
+- All tests pass
+- No console errors or warnings
+- Coverage remains above 80% for critical paths
+
+### CI/CD Integration
+
+For continuous integration:
+
+```bash
+# In your CI pipeline
+npm install
+npm run build
+npm run test:ci
+```
+
+The `test:ci` command:
+- Runs in non-interactive mode
+- Generates coverage reports
+- Limits workers for CI environments
+- Fails on any test failures
+
+### Coverage Goals
+
+- **Unit tests**: 80%+ coverage of utilities and parsers
+- **Integration tests**: All commands with mocked API
+- **E2E tests**: Critical user workflows
+
+### Debugging Tests
+
+```bash
+# Run specific test file
+npm test -- path/to/test.test.ts
+
+# Run tests matching pattern
+npm test -- --testNamePattern="YAML parsing"
+
+# Verbose output
+npm test -- --verbose
+
+# Debug with Node inspector
+node --inspect-brk node_modules/.bin/jest --runInBand
+```
+
+### Manual Testing
+
 Run evaluations against your prompts:
 ```bash
 vibe check -f examples/evals.yaml

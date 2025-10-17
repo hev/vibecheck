@@ -4,17 +4,18 @@ import axios from 'axios';
 import { displayInvitePrompt } from '../utils/auth-error';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
-const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
-  if (!API_KEY) {
+  const currentApiKey = process.env.VIBECHECK_API_KEY;
+  
+  if (!currentApiKey) {
     displayInvitePrompt();
     process.exit(1);
   }
 
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${API_KEY}`
+    'Authorization': `Bearer ${currentApiKey}`
   };
 }
 

@@ -6,14 +6,14 @@ import axios from 'axios';
 import { EvalSuiteSchema, EvalResult, ConditionalResult } from '../types';
 import { runInteractiveCommand } from './interactive-run';
 import { displaySummary } from '../utils/display';
+import { displayInvitePrompt } from '../utils/auth-error';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
   if (!API_KEY) {
-    console.error(chalk.redBright('Error: VIBECHECK_API_KEY environment variable is required'));
-    console.error(chalk.gray('Get your API key at https://vibescheck.io'));
+    displayInvitePrompt();
     process.exit(1);
   }
 
@@ -114,9 +114,8 @@ export async function runCommand(options: RunOptions) {
     spinner.fail(chalk.redBright('Failed to check vibes 🚩'));
 
     // Handle specific HTTP error codes
-    if (error.response?.status === 401) {
-      console.error(chalk.redBright('\nUnauthorized: Invalid or missing API key'));
-      console.error(chalk.gray('Get your API key at https://vibescheck.io'));
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      displayInvitePrompt();
       process.exit(1);
     } else if (error.response?.status === 402) {
       const errorMsg = error.response.data?.error?.message ||
@@ -124,13 +123,6 @@ export async function runCommand(options: RunOptions) {
                        'Payment required: Your credits are running low';
       console.error(chalk.redBright(`\n${errorMsg}`));
       console.error(chalk.gray('Visit https://vibescheck.io to add credits'));
-      process.exit(1);
-    } else if (error.response?.status === 403) {
-      const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
-      console.error(chalk.redBright('\n🔒 Forbidden: Access denied'));
-      console.error(chalk.gray(`URL: ${API_URL}/api/eval/run`));
-      console.error(chalk.gray(`API Key: ${truncatedKey}`));
-      console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
       process.exit(1);
     } else if (error.response?.status === 500) {
       console.error(chalk.redBright('\nServer error: The VibeCheck API encountered an error'));
@@ -237,9 +229,8 @@ async function streamResults(runId: string, debug?: boolean) {
       }
     } catch (error: any) {
       // Handle specific HTTP error codes
-      if (error.response?.status === 401) {
-        console.error(chalk.redBright('\nUnauthorized: Invalid or missing API key'));
-        console.error(chalk.gray('Get your API key at https://vibescheck.io'));
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        displayInvitePrompt();
         process.exit(1);
       } else if (error.response?.status === 402) {
         const errorMsg = error.response.data?.error?.message ||
@@ -247,13 +238,6 @@ async function streamResults(runId: string, debug?: boolean) {
                          'Payment required: Your credits are running low';
         console.error(chalk.redBright(`\n${errorMsg}`));
         console.error(chalk.gray('Visit https://vibescheck.io to add credits'));
-        process.exit(1);
-      } else if (error.response?.status === 403) {
-        const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
-        console.error(chalk.redBright('\n🔒 Forbidden: Access denied'));
-        console.error(chalk.gray(`URL: ${API_URL}/api/eval/status/${runId}`));
-        console.error(chalk.gray(`API Key: ${truncatedKey}`));
-        console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
         process.exit(1);
       } else if (error.response?.status === 500) {
         console.error(chalk.redBright('\nServer error: The VibeCheck API encountered an error'));

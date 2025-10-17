@@ -4,13 +4,15 @@ import axios from 'axios';
 import { EvalSuiteSchema, EvalResult } from '../types';
 import { InteractiveUI } from '../ui/interactive';
 import { runOnboarding } from './onboarding';
+import { displayInvitePrompt } from '../utils/auth-error';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
   if (!API_KEY) {
-    throw new Error('VIBECHECK_API_KEY environment variable is required. Get your API key at https://vibescheck.io');
+    displayInvitePrompt();
+    process.exit(1);
   }
 
   return {

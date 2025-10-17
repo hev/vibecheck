@@ -10,6 +10,7 @@ import { saveCommand, listCommand, getCommand } from './commands/suite';
 import { orgCommand } from './commands/org';
 import { listRunsCommand, listRunsBySuiteCommand, getRunCommand, getRunLogsCommand } from './commands/runs';
 import { modelsCommand } from './commands/models';
+import { redeemCommand } from './commands/redeem';
 
 // Load .env from user's home directory
 const os = require('os');
@@ -183,6 +184,16 @@ program
     console.error(chalk.redBright(`Error: Unknown resource type "${noun}"`));
     console.error(chalk.gray('Valid types: suites, suite, evals, eval, runs, run, org, models'));
     process.exit(1);
+  });
+
+program
+  .command('redeem')
+  .description('Redeem an invite code to create an organization and receive an API key')
+  .argument('<code>', 'The invite code to redeem')
+  .option('-d, --debug', 'Enable debug logging (shows full request/response)')
+  .action((code: string, options: any) => {
+    const debug = options?.debug || false;
+    redeemCommand(code, debug);
   });
 
 program.parse(process.argv);

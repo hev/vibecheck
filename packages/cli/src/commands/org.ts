@@ -1,14 +1,14 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import axios from 'axios';
+import { displayInvitePrompt } from '../utils/auth-error';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
   if (!API_KEY) {
-    console.error(chalk.redBright('Error: VIBECHECK_API_KEY environment variable is required'));
-    console.error(chalk.gray('Get your API key at https://vibescheck.io'));
+    displayInvitePrompt();
     process.exit(1);
   }
 
@@ -69,16 +69,8 @@ export async function orgCommand(debug: boolean = false) {
     spinner.fail(chalk.redBright('Failed to fetch organization info'));
 
     // Handle specific HTTP error codes
-    if (error.response?.status === 401) {
-      console.error(chalk.redBright('\nUnauthorized: Invalid or missing API key'));
-      console.error(chalk.gray('Get your API key at https://vibescheck.io'));
-      process.exit(1);
-    } else if (error.response?.status === 403) {
-      const truncatedKey = API_KEY ? `${API_KEY.substring(0, 8)}...` : 'not set';
-      console.error(chalk.redBright('\n🔒 Forbidden: Access denied'));
-      console.error(chalk.gray(`URL: ${API_URL}/api/orginfo`));
-      console.error(chalk.gray(`API Key: ${truncatedKey}`));
-      console.error(chalk.gray('Verify your API key at https://vibescheck.io'));
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      displayInvitePrompt();
       process.exit(1);
     } else if (error.response?.status === 500) {
       console.error(chalk.redBright('\nServer error: The VibeCheck API encountered an error'));

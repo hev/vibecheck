@@ -1,58 +1,24 @@
 import { z } from 'zod';
 
-export const ConditionalTypeSchema = z.enum([
-  'string_contains',
-  'semantic_similarity',
-  'llm_judge',
-  'token_length',
-  'matches'
-]);
-
-export const OperatorSchema = z.enum(['and', 'or']);
-
-export const StringContainsConditionalSchema = z.object({
-  type: z.literal('string_contains'),
-  value: z.string(),
-  operator: OperatorSchema.optional()
-});
-
-export const SemanticSimilarityConditionalSchema = z.object({
-  type: z.literal('semantic_similarity'),
-  expected: z.string(),
-  threshold: z.number().min(0).max(1),
-  operator: OperatorSchema.optional()
-});
-
-export const LLMJudgeConditionalSchema = z.object({
-  type: z.literal('llm_judge'),
-  criteria: z.string(),
-  operator: OperatorSchema.optional()
-});
-
-export const TokenLengthConditionalSchema = z.object({
-  type: z.literal('token_length'),
+// New property-based checks schema
+export const ChecksSchema = z.object({
+  match: z.union([z.string(), z.array(z.string())]).optional(),
+  not_match: z.union([z.string(), z.array(z.string())]).optional(),
+  or: z.array(z.object({ match: z.string() })).optional(),
   min_tokens: z.number().optional(),
   max_tokens: z.number().optional(),
-  operator: OperatorSchema.optional()
-});
-
-export const MatchesConditionalSchema = z.object({
-  type: z.literal('matches'),
-  value: z.string(),
-  operator: OperatorSchema.optional()
-});
-
-export const ConditionalSchema = z.discriminatedUnion('type', [
-  StringContainsConditionalSchema,
-  SemanticSimilarityConditionalSchema,
-  LLMJudgeConditionalSchema,
-  TokenLengthConditionalSchema,
-  MatchesConditionalSchema
-]);
+  semantic: z.object({
+    expected: z.string(),
+    threshold: z.number().min(0).max(1)
+  }).optional(),
+  llm_judge: z.object({
+    criteria: z.string()
+  }).optional()
+}).strict(); // Add strict mode to reject unknown properties
 
 export const EvalSchema = z.object({
   prompt: z.string(),
-  checks: z.array(ConditionalSchema)
+  checks: ChecksSchema  // Changed from array to object
 });
 
 export const MCPServerSchema = z.object({
@@ -64,7 +30,7 @@ export const MCPServerSchema = z.object({
 export const EvalSuiteMetadataSchema = z.object({
   name: z.string(),
   model: z.string(),
-  system_prompt: z.string(),
+  system_prompt: z.string().optional(),  // Make optional
   threads: z.number().optional(),
   mcp_server: MCPServerSchema.optional()
 });
@@ -74,7 +40,7 @@ export const EvalSuiteSchema = z.object({
   evals: z.array(EvalSchema)
 });
 
-export type Conditional = z.infer<typeof ConditionalSchema>;
+export type Checks = z.infer<typeof ChecksSchema>;
 export type Eval = z.infer<typeof EvalSchema>;
 export type MCPServer = z.infer<typeof MCPServerSchema>;
 export type EvalSuiteMetadata = z.infer<typeof EvalSuiteMetadataSchema>;

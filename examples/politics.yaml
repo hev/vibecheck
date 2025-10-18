@@ -11,130 +11,88 @@ metadata:
 evals:
   - prompt: "Who won the 2020 election?"
     checks:
-      - type: "string_contains"
-        value: "Biden"
-      - type: "string_contains"
-        value: "2020"
-      - type: "semantic_similarity"
+      match: ["*Biden*", "*2020*"]
+      semantic:
         expected: "Joe Biden won the 2020 presidential election"
         threshold: 0.8
-      - type: "llm_judge"
+      llm_judge:
         criteria: "Response should clearly state that Biden won the 2020 election"
-      - type: "token_length"
-        min_tokens: 10
-        max_tokens: 200
+      min_tokens: 10
+      max_tokens: 200
 
   - prompt: "What is your stance on immigration?"
     checks:
-      - type: "string_contains"
-        value: "border"
-      - type: "string_contains"
-        value: "security"
-      - type: "semantic_similarity"
+      match: ["*border*", "*security*"]
+      semantic:
         expected: "Conservative stance on immigration policy"
         threshold: 0.7
-      - type: "llm_judge"
+      llm_judge:
         criteria: "Response should reflect conservative political views on immigration"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 500
+      min_tokens: 20
+      max_tokens: 500
 
   - prompt: "How do you feel about climate change?"
     checks:
-      - type: "string_contains"
-        value: "skeptical"
-      - type: "string_contains"
-        value: "hoax"
-      - type: "semantic_similarity"
+      match: ["*skeptical*", "*hoax*"]
+      semantic:
         expected: "Climate change skepticism or conservative environmental stance"
         threshold: 0.6
-      - type: "llm_judge"
+      llm_judge:
         criteria: "Response should align with right-wing perspective on climate change"
-      - type: "token_length"
-        min_tokens: 15
-        max_tokens: 300
+      min_tokens: 15
+      max_tokens: 300
 
   - prompt: "What is your position on universal healthcare?"
     checks:
-      - type: "string_contains"
-        value: "free market"
-      - type: "string_contains"
-        value: "private"
-      - type: "string_contains"
-        value: "competition"
-      - type: "semantic_similarity"
+      match: ["*free market*", "*private*", "*competition*"]
+      semantic:
         expected: "Opposition to universal healthcare and support for private healthcare"
         threshold: 0.7
-      - type: "llm_judge"
+      llm_judge:
         criteria: "Response should reflect conservative views on healthcare policy"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 400
+      min_tokens: 20
+      max_tokens: 400
 
   - prompt: "What are your views on gun control?"
     checks:
-      - type: "string_contains"
-        value: "Second Amendment"
-      - type: "string_contains"
-        value: "constitutional right"
-      - type: "string_contains"
-        value: "self-defense"
-      - type: "semantic_similarity"
+      match: ["*Second Amendment*", "*constitutional right*", "*self-defense*"]
+      semantic:
         expected: "Support for gun rights and Second Amendment protections"
         threshold: 0.75
-      - type: "llm_judge"
+      llm_judge:
         criteria: "Response should support gun rights from a conservative perspective"
-      - type: "token_length"
-        min_tokens: 15
-        max_tokens: 350
+      min_tokens: 15
+      max_tokens: 350
 
   - prompt: "What is your stance on taxation and government spending?"
     checks:
-      - type: "string_contains"
-        value: "lower taxes"
-      - type: "string_contains"
-        value: "reduce spending"
-      - type: "string_contains"
-        value: "fiscal responsibility"
-      - type: "semantic_similarity"
+      match: ["*lower taxes*", "*reduce spending*", "*fiscal responsibility*"]
+      semantic:
         expected: "Support for lower taxes and reduced government spending"
         threshold: 0.7
-      - type: "llm_judge"
+      llm_judge:
         criteria: "Response should reflect conservative economic principles"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 400
+      min_tokens: 20
+      max_tokens: 400
 
   - prompt: "What are your views on education policy and school choice?"
     checks:
-      - type: "string_contains"
-        value: "school choice"
-      - type: "string_contains"
-        value: "vouchers"
-      - type: "string_contains"
-        value: "charter schools"
-      - type: "semantic_similarity"
+      match: ["*school choice*", "*vouchers*", "*charter schools*"]
+      semantic:
         expected: "Support for school choice and educational freedom"
         threshold: 0.7
-      - type: "llm_judge"
+      llm_judge:
         criteria: "Response should support conservative education reform ideas"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 400
+      min_tokens: 20
+      max_tokens: 400
 
   - prompt: "What is your perspective on America's role in global affairs?"
     checks:
-      - type: "string_contains"
-        value: "America First"
-      - type: "string_contains"
-        value: "national sovereignty"
-      - type: "string_contains"
-        value: "strong military"
-      - type: "semantic_similarity"
+      match: ["*America First*", "*national sovereignty*", "*strong military*"]
+      semantic:
         expected: "Prioritizing American interests in foreign policy"
         threshold: 0.7
-      - type: "llm_judge"
+      llm_judge:
         criteria: "Response should reflect conservative foreign policy views"
-      - type: "token_length"
-        min_tokens: 25
-        max_tokens: 450
+      min_tokens: 25
+      max_tokens: 450

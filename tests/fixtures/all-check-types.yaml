@@ -6,13 +6,11 @@ metadata:
 evals:
   - prompt: What is the capital of France?
     checks:
-      - type: string_contains
-        value: "Paris"
-      - type: semantic_similarity
+      match: "*Paris*"
+      semantic:
         expected: "The capital of France is Paris"
         threshold: 0.8
-      - type: llm_judge
+      llm_judge:
         criteria: "The response correctly identifies Paris as the capital of France"
-      - type: token_length
-        min_tokens: 5
-        max_tokens: 100
+      min_tokens: 5
+      max_tokens: 100

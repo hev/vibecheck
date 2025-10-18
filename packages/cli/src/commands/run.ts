@@ -56,6 +56,28 @@ export async function runCommand(options: RunOptions) {
     const fileContent = fs.readFileSync(file, 'utf8');
     const data = yaml.load(fileContent);
 
+    // Check for old format (array of checks with type field)
+    if (data && typeof data === 'object' && 'evals' in data && Array.isArray(data.evals)) {
+      for (const evalItem of data.evals) {
+        if (evalItem && typeof evalItem === 'object' && 'checks' in evalItem && Array.isArray(evalItem.checks)) {
+          for (const check of evalItem.checks) {
+            if (check && typeof check === 'object' && 'type' in check) {
+              spinner.fail(chalk.redBright('Old YAML format detected 🚩'));
+              console.error(chalk.redBright('\nPlease update your YAML file to use the new syntax.'));
+              console.error(chalk.gray('See https://docs.vibescheck.io/yaml-syntax for migration guide.\n'));
+              console.error(chalk.yellow('Key changes:'));
+              console.error(chalk.gray('  - checks is now an object, not an array'));
+              console.error(chalk.gray('  - string_contains → match (with glob patterns)'));
+              console.error(chalk.gray('  - semantic_similarity → semantic'));
+              console.error(chalk.gray('  - token_length → min_tokens/max_tokens'));
+              console.error(chalk.gray('  - system_prompt is now optional'));
+              process.exit(1);
+            }
+          }
+        }
+      }
+    }
+
     // Validate YAML structure
     const parseResult = EvalSuiteSchema.safeParse(data);
 
@@ -70,6 +92,11 @@ export async function runCommand(options: RunOptions) {
 
     const evalSuite = parseResult.data;
     spinner.succeed(chalk.green('Evaluation file loaded successfully ✨'));
+
+    // Warning for missing system_prompt
+    if (!evalSuite.metadata.system_prompt) {
+      console.log(chalk.yellow('⚠️  Warning: system_prompt is optional but recommended for better results'));
+    }
 
     const requestPayload = {
       evalSuite,
@@ -306,16 +333,20 @@ function displayResults(results: EvalResult[]) {
         if (typeof details === 'string') {
           console.log(`      ${chalk.gray(details)}`);
         }
-      } else if (cond.type === 'string_contains') {
-        // Handle string_contains with snippet in gray (no highlighting)
+      } else if (cond.type === 'match' || cond.type === 'not_match') {
+        // Handle match/not_match with snippet in gray (no highlighting)
         if (typeof details === 'object' && 'text' in details) {
           const { text } = details;
           console.log(`  ${status} ${cond.type.padEnd(25)} ${chalk.gray(text)}`);
         } else {
           console.log(`  ${status} ${cond.type.padEnd(25)} ${chalk.gray(details as string)}`);
         }
-      } else if (cond.type === 'semantic_similarity') {
+      } else if (cond.type === 'semantic') {
         // Green for passed, red only for failed
+        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
+        console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
+      } else if (cond.type === 'min_tokens' || cond.type === 'max_tokens') {
+        // Handle token length checks
         const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
         console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
       } else {
@@ -334,9 +365,9 @@ function formatConditionalDetails(cond: ConditionalResult, response: string): st
   const message = cond.message || '';
 
   // Parse the message to extract details
-  if (cond.type === 'string_contains') {
-    // Extract the string that was found (or not found)
-    const match = message.match(/contains? ['"](.+?)['"]/i) || message.match(/found ['"](.+?)['"]/i);
+  if (cond.type === 'match' || cond.type === 'not_match') {
+    // Extract the pattern that was matched (or not matched)
+    const match = message.match(/pattern ['"](.+?)['"]/i) || message.match(/found ['"](.+?)['"]/i) || message.match(/matches ['"](.+?)['"]/i);
     if (match) {
       const searchString = match[1];
       // Find the search string in the response to get context
@@ -354,7 +385,7 @@ function formatConditionalDetails(cond: ConditionalResult, response: string): st
     return truncateText(message, 60);
   }
 
-  if (cond.type === 'semantic_similarity') {
+  if (cond.type === 'semantic') {
     // Extract similarity percentage and threshold
     const simMatch = message.match(/similarity[:\s]+(\d+(?:\.\d+)?)/i);
 
@@ -372,7 +403,7 @@ function formatConditionalDetails(cond: ConditionalResult, response: string): st
     return cond.passed ? 'PASS' : truncateText(message, 80);
   }
 
-  if (cond.type === 'token_length') {
+  if (cond.type === 'min_tokens' || cond.type === 'max_tokens') {
     // Extract token count and min/max
     const countMatch = message.match(/(\d+)\s+tokens?/i);
     const minMatch = message.match(/min[:\s]+(\d+)/i);

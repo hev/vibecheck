@@ -6,8 +6,6 @@ metadata:
 evals:
   - prompt: What is 2 + 2?
     checks:
-      - type: string_contains
-        value: "4"
-      - type: token_length
-        min_tokens: 1
-        max_tokens: 50
+      match: "*4*"
+      min_tokens: 1
+      max_tokens: 50

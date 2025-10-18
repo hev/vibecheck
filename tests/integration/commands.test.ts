@@ -33,8 +33,7 @@ describe('CLI Commands Integration Tests', () => {
 evals:
   - prompt: What is 2 + 2?
     checks:
-      - type: string_contains
-        value: "4"
+      match: "*4*"
 `;
       const tempFile = createTempFile(validYaml, 'test-eval.yaml');
 
@@ -53,14 +52,47 @@ evals:
       exitMock.mockRestore();
     });
 
+    it('should reject old YAML format with clear error message', async () => {
+      const oldFormatYaml = `metadata:
+  name: test-suite
+  model: anthropic/claude-3-5-sonnet-20241022
+  system_prompt: You are a helpful assistant.
+
+evals:
+  - prompt: What is 2 + 2?
+    checks:
+      - type: string_contains
+        value: "4"
+`;
+      const tempFile = createTempFile(oldFormatYaml, 'old-format.yaml');
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await runCommand({ file: tempFile, debug: false, interactive: false });
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
     it('should fail with invalid YAML schema', async () => {
       const invalidYaml = `metadata:
   name: test-suite
-  # Missing model and system_prompt
+  # Missing model field
 
 evals:
   - prompt: Test
-    checks: []
+    checks:
+      match: "*test*"
+      # Invalid semantic check - missing threshold
+      semantic:
+        expected: "test response"
 `;
       const tempFile = createTempFile(invalidYaml, 'invalid.yaml');
 
@@ -108,8 +140,7 @@ evals:
 evals:
   - prompt: Test
     checks:
-      - type: string_contains
-        value: "test"
+      match: "*test*"
 `;
       const tempFile = createTempFile(validYaml, 'test.yaml');
 
@@ -139,8 +170,7 @@ evals:
 evals:
   - prompt: Test
     checks:
-      - type: string_contains
-        value: "test"
+      match: "*test*"
 `;
       const tempFile = createTempFile(validYaml, 'test.yaml');
 
@@ -170,8 +200,7 @@ evals:
 evals:
   - prompt: Test
     checks:
-      - type: string_contains
-        value: "test"
+      match: "*test*"
 `;
       const tempFile = createTempFile(validYaml, 'test.yaml');
 
@@ -203,8 +232,7 @@ evals:
 evals:
   - prompt: What is 2 + 2?
     checks:
-      - type: string_contains
-        value: "4"
+      match: "*4*"
 `;
       const tempFile = createTempFile(validYaml, 'save-test.yaml');
 
@@ -245,8 +273,7 @@ evals:
 evals:
   - prompt: Test
     checks:
-      - type: string_contains
-        value: "test"
+      match: "*test*"
 `;
       const tempFile = createTempFile(validYaml, 'test.yaml');
 
@@ -374,8 +401,7 @@ evals:
 evals:
   - prompt: Test
     checks:
-      - type: string_contains
-        value: "test"
+      match: "*test*"
 `;
       const tempFile = createTempFile(validYaml, 'test.yaml');
 

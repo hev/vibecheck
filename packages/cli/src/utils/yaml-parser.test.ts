@@ -32,55 +32,47 @@ describe('YAML Parsing and Validation', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         const checks = result.data.evals[0].checks;
-        expect(checks).toHaveLength(4);
-        expect(checks[0].type).toBe('string_contains');
-        expect(checks[1].type).toBe('semantic_similarity');
-        expect(checks[2].type).toBe('llm_judge');
-        expect(checks[3].type).toBe('token_length');
+        expect(checks).toHaveProperty('match');
+        expect(checks).toHaveProperty('semantic');
+        expect(checks).toHaveProperty('llm_judge');
+        expect(checks).toHaveProperty('min_tokens');
+        expect(checks).toHaveProperty('max_tokens');
       }
     });
 
-    it('should parse string_contains check correctly', () => {
+    it('should parse match check correctly', () => {
       const data = parseYamlFixture('valid-eval.yaml');
       const result = EvalSuiteSchema.safeParse(data);
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const stringCheck = result.data.evals[0].checks[0];
-        expect(stringCheck.type).toBe('string_contains');
-        if (stringCheck.type === 'string_contains') {
-          expect(stringCheck.value).toBe('4');
-        }
+        const checks = result.data.evals[0].checks;
+        expect(checks.match).toBe('*4*');
       }
     });
 
-    it('should parse token_length check correctly', () => {
+    it('should parse token length checks correctly', () => {
       const data = parseYamlFixture('valid-eval.yaml');
       const result = EvalSuiteSchema.safeParse(data);
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const tokenCheck = result.data.evals[0].checks[1];
-        expect(tokenCheck.type).toBe('token_length');
-        if (tokenCheck.type === 'token_length') {
-          expect(tokenCheck.min_tokens).toBe(1);
-          expect(tokenCheck.max_tokens).toBe(50);
-        }
+        const checks = result.data.evals[0].checks;
+        expect(checks.min_tokens).toBe(1);
+        expect(checks.max_tokens).toBe(50);
       }
     });
 
-    it('should parse semantic_similarity check correctly', () => {
+    it('should parse semantic check correctly', () => {
       const data = parseYamlFixture('all-check-types.yaml');
       const result = EvalSuiteSchema.safeParse(data);
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const semanticCheck = result.data.evals[0].checks[1];
-        expect(semanticCheck.type).toBe('semantic_similarity');
-        if (semanticCheck.type === 'semantic_similarity') {
-          expect(semanticCheck.expected).toBe('The capital of France is Paris');
-          expect(semanticCheck.threshold).toBe(0.8);
-        }
+        const checks = result.data.evals[0].checks;
+        expect(checks.semantic).toBeDefined();
+        expect(checks.semantic?.expected).toBe('The capital of France is Paris');
+        expect(checks.semantic?.threshold).toBe(0.8);
       }
     });
 
@@ -90,11 +82,9 @@ describe('YAML Parsing and Validation', () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        const judgeCheck = result.data.evals[0].checks[2];
-        expect(judgeCheck.type).toBe('llm_judge');
-        if (judgeCheck.type === 'llm_judge') {
-          expect(judgeCheck.criteria).toBe('The response correctly identifies Paris as the capital of France');
-        }
+        const checks = result.data.evals[0].checks;
+        expect(checks.llm_judge).toBeDefined();
+        expect(checks.llm_judge?.criteria).toBe('The response correctly identifies Paris as the capital of France');
       }
     });
   });
@@ -120,7 +110,7 @@ describe('YAML Parsing and Validation', () => {
       }
     });
 
-    it('should fail validation on invalid check type', () => {
+    it('should fail validation on invalid check properties', () => {
       const invalidData = {
         metadata: {
           name: 'test',
@@ -130,9 +120,9 @@ describe('YAML Parsing and Validation', () => {
         evals: [
           {
             prompt: 'test',
-            checks: [
-              { type: 'invalid_type', value: 'test' }
-            ]
+            checks: {
+              invalid_property: 'test'
+            }
           }
         ]
       };
@@ -141,7 +131,7 @@ describe('YAML Parsing and Validation', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should fail validation on semantic_similarity without threshold', () => {
+    it('should fail validation on semantic without threshold', () => {
       const invalidData = {
         metadata: {
           name: 'test',
@@ -151,10 +141,12 @@ describe('YAML Parsing and Validation', () => {
         evals: [
           {
             prompt: 'test',
-            checks: [
-              { type: 'semantic_similarity', expected: 'test' }
-              // Missing threshold
-            ]
+            checks: {
+              semantic: {
+                expected: 'test'
+                // Missing threshold
+              }
+            }
           }
         ]
       };
@@ -163,7 +155,7 @@ describe('YAML Parsing and Validation', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should fail validation on semantic_similarity with invalid threshold', () => {
+    it('should fail validation on semantic with invalid threshold', () => {
       const invalidData = {
         metadata: {
           name: 'test',
@@ -173,9 +165,12 @@ describe('YAML Parsing and Validation', () => {
         evals: [
           {
             prompt: 'test',
-            checks: [
-              { type: 'semantic_similarity', expected: 'test', threshold: 1.5 } // > 1
-            ]
+            checks: {
+              semantic: {
+                expected: 'test',
+                threshold: 1.5 // > 1
+              }
+            }
           }
         ]
       };
@@ -220,6 +215,29 @@ describe('YAML Parsing and Validation', () => {
     });
   });
 
+  describe('Old Format Rejection', () => {
+    it('should reject old format with array of checks', () => {
+      const oldFormatData = {
+        metadata: {
+          name: 'test',
+          model: 'test-model',
+          system_prompt: 'test prompt'
+        },
+        evals: [
+          {
+            prompt: 'test',
+            checks: [
+              { type: 'string_contains', value: 'test' }
+            ]
+          }
+        ]
+      };
+
+      const result = EvalSuiteSchema.safeParse(oldFormatData);
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle optional fields in metadata', () => {
       const data = {
@@ -232,9 +250,9 @@ describe('YAML Parsing and Validation', () => {
         evals: [
           {
             prompt: 'test',
-            checks: [
-              { type: 'string_contains', value: 'test' }
-            ]
+            checks: {
+              match: '*test*'
+            }
           }
         ]
       };
@@ -246,19 +264,19 @@ describe('YAML Parsing and Validation', () => {
       }
     });
 
-    it('should handle optional operator field in checks', () => {
+    it('should handle optional system_prompt field', () => {
       const data = {
         metadata: {
           name: 'test',
-          model: 'test-model',
-          system_prompt: 'test prompt'
+          model: 'test-model'
+          // system_prompt is optional
         },
         evals: [
           {
             prompt: 'test',
-            checks: [
-              { type: 'string_contains', value: 'test', operator: 'and' }
-            ]
+            checks: {
+              match: '*test*'
+            }
           }
         ]
       };
@@ -266,10 +284,7 @@ describe('YAML Parsing and Validation', () => {
       const result = EvalSuiteSchema.safeParse(data);
       expect(result.success).toBe(true);
       if (result.success) {
-        const check = result.data.evals[0].checks[0];
-        if (check.type === 'string_contains') {
-          expect(check.operator).toBe('and');
-        }
+        expect(result.data.metadata.system_prompt).toBeUndefined();
       }
     });
 
@@ -283,11 +298,11 @@ describe('YAML Parsing and Validation', () => {
         evals: [
           {
             prompt: 'test 1',
-            checks: [{ type: 'string_contains', value: 'test' }]
+            checks: { match: '*test*' }
           },
           {
             prompt: 'test 2',
-            checks: [{ type: 'token_length', min_tokens: 1 }]
+            checks: { min_tokens: 1 }
           }
         ]
       };

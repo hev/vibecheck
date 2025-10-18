@@ -76,30 +76,33 @@ Evaluation suites are defined in YAML:
 metadata:
   name: suite-name
   model: anthropic/claude-3.5-sonnet
-  systemPrompt: You are a helpful assistant
+  system_prompt: You are a helpful assistant  # optional
 
-evaluations:
-  - name: eval-1
-    prompt: Question to ask the model
+evals:
+  - prompt: Question to ask the model
     checks:
-      - type: string_contains
-        value: "expected text"
-      - type: semantic_similarity
-        target: "semantic target"
+      match: "*expected text*"  # glob pattern matching
+      not_match: "*unwanted text*"  # negated patterns
+      or:  # OR operator for multiple patterns
+        - match: "*option1*"
+        - match: "*option2*"
+      min_tokens: 10
+      max_tokens: 100
+      semantic:
+        expected: "semantic target"
         threshold: 0.8
-      - type: llm_judge
+      llm_judge:
         criteria: "what to judge"
-      - type: token_length
-        min: 10
-        max: 100
 ```
 
-### Conditional Types
+### Check Types
 
-1. **string_contains** - Check if response contains exact text
-2. **semantic_similarity** - Compare semantic meaning using embeddings (local)
-3. **llm_judge** - Use an LLM to judge the response quality
-4. **token_length** - Validate response is within token bounds
+1. **match** - Glob pattern matching (e.g., `*hello*`, `goodbye*`)
+2. **not_match** - Negated glob patterns
+3. **or** - OR operator for multiple patterns
+4. **min_tokens**/**max_tokens** - Token length constraints
+5. **semantic** - Compare semantic meaning using embeddings (local)
+6. **llm_judge** - Use an LLM to judge the response quality
 
 ### Workflow
 

@@ -12,121 +12,99 @@ evals:
   # English
   - prompt: "Describe how to make a peanut butter and jelly sandwich."
     checks:
-      - type: "string_contains"
-        value: "bread"
-      - type: "llm_judge"
+      match: "*bread*"
+      llm_judge:
         criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in English"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 300
+      min_tokens: 20
+      max_tokens: 300
 
   # French
   - prompt: "Décrivez comment faire un sandwich au beurre d'arachide et à la confiture."
     checks:
-      - type: "string_contains"
-        value: "pain"
-      - type: "llm_judge"
+      match: "*pain*"
+      llm_judge:
         criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in French"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 300
+      min_tokens: 20
+      max_tokens: 300
 
   # Russian
   - prompt: "Опишите, как приготовить бутерброд с арахисовым маслом и джемом."
     checks:
-      - type: "string_contains"
-        value: "хлеб"
-      - type: "llm_judge"
+      match: "*хлеб*"
+      llm_judge:
         criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Russian"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 300
+      min_tokens: 20
+      max_tokens: 300
 
   # German
   - prompt: "Beschreiben Sie, wie man ein Erdnussbutter- und Marmeladen-Sandwich macht."
     checks:
-      - type: "string_contains"
-        value: "Brot"
-      - type: "llm_judge"
+      match: "*Brot*"
+      llm_judge:
         criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in German"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 300
+      min_tokens: 20
+      max_tokens: 300
 
   # Mandarin Chinese
   - prompt: "描述如何制作花生酱果酱三明治。"
     checks:
-      - type: "string_contains"
-        value: "面包"
-      - type: "llm_judge"
+      match: "*面包*"
+      llm_judge:
         criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Mandarin"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 300
+      min_tokens: 20
+      max_tokens: 300
 
   # Japanese
   - prompt: "ピーナッツバターとジャムのサンドイッチの作り方を説明してください。"
     checks:
-      - type: "string_contains"
-        value: "パン"
-      - type: "llm_judge"
+      match: "*パン*"
+      llm_judge:
         criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Japanese"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 300
+      min_tokens: 20
+      max_tokens: 300
 
   # Korean
   - prompt: "땅콩버터와 잼 샌드위치 만드는 방법을 설명해주세요."
     checks:
-      - type: "string_contains"
-        value: "빵"
-      - type: "llm_judge"
+      match: "*빵*"
+      llm_judge:
         criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Korean"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 300
+      min_tokens: 20
+      max_tokens: 300
 
   # Hebrew
   - prompt: "תאר איך להכין כריך חמאת בוטנים וריבה."
     checks:
-      - type: "string_contains"
-        value: "לחם"
-      - type: "llm_judge"
+      match: "*לחם*"
+      llm_judge:
         criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Hebrew"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 300
+      min_tokens: 20
+      max_tokens: 300
 
   # Arabic
   - prompt: "صف كيفية صنع شطيرة زبدة الفول السوداني والمربى."
     checks:
-      - type: "string_contains"
-        value: "خبز"
-      - type: "llm_judge"
+      match: "*خبز*"
+      llm_judge:
         criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Arabic"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 300
+      min_tokens: 20
+      max_tokens: 300
 
   # Spanish
   - prompt: "Describe cómo hacer un sándwich de mantequilla de maní y mermelada."
     checks:
-      - type: "string_contains"
-        value: "pan"
-      - type: "llm_judge"
+      match: "*pan*"
+      llm_judge:
         criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Spanish"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 300
+      min_tokens: 20
+      max_tokens: 300
 
   # Tagalog (Filipino)
   - prompt: "Ilarawan kung paano gumawa ng peanut butter at jelly sandwich."
     checks:
-      - type: "string_contains"
-        value: "tinapay"
-      - type: "llm_judge"
+      match: "*tinapay*"
+      llm_judge:
         criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Tagalog"
-      - type: "token_length"
-        min_tokens: 20
-        max_tokens: 300
+      min_tokens: 20
+      max_tokens: 300
 

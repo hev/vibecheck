@@ -86,17 +86,14 @@ Create evaluation files in YAML format. Example structure:
 metadata:
   name: my-eval-suite
   model: anthropic/claude-3.5-sonnet
-  systemPrompt: You are a helpful assistant
+  system_prompt: You are a helpful assistant  # optional
 
-evaluations:
-  - name: test-1
-    prompt: What is 2+2?
+evals:
+  - prompt: What is 2+2?
     checks:
-      - type: string_contains
-        value: "4"
-      - type: token_length
-        min: 1
-        max: 100
+      match: "*4*"
+      min_tokens: 1
+      max_tokens: 100
 ```
 
 See `examples/` directory for more examples.
@@ -104,11 +101,13 @@ See `examples/` directory for more examples.
 ## Features
 
 - ✨ Vibe-themed output and terminology
-- 🎯 Multiple conditional types:
-  - `string_contains` - Check if response contains specific text
-  - `semantic_similarity` - Compare semantic meaning
-  - `llm_judge` - Use LLM to evaluate response quality
-  - `token_length` - Validate response length
+- 🎯 Multiple check types:
+  - `match` - Glob pattern matching (e.g., `*hello*`, `goodbye*`)
+  - `not_match` - Negated glob patterns
+  - `or` - OR operator for multiple patterns
+  - `min_tokens`/`max_tokens` - Token length constraints
+  - `semantic` - Semantic similarity comparison
+  - `llm_judge` - LLM-based evaluation
 - 🌊 Streaming results in real-time
 - 📊 Visual summary with +/- bar charts
 - 🎨 Colored CLI output (prompts in blue, responses in gray, status indicators)

@@ -1,9 +1,11 @@
 metadata:
   name: invalid-suite
-  # Missing required 'model' and 'system_prompt' fields
+  # Missing required 'model' field
 
 evals:
   - prompt: test prompt
     checks:
-      - type: unknown_type
-        value: test
+      match: "*test*"
+      # Invalid semantic check - missing threshold
+      semantic:
+        expected: "test response"

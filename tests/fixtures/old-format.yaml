@@ -1,0 +1,13 @@
+metadata:
+  name: old-format-suite
+  model: anthropic/claude-3-5-sonnet-20241022
+  system_prompt: You are a helpful assistant.
+
+evals:
+  - prompt: What is 2 + 2?
+    checks:
+      - type: string_contains
+        value: "4"
+      - type: token_length
+        min_tokens: 1
+        max_tokens: 50

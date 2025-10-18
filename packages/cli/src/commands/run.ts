@@ -29,7 +29,7 @@ interface RunOptions {
   file?: string;
   debug?: boolean;
   interactive?: boolean;
-  outputDir?: string;
+  async?: boolean;
 }
 
 export async function runInteractiveMode(options: RunOptions) {
@@ -37,7 +37,7 @@ export async function runInteractiveMode(options: RunOptions) {
 }
 
 export async function runCommand(options: RunOptions) {
-  const { file, debug } = options;
+  const { file, debug, async: asyncMode } = options;
 
   if (!file) {
     console.error(chalk.redBright('Error: --file option is required'));
@@ -107,6 +107,15 @@ export async function runCommand(options: RunOptions) {
     }
 
     const runId = response.data.runId;
+
+    // If async mode, exit immediately after starting the run
+    if (asyncMode) {
+      console.log(chalk.green(`✨ Run started successfully!`));
+      console.log(chalk.cyan(`Run ID: ${runId}`));
+      console.log(chalk.gray(`\nCheck status with: vibe get run ${runId}`));
+      process.exit(0);
+    }
+
     console.log(chalk.blue(`Checking vibes... Run ID: ${runId}\n`));
 
     // Stream results using EventSource or polling
@@ -143,11 +152,17 @@ export async function runCommand(options: RunOptions) {
 }
 
 async function streamResults(runId: string, debug?: boolean) {
-  const pollInterval = 1000; // 1 second
+  // Allow polling interval to be configured via env var (default: 1000ms / 1 second)
+  const pollInterval = process.env.VIBECHECK_POLL_INTERVAL
+    ? parseInt(process.env.VIBECHECK_POLL_INTERVAL, 10)
+    : 1000;
   let completed = false;
   let lastDisplayedCount = 0;
   let headerDisplayed = false;
   let totalTimeMs: number | undefined;
+
+  // Create spinner for polling
+  const spinner = ora('Checking vibes...').start();
 
   while (!completed) {
     try {
@@ -182,20 +197,25 @@ async function streamResults(runId: string, debug?: boolean) {
       }
 
       if (status === 'running' && results && results.length > lastDisplayedCount) {
+        spinner.stop();
         displayResults(results.slice(lastDisplayedCount));
         lastDisplayedCount = results.length;
+        spinner.start();
       } else if (status === 'completed') {
+        spinner.stop();
         if (results.length > lastDisplayedCount) {
           displayResults(results.slice(lastDisplayedCount));
         }
         completed = true;
         await displaySummary(results, totalTimeMs);
       } else if (status === 'failed') {
+        spinner.stop();
         const errorMsg = statusError?.message || statusError || 'All evaluations failed due to execution errors';
         console.error(chalk.redBright(`\n🚩 ${errorMsg}`));
         completed = true;
         process.exit(1);
       } else if (status === 'partial_failure') {
+        spinner.stop();
         if (results.length > lastDisplayedCount) {
           displayResults(results.slice(lastDisplayedCount));
         }
@@ -208,6 +228,7 @@ async function streamResults(runId: string, debug?: boolean) {
         await displaySummary(results, totalTimeMs);
         process.exit(1);
       } else if (status === 'timed_out') {
+        spinner.stop();
         if (results.length > lastDisplayedCount) {
           displayResults(results.slice(lastDisplayedCount));
         }
@@ -220,6 +241,7 @@ async function streamResults(runId: string, debug?: boolean) {
         await displaySummary(results, totalTimeMs);
         process.exit(1);
       } else if (status === 'error') {
+        spinner.stop();
         const errorMsg = statusError?.message || statusError || 'Vibe check failed';
         console.error(chalk.redBright(`\n🚩 ${errorMsg}`));
         completed = true;
@@ -230,6 +252,7 @@ async function streamResults(runId: string, debug?: boolean) {
         await new Promise(resolve => setTimeout(resolve, pollInterval));
       }
     } catch (error: any) {
+      spinner.stop();
       // Handle specific HTTP error codes
       if (error.response?.status === 401 || error.response?.status === 403) {
         displayInvitePrompt();

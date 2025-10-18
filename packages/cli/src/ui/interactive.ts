@@ -44,8 +44,8 @@ export class InteractiveUI {
   private outputDir: string;
 
   constructor(outputDir?: string) {
-    // Set up output directory
-    this.outputDir = outputDir || path.join(os.homedir(), '.vibecheck', 'runs');
+    // Set up output directory (priority: parameter > env var > default)
+    this.outputDir = outputDir || process.env.VIBECHECK_OUTPUT_DIR || path.join(os.homedir(), '.vibecheck', 'runs');
 
     // Create output directory if it doesn't exist
     if (!fs.existsSync(this.outputDir)) {
@@ -388,10 +388,10 @@ export class InteractiveUI {
 
     let vibeStatus = '🚩 bad vibes';
     let color = 'red-fg';
-    if (passRate === 100) {
+    if (passRate > 80) {
       color = 'green-fg';
       vibeStatus = '✨ good vibes';
-    } else if (passRate >= 80) {
+    } else if (passRate >= 50) {
       color = 'yellow-fg';
       vibeStatus = '😬 sketchy vibes';
     }
@@ -403,8 +403,8 @@ export class InteractiveUI {
     lines.push('{bold}' + '─'.repeat(80) + '{/bold}');
     lines.push('');
 
-    if (passRate < 80) {
-      lines.push('{red-fg}🚩 Bad vibes detected: Vibe rating below 80%{/red-fg}');
+    if (passRate < 50) {
+      lines.push('{red-fg}🚩 Bad vibes detected: Vibe rating below 50%{/red-fg}');
     } else {
       lines.push('{green-fg}✨ Good vibes all around!{/green-fg}');
     }
@@ -480,10 +480,10 @@ export class InteractiveUI {
 
     let passRateColor = chalk.redBright;
     let vibeStatus = '🚩 bad vibes';
-    if (passRate === 100) {
+    if (passRate > 80) {
       passRateColor = chalk.green;
       vibeStatus = '✨ good vibes';
-    } else if (passRate >= 80) {
+    } else if (passRate >= 50) {
       passRateColor = chalk.yellow;
       vibeStatus = '😬 sketchy vibes';
     }
@@ -495,8 +495,8 @@ export class InteractiveUI {
     console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));
     console.log();
 
-    if (passRate < 80) {
-      console.log(chalk.redBright('🚩 Bad vibes detected: Vibe rating below 80%\n'));
+    if (passRate < 50) {
+      console.log(chalk.redBright('🚩 Bad vibes detected: Vibe rating below 50%\n'));
     } else {
       console.log(chalk.green('✨ Good vibes all around!\n'));
     }
@@ -715,9 +715,9 @@ export class InteractiveUI {
     output.push('-'.repeat(80));
 
     let vibeStatus = '🚩 bad vibes';
-    if (passRate === 100) {
+    if (passRate > 80) {
       vibeStatus = '✨ good vibes';
-    } else if (passRate >= 80) {
+    } else if (passRate >= 50) {
       vibeStatus = '😬 sketchy vibes';
     }
 
@@ -728,8 +728,8 @@ export class InteractiveUI {
     output.push('-'.repeat(80));
     output.push('');
 
-    if (passRate < 80) {
-      output.push('🚩 Bad vibes detected: Vibe rating below 80%');
+    if (passRate < 50) {
+      output.push('🚩 Bad vibes detected: Vibe rating below 50%');
     } else {
       output.push('✨ Good vibes all around!');
     }

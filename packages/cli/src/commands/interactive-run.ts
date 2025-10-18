@@ -25,11 +25,10 @@ function getAuthHeaders() {
 interface RunOptions {
   file?: string;
   debug?: boolean;
-  outputDir?: string;
 }
 
 export async function runInteractiveCommand(options: RunOptions) {
-  const ui = new InteractiveUI(options.outputDir);
+  const ui = new InteractiveUI();
   let currentFile = options.file;
 
   // Set up command handler
@@ -177,7 +176,10 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
 }
 
 async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) {
-  const pollInterval = 1000;
+  // Allow polling interval to be configured via env var (default: 1000ms / 1 second)
+  const pollInterval = process.env.VIBECHECK_POLL_INTERVAL
+    ? parseInt(process.env.VIBECHECK_POLL_INTERVAL, 10)
+    : 1000;
   let completed = false;
   let lastDisplayedCount = 0;
   let headerDisplayed = false;

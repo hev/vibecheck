@@ -101,10 +101,10 @@ export async function displaySummary(results: EvalResult[], totalTimeMs?: number
 
   let passRateColor = chalk.redBright;
   let vibeStatus = '🚩 bad vibes';
-  if (passRate === 100) {
+  if (passRate > 80) {
     passRateColor = chalk.green;
     vibeStatus = '✨ good vibes';
-  } else if (passRate >= 80) {
+  } else if (passRate >= 50) {
     passRateColor = chalk.yellow;
     vibeStatus = '😬 sketchy vibes';
   }
@@ -117,8 +117,8 @@ export async function displaySummary(results: EvalResult[], totalTimeMs?: number
   console.log();
 
   // Display vibe status (don't exit with error code - failed evals are valid results)
-  if (passRate < 80) {
-    console.log(chalk.redBright('🚩 Bad vibes detected: Vibe rating below 80%\n'));
+  if (passRate < 50) {
+    console.log(chalk.redBright('🚩 Bad vibes detected: Vibe rating below 50%\n'));
   } else {
     console.log(chalk.green('✨ Good vibes all around!\n'));
   }

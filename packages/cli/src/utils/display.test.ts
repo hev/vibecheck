@@ -130,7 +130,7 @@ describe('Display Utilities', () => {
       expect(calls).toContain('80.0%');
     });
 
-    it('should display summary for results below 80% (bad vibes)', async () => {
+    it('should display summary for results below 50% (bad vibes)', async () => {
       const results: EvalResult[] = [
         {
           evalName: 'test-1',
@@ -155,7 +155,7 @@ describe('Display Utilities', () => {
       await displaySummary(results);
 
       const calls = mockConsoleLog.mock.calls.map((call: any) => call[0]).join('\n');
-      expect(calls).toContain('bad vibes');
+      expect(calls).toContain('sketchy vibes');
       expect(calls).toContain('50.0%');
     });
 
@@ -283,7 +283,7 @@ describe('Display Utilities', () => {
       await displaySummary(results1);
       let calls = mockConsoleLog.mock.calls.map((call: any) => String(call[0])).join('\n');
       expect(calls).toContain('66.7%');
-      expect(calls).toContain('bad vibes');
+      expect(calls).toContain('sketchy vibes');
 
       mockConsoleLog.mockClear();
 

@@ -6,9 +6,9 @@ import * as fs from 'fs';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { runCommand, runInteractiveMode } from './commands/run';
-import { saveCommand, listCommand, getCommand } from './commands/suite';
+import { saveCommand, listCommand, getCommand as getSuiteCommand } from './commands/suite';
 import { orgCommand } from './commands/org';
-import { listRunsCommand, listRunsBySuiteCommand, getRunCommand, getRunLogsCommand } from './commands/runs';
+import { listRunsCommand, listRunsBySuiteCommand, getRunCommand } from './commands/runs';
 import { modelsCommand } from './commands/models';
 import { redeemCommand } from './commands/redeem';
 
@@ -60,16 +60,15 @@ const program = new Command();
 program
   .name('vibe')
   .description('CLI tool for running language model evaluations')
-  .version('1.0.0');
+  .version('0.1.0');
 
-// Check command - launches interactive mode by default, or non-interactive with --ci flag
-program
+// Check command - runs in non-interactive mode by default, or interactive with -i/--interactive flag
+const checkCommand = program
   .command('check')
   .description('Check vibes by running evaluations from a YAML file')
   .option('-f, --file <path>', 'Path to the YAML file containing evaluations')
-  .option('-d, --debug', 'Enable debug logging (shows full request/response)')
-  .option('-o, --output-dir <path>', 'Override output directory (default: ~/.vibecheck/runs)')
-  .option('--ci', 'Run in non-interactive mode (for CI/CD)')
+  .option('-i, --interactive', 'Run in interactive mode')
+  .option('-a, --async', 'Exit immediately after starting the run (non-blocking)')
   .action((options, command) => {
     if (options.debug) {
       console.log('[DEBUG] Commander options object:', options);
@@ -114,37 +113,39 @@ program
       console.log(`[DEBUG] Final file to use: ${foundFile}`);
     }
 
-    // Run non-interactive mode if --ci flag is present
-    if (options.ci) {
-      runCommand({ file: foundFile, debug: options.debug, interactive: false });
+    // Run interactive mode if -i/--interactive flag is present
+    if (options.interactive) {
+      runInteractiveMode({ file: foundFile });
     } else {
-      runInteractiveMode({ file: foundFile, outputDir: options.outputDir });
+      runCommand({ file: foundFile, debug: options.debug, interactive: false, async: options.async });
     }
   });
 
+// Add hidden debug option to check command
+checkCommand.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
+
 // Removed: Default action was causing option conflicts with subcommands
 
-program
+const setCommand = program
   .command('set')
   .description('Set/save an evaluation suite from a YAML file')
   .option('-f, --file <path>', 'Path to the YAML file containing evaluations')
-  .option('-d, --debug', 'Enable debug logging (shows full request/response)')
   .action(saveCommand);
+setCommand.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
 
-program
+const getCommand = program
   .command('get')
   .alias('list')
   .alias('ls')
-  .description('Get suites, runs, logs, or organization info')
-  .argument('<noun>', 'Type of resource: suites|suite|evals|eval|runs|run|logs|org')
+  .description('Get suites, runs, or organization info')
+  .argument('<noun>', 'Type of resource: suites|suite|evals|eval|runs|run|org|credits')
   .argument('[identifier]', 'Optional: suite name or run ID')
-  .argument('[subcommand]', 'Optional: subcommand (e.g., "logs" for runs)')
-  .option('-d, --debug', 'Enable debug logging (shows full request/response)')
+  .argument('[subcommand]', 'Optional: subcommand')
   .option('-l, --limit <number>', 'Limit number of results (default: 50)', (val) => parseInt(val, 10))
   .option('-o, --offset <number>', 'Offset for pagination (default: 0)', (val) => parseInt(val, 10))
   .option('--mcp', 'Filter models to only show those with MCP support')
-  .option('--price <quartiles>', 'Filter by price quartile(s): 1,2,3,4 (e.g., "1,2" for cheapest half)')
-  .option('--provider <providers>', 'Filter by provider(s), comma-separated (e.g., "anthropic,openai")')
+  .option('--price <quartiles>', 'Filter models by price quartile(s): 1,2,3,4 (e.g., "1,2" for cheapest half)')
+  .option('--provider <providers>', 'Filter models by provider(s), comma-separated (e.g., "anthropic,openai")')
   .option('--suite <name>', 'Filter runs by suite name')
   .option('--status <status>', 'Filter runs by status (completed, pending, failed, partial_failure)')
   .option('--success-gt <percent>', 'Filter runs with success rate greater than (0-100)', (val) => parseInt(val, 10))
@@ -160,7 +161,7 @@ program
     // Handle suites/suite/evals/eval
     if (['suites', 'suite', 'evals', 'eval'].includes(normalizedNoun)) {
       if (identifier) {
-        getCommand(identifier, debug);
+        getSuiteCommand(identifier, debug);
       } else {
         listCommand(debug);
       }
@@ -169,12 +170,6 @@ program
 
     // Handle runs/run
     if (['runs', 'run'].includes(normalizedNoun)) {
-      // vibe get runs <id> logs
-      if (identifier && subcommand === 'logs') {
-        getRunLogsCommand(identifier, debug);
-        return;
-      }
-
       // vibe get runs <id>
       if (identifier) {
         getRunCommand(identifier, debug);
@@ -195,19 +190,8 @@ program
       return;
     }
 
-    // Handle logs/log - vibe get logs <id>
-    if (['logs', 'log'].includes(normalizedNoun)) {
-      if (!identifier) {
-        console.error(chalk.redBright('Error: logs requires a run ID'));
-        console.error(chalk.gray('Usage: vibe get logs <run-id> or vibe get runs <run-id> logs'));
-        process.exit(1);
-      }
-      getRunLogsCommand(identifier, debug);
-      return;
-    }
-
-    // Handle org - vibe get org
-    if (['org', 'organization'].includes(normalizedNoun)) {
+    // Handle org/credits - vibe get org or vibe get credits
+    if (['org', 'organization', 'credits'].includes(normalizedNoun)) {
       orgCommand(debug);
       return;
     }
@@ -220,18 +204,19 @@ program
 
     // Unknown noun
     console.error(chalk.redBright(`Error: Unknown resource type "${noun}"`));
-    console.error(chalk.gray('Valid types: suites, suite, evals, eval, runs, run, org, models'));
+    console.error(chalk.gray('Valid types: suites, suite, evals, eval, runs, run, org, credits, models'));
     process.exit(1);
   });
+getCommand.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
 
-program
+const redeemCmd = program
   .command('redeem')
   .description('Redeem an invite code to create an organization and receive an API key')
   .argument('<code>', 'The invite code to redeem')
-  .option('-d, --debug', 'Enable debug logging (shows full request/response)')
   .action((code: string, options: any) => {
     const debug = options?.debug || false;
     redeemCommand(code, debug);
   });
+redeemCmd.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
 
 program.parse(process.argv);

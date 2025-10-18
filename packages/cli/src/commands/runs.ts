@@ -89,9 +89,10 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
       chalk.bold('Model'.padEnd(45)) +
       chalk.bold('Status'.padEnd(18)) +
       chalk.bold('Pass/Fail'.padEnd(20)) +
-      chalk.bold('Time')
+      chalk.bold('Time'.padEnd(12)) +
+      chalk.bold('Cost')
     );
-    console.log('='.repeat(150));
+    console.log('='.repeat(162));
 
     runs.forEach((run: any) => {
       const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.redBright : chalk.yellow;
@@ -101,6 +102,7 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
       const evalsPassed = parseInt(run.evals_passed, 10) || 0;
       const successPercentage = parseFloat(run.success_percentage) || 0;
       const durationSeconds = parseFloat(run.duration_seconds);
+      const totalCost = run.total_cost ? parseFloat(run.total_cost) : null;
 
       // Use results_count and evals_passed from API response
       const passRateText = resultsCount > 0
@@ -111,9 +113,9 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
       let passRate;
       if (resultsCount === 0) {
         passRate = chalk.white(passRateText.padEnd(20));
-      } else if (successPercentage === 100) {
+      } else if (successPercentage > 80) {
         passRate = chalk.green(passRateText.padEnd(20));
-      } else if (successPercentage >= 80) {
+      } else if (successPercentage >= 50) {
         passRate = chalk.yellow(passRateText.padEnd(20));
       } else {
         passRate = chalk.redBright(passRateText.padEnd(20));
@@ -122,6 +124,11 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
       // Use duration_seconds from API response
       const time = !isNaN(durationSeconds)
         ? `${durationSeconds.toFixed(1)}s`
+        : 'N/A';
+
+      // Format cost from API response
+      const cost = totalCost !== null
+        ? `$${totalCost.toFixed(6)}`
         : 'N/A';
 
       // Truncate model name if too long
@@ -136,11 +143,39 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         chalk.white(truncatedModel.padEnd(45)) +
         statusColor(run.status.padEnd(18)) +
         passRate +
-        chalk.gray(time)
+        chalk.gray(time.padEnd(12)) +
+        chalk.gray(cost)
       );
     });
 
     console.log('');
+
+    // Calculate summary metrics for the filtered runs
+    if (runs.length > 0) {
+      const totalSuccessRate = runs.reduce((sum: number, run: any) => {
+        return sum + (parseFloat(run.success_percentage) || 0);
+      }, 0);
+      const avgSuccessRate = totalSuccessRate / runs.length;
+
+      const costsWithValues = runs
+        .map((run: any) => run.total_cost ? parseFloat(run.total_cost) : null)
+        .filter((cost: number | null) => cost !== null);
+      const totalCost = costsWithValues.reduce((sum: number, cost: number) => sum + cost, 0);
+
+      const totalDuration = runs.reduce((sum: number, run: any) => {
+        const duration = parseFloat(run.duration_seconds);
+        return sum + (!isNaN(duration) ? duration : 0);
+      }, 0);
+      const avgDuration = totalDuration / runs.length;
+
+      console.log(chalk.bold('Summary:'));
+      console.log(
+        chalk.gray('  Avg Success Rate: ') + chalk.white(`${avgSuccessRate.toFixed(1)}%`) +
+        chalk.gray('  │  Total Cost: ') + chalk.white(`$${totalCost.toFixed(6)}`) +
+        chalk.gray('  │  Avg Time: ') + chalk.white(`${avgDuration.toFixed(1)}s`)
+      );
+      console.log('');
+    }
 
     if (pagination) {
       console.log(chalk.gray(`Showing ${offset + 1}-${offset + runs.length} of ${pagination.total} runs`));
@@ -208,9 +243,9 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
       let passRate;
       if (resultsCount === 0) {
         passRate = chalk.white(passRateText.padEnd(20));
-      } else if (successPercentage === 100) {
+      } else if (successPercentage > 80) {
         passRate = chalk.green(passRateText.padEnd(20));
-      } else if (successPercentage >= 80) {
+      } else if (successPercentage >= 50) {
         passRate = chalk.yellow(passRateText.padEnd(20));
       } else {
         passRate = chalk.redBright(passRateText.padEnd(20));
@@ -431,66 +466,6 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to get run'));
     handleError(error, `${API_URL}/api/runs/${runId}`);
-  }
-}
-
-// Get logs for a specific run
-export async function getRunLogsCommand(runId: string, debug: boolean = false) {
-  const spinner = ora(`Fetching logs for run "${runId}"...`).start();
-
-  try {
-    const url = `${API_URL}/api/runs/${runId}/logs`;
-    if (debug) {
-      spinner.stop();
-      console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));
-      spinner.start();
-    }
-
-    const response = await axios.get(url, {
-      headers: getAuthHeaders()
-    });
-
-    if (debug) {
-      spinner.stop();
-      console.log(chalk.gray(`[DEBUG] Response status: ${response.status}`));
-      console.log(chalk.gray(`[DEBUG] Response data:`), JSON.stringify(response.data, null, 2));
-      spinner.start();
-    }
-
-    if (response.data.error) {
-      spinner.fail(chalk.redBright(`Error: ${response.data.error}`));
-      process.exit(1);
-    }
-
-    spinner.stop();
-
-    const { logs } = response.data;
-
-    if (!logs || logs.trim().length === 0) {
-      console.log(chalk.yellow(`No logs found for run "${runId}"`));
-      return;
-    }
-
-    console.log(chalk.bold(`\nLogs for run "${runId}":\n`));
-
-    // Split logs by newline and display
-    const logLines = logs.split('\n').filter((line: string) => line.trim().length > 0);
-
-    logLines.forEach((line: string) => {
-      // Try to detect log level from content
-      if (line.toLowerCase().includes('error')) {
-        console.log(chalk.redBright(line));
-      } else if (line.toLowerCase().includes('warn')) {
-        console.log(chalk.yellow(line));
-      } else {
-        console.log(chalk.gray(line));
-      }
-    });
-
-    console.log('');
-  } catch (error: any) {
-    spinner.fail(chalk.redBright('Failed to get logs'));
-    handleError(error, `${API_URL}/api/runs/${runId}/logs`);
   }
 }
 

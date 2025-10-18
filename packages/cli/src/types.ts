@@ -4,7 +4,8 @@ export const ConditionalTypeSchema = z.enum([
   'string_contains',
   'semantic_similarity',
   'llm_judge',
-  'token_length'
+  'token_length',
+  'matches'
 ]);
 
 export const OperatorSchema = z.enum(['and', 'or']);
@@ -35,11 +36,18 @@ export const TokenLengthConditionalSchema = z.object({
   operator: OperatorSchema.optional()
 });
 
+export const MatchesConditionalSchema = z.object({
+  type: z.literal('matches'),
+  value: z.string(),
+  operator: OperatorSchema.optional()
+});
+
 export const ConditionalSchema = z.discriminatedUnion('type', [
   StringContainsConditionalSchema,
   SemanticSimilarityConditionalSchema,
   LLMJudgeConditionalSchema,
-  TokenLengthConditionalSchema
+  TokenLengthConditionalSchema,
+  MatchesConditionalSchema
 ]);
 
 export const EvalSchema = z.object({

@@ -10,6 +10,10 @@
 vibecheck makes it easy to evaluate any language model with a simple YAML configuration. Run evals,
 save the results, and tweak your system prompts with incredibly tight feedback loop from the command line.
 
+> 🎃 **Get Your Invite** 👻
+>
+> vibe check is currently being offered as an exclusive invite-only Halloween pop up! 🦇 Join the #hacktoberfest spirits and summon your API key at [vibescheck.io](https://vibescheck.io) to read the haunted FAQ. 🕷️
+
 ## Installation
 
 ```bash
@@ -238,84 +242,22 @@ metadata:
     authorization_token: "your-token"
 ```
 
-## CLI Commands
-
-### Check Vibes (Run Evaluations)
-```bash
-vibe check -f examples/hello-world.yaml
-vibe check -f examples/hello-world.yaml --interactive  # Interactive mode
-vibe check -f examples/hello-world.yaml --async        # Non-blocking
-```
-
-### Manage Suites
-```bash
-vibe set -f my-eval.yaml          # Save a suite
-vibe get                          # List all suites
-vibe get my-suite-name            # Get specific suite
-```
-
 ## Vibe Ratings
 
 vibes breakdown as follows.
 
-- ✨ **good vibes** = 100% pass rate
-- 😬 **sketchy vibes** = ≥80% pass rate  
-- 🚩 **bad vibes** = <80% pass rate
+- ✨ **good vibes** = >80% pass rate
+- 😬 **sketchy vibes** = 50-80% pass rate  
+- 🚩 **bad vibes** = <50% pass rate
 
 **Individual Check Results:**
 - ✅ **PASS** - Check passed
 - 🚩 **FAIL** - Check failed
 
 **Exit Codes:**
-- `0` - Good or sketchy vibes (≥80% pass rate)
-- `1` - Bad vibes (<80% pass rate)
-
-## Configuration
-
-Create a configuration file at `~/.vibecheck/.env`:
-
-```bash
-# Required: Get your API key at https://vibescheck.io
-VIBECHECK_API_KEY=your-api-key-here
-
-# Optional: Override the API URL (defaults to production)
-VIBECHECK_URL=https://api.vibescheck.io
-```
-
-Quick setup:
-```bash
-mkdir -p ~/.vibecheck
-echo "VIBECHECK_API_KEY=your-api-key-here" > ~/.vibecheck/.env
-```
-
-## Supported Models
-
-VibeCheck works with any LLM through the VibeCheck API:
-
-- **Anthropic**: Claude 3.5 Sonnet, Claude 3 Haiku, Claude 3 Opus
-- **OpenAI**: GPT-4, GPT-4 Turbo, GPT-3.5 Turbo
-- **Google**: Gemini Pro, Gemini Flash
-- **Meta**: Llama 3, Llama 4 Maverick
-- **And many more...**
-
-## Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
-
-**Before submitting a PR:**
-- Run tests: `npm test`
-- Check coverage: `npm run test:coverage`
-- Update documentation if needed
-
-**Report Issues:**
-- **API Problems**: File an issue with error details
-- **Feature Requests**: Describe your use case
-- **Bug Reports**: Include steps to reproduce
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
+- `0` - Good or sketchy vibes (≥50% pass rate)
+- `1` - Bad vibes (<50% pass rate)
 
 ---
 
-**Ready to check some vibes?** Get started at [vibescheck.io](https://vibescheck.io) 🚀
+**Wanna check the vibe?** Get started at [vibescheck.io](https://vibescheck.io) 🚀

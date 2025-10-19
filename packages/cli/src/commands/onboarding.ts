@@ -247,7 +247,8 @@ export async function runOnboarding(ui: InteractiveUI): Promise<string> {
         fs.writeFileSync('./evals.yaml', yamlContent);
         lines.push('{green-fg}✅ Saved to ./evals.yaml{/green-fg}');
         lines.push('');
-        lines.push('{yellow-fg}Run :check to test your eval suite!{/yellow-fg}');
+        lines.push('{green-fg}Starting your first vibe check now...{/green-fg}');
+        lines.push('{gray-fg}Tip: Re-run anytime with :check or :check <file>{/gray-fg}');
         lines.push('');
 
         ui.displayInfo(lines.join('\n'));

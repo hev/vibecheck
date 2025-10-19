@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/hev/vibecheck#readme
+    about: Read the README for setup, usage, and troubleshooting.
+  - name: Contributing Guidelines
+    url: https://github.com/hev/vibecheck/blob/0.1.0/CONTRIBUTING.md
+    about: Please review before opening issues or PRs.
+

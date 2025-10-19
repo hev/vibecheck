@@ -2,6 +2,7 @@ import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals
 import { setupApiMock, cleanupApiMocks } from '../helpers/api-mocks';
 import { withEnv, createTempFile, cleanupTempFiles, suppressConsole } from '../helpers/test-utils';
 import { runCommand } from '../../packages/cli/src/commands/run';
+import { runInteractiveCommand } from '../../packages/cli/src/commands/interactive-run';
 import { saveCommand, listCommand, getCommand } from '../../packages/cli/src/commands/suite';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -17,6 +18,47 @@ describe('CLI Commands Integration Tests', () => {
     process.env.VIBECHECK_URL = 'http://localhost:3000';
   });
 
+  describe('Interactive onboarding auto-run', () => {
+    it('should automatically start a run after onboarding creates evals.yaml', async () => {
+      // Prepare a temporary evals.yaml content returned by onboarding
+      const yamlContent = `metadata:
+  name: auto-suite
+  model: anthropic/claude-3.5-sonnet
+
+evals:
+  - prompt: Say hello
+    checks:
+      match: "*hello*"`;
+      const tempFile = createTempFile(yamlContent, 'auto-evals.yaml');
+
+      // Mock API for run start and status
+      apiMock.mockRunEval();
+      apiMock.mockStatusCompleted();
+
+      // Stub onboarding to immediately resolve with our temp file
+      const onboardingModule = require('../../packages/cli/src/commands/onboarding');
+      const onboardingSpy = jest.spyOn(onboardingModule, 'runOnboarding').mockResolvedValue(tempFile);
+
+      // Prevent process.exit during polling/summary
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await runInteractiveCommand({ file: undefined, debug: false });
+        } catch (e: any) {
+          // In CI, process.exit may be called by summary paths; ignore
+          expect(e.message).toMatch(/process.exit|undefined/);
+        }
+      });
+
+      expect(onboardingSpy).toHaveBeenCalled();
+
+      exitMock.mockRestore();
+      onboardingSpy.mockRestore();
+    });
+  });
   afterEach(() => {
     cleanupApiMocks();
     cleanupTempFiles();

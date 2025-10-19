@@ -1,0 +1,177 @@
+name: Issue
+description: Report a bug or request a feature
+title: "[{{ inputs.category }}] <brief summary>"
+labels: []
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: Select the type of issue you are filing.
+      options:
+        - Bug report
+        - Feature request
+    validations:
+      required: true
+
+  # Guidance for Bug reports
+  - type: markdown
+    if: contains(inputs.category, 'Bug report')
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please include:
+        - Clear description of the issue
+        - Steps to reproduce
+        - Expected vs actual behavior
+        - Environment details (OS, Node.js, CLI version)
+        - Relevant logs or stack traces
+
+  - type: textarea
+    if: contains(inputs.category, 'Bug report')
+    id: bug_description
+    attributes:
+      label: Bug description
+      description: What happened? Provide a concise, clear description.
+      placeholder: |
+        Example: Running `vibe check -f examples/hello-world.yaml` exits with code 1 despite all checks passing.
+    validations:
+      required: true
+
+  - type: textarea
+    if: contains(inputs.category, 'Bug report')
+    id: repro_steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide exact steps and commands so we can reproduce.
+      placeholder: |
+        1. npm install
+        2. npm run build
+        3. npm run start -- check -f examples/hello-world.yaml
+        4. Observe output / error
+      render: bash
+    validations:
+      required: true
+
+  - type: input
+    if: contains(inputs.category, 'Bug report')
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: Describe what you expected to happen
+    validations:
+      required: true
+
+  - type: input
+    if: contains(inputs.category, 'Bug report')
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: Describe what actually happened
+    validations:
+      required: true
+
+  - type: textarea
+    if: contains(inputs.category, 'Bug report')
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, Node.js version, CLI version, and any other relevant details.
+      placeholder: |
+        OS: macOS 14.6
+        Node.js: v20.x
+        @vibecheck/cli: 0.x.y
+        Shell: zsh
+    validations:
+      required: true
+
+  - type: textarea
+    if: contains(inputs.category, 'Bug report')
+    id: logs
+    attributes:
+      label: Logs / stack traces
+      description: Paste relevant logs. Redact secrets. You can also attach files.
+      render: shell
+      placeholder: |
+        Include output from commands like:
+        npm run start -- check -f examples/hello-world.yaml --debug
+        tail -n 200 logs/api.log
+        tail -n 200 logs/semantic-checker.log
+    validations:
+      required: false
+
+  - type: input
+    if: contains(inputs.category, 'Bug report')
+    id: related
+    attributes:
+      label: Related issues / discussions
+      placeholder: e.g., #123, #456
+    validations:
+      required: false
+
+  # Guidance for Feature requests
+  - type: markdown
+    if: contains(inputs.category, 'Feature request')
+    attributes:
+      value: |
+        Thanks for the idea! Please provide:
+        - Intended use case / reason
+        - Proposed solution (what should happen)
+        - Suggested API changes (CLI flags, YAML schema, etc.)
+        - Alternatives considered
+        - Additional context / examples
+
+  - type: textarea
+    if: contains(inputs.category, 'Feature request')
+    id: feature_use_case
+    attributes:
+      label: Intended use case / reason
+      description: What problem does this solve? Who benefits?
+      placeholder: |
+        Describe the scenario, workflow, or constraint driving this request.
+    validations:
+      required: true
+
+  - type: textarea
+    if: contains(inputs.category, 'Feature request')
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: Describe how you’d like this to work.
+      placeholder: |
+        Outline the behavior, UX, or flow. Include examples if helpful.
+    validations:
+      required: true
+
+  - type: textarea
+    if: contains(inputs.category, 'Feature request')
+    id: api_changes
+    attributes:
+      label: Suggested API changes
+      description: CLI flags, YAML schema fields, or programmatic APIs to add/modify.
+      placeholder: |
+        CLI: `vibe check --my-flag`
+        YAML:
+          checks:
+            my_new_check: true
+    validations:
+      required: false
+
+  - type: textarea
+    if: contains(inputs.category, 'Feature request')
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: |
+        List other approaches and why they’re less ideal.
+    validations:
+      required: false
+
+  - type: textarea
+    if: contains(inputs.category, 'Feature request')
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Any extra context, screenshots, or examples.
+    validations:
+      required: false
+

@@ -97,6 +97,9 @@ export async function runInteractiveCommand(options: RunOptions) {
       // Display the created file
       const fileContent = fs.readFileSync(createdFile, 'utf8');
       ui.displayFileContent(createdFile, fileContent);
+
+      // Automatically run the evaluation that was just created
+      await runEvaluation(createdFile, ui, options.debug);
     }
   }
 

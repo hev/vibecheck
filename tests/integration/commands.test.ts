@@ -423,4 +423,230 @@ evals:
       exitMock.mockRestore();
     });
   });
+
+  describe('vibe check suite-based command', () => {
+    it('should run suite with no overrides', async () => {
+      const { runSuiteCommand } = require('../../packages/cli/src/commands/run');
+      
+      // Mock suite fetch
+      apiMock.mockGetSuiteWithResponse('test-suite', {
+        suite: {
+          name: 'test-suite',
+          yamlContent: `metadata:
+  name: test-suite
+  model: anthropic/claude-3.5-sonnet
+  system_prompt: You are a helpful assistant.
+
+evals:
+  - prompt: Say hello
+    checks:
+      match: "*hello*"`
+        }
+      });
+
+      // Mock run eval
+      apiMock.mockRunEval();
+      apiMock.mockStatusCompleted();
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        await runSuiteCommand({
+          suiteName: 'test-suite',
+          debug: false,
+          interactive: false,
+          async: false
+        });
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should run suite with model override', async () => {
+      const { runSuiteCommand } = require('../../packages/cli/src/commands/run');
+      
+      // Mock suite fetch
+      apiMock.mockGetSuiteWithResponse('test-suite', {
+        suite: {
+          name: 'test-suite',
+          yamlContent: `metadata:
+  name: test-suite
+  model: anthropic/claude-3.5-sonnet
+  system_prompt: You are a helpful assistant.
+
+evals:
+  - prompt: Say hello
+    checks:
+      match: "*hello*"`
+        }
+      });
+
+      // Mock run eval with overridden model
+      apiMock.mockRunEval();
+      apiMock.mockStatusCompleted();
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        await runSuiteCommand({
+          suiteName: 'test-suite',
+          model: 'openai/gpt-4',
+          debug: false,
+          interactive: false,
+          async: false
+        });
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should run suite with multiple overrides', async () => {
+      const { runSuiteCommand } = require('../../packages/cli/src/commands/run');
+      
+      // Mock suite fetch
+      apiMock.mockGetSuiteWithResponse('test-suite', {
+        suite: {
+          name: 'test-suite',
+          yamlContent: `metadata:
+  name: test-suite
+  model: anthropic/claude-3.5-sonnet
+  system_prompt: You are a helpful assistant.
+  threads: 2
+
+evals:
+  - prompt: Say hello
+    checks:
+      match: "*hello*"`
+        }
+      });
+
+      // Mock run eval
+      apiMock.mockRunEval();
+      apiMock.mockStatusCompleted();
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        await runSuiteCommand({
+          suiteName: 'test-suite',
+          model: 'openai/gpt-4',
+          systemPrompt: 'You are a pirate assistant.',
+          threads: 5,
+          debug: false,
+          interactive: false,
+          async: false
+        });
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should run suite with MCP overrides', async () => {
+      const { runSuiteCommand } = require('../../packages/cli/src/commands/run');
+      
+      // Mock suite fetch
+      apiMock.mockGetSuiteWithResponse('test-suite', {
+        suite: {
+          name: 'test-suite',
+          yamlContent: `metadata:
+  name: test-suite
+  model: anthropic/claude-3.5-sonnet
+  mcp_server:
+    url: https://example.com/mcp
+    name: example-mcp
+    authorization_token: old-token
+
+evals:
+  - prompt: Use the calculator
+    checks:
+      match: "*35*"`
+        }
+      });
+
+      // Mock run eval
+      apiMock.mockRunEval();
+      apiMock.mockStatusCompleted();
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        await runSuiteCommand({
+          suiteName: 'test-suite',
+          mcpUrl: 'https://new-mcp.com',
+          mcpName: 'new-mcp-server',
+          mcpToken: 'new-token',
+          debug: false,
+          interactive: false,
+          async: false
+        });
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle suite not found error', async () => {
+      const { runSuiteCommand } = require('../../packages/cli/src/commands/run');
+      
+      // Mock suite not found
+      apiMock.mockGetSuiteWithResponse('nonexistent-suite', { error: 'Suite not found' }, 404);
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await runSuiteCommand({
+            suiteName: 'nonexistent-suite',
+            debug: false,
+            interactive: false,
+            async: false
+          });
+        } catch (error: any) {
+          expect(error.message).toMatch(/process.exit: 1/);
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle invalid suite format', async () => {
+      const { runSuiteCommand } = require('../../packages/cli/src/commands/run');
+      
+      // Mock suite with invalid YAML
+      apiMock.mockGetSuiteWithResponse('invalid-suite', {
+        suite: {
+          name: 'invalid-suite',
+          yamlContent: `invalid: yaml: content: [`
+        }
+      });
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await runSuiteCommand({
+            suiteName: 'invalid-suite',
+            debug: false,
+            interactive: false,
+            async: false
+          });
+        } catch (error: any) {
+          expect(error.message).toMatch(/process.exit: 1/);
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+  });
 });

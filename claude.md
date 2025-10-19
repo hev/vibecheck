@@ -30,9 +30,21 @@ vibecheck/
 │   ├── cli/                       # CLI application (open source)
 │   │   ├── src/
 │   │   │   ├── index.ts           # Main entry point, commander setup
-│   │   │   └── commands/
-│   │   │       ├── run.ts         # vibe check command
-│   │   │       └── suite.ts       # vibe get/set commands
+│   │   │   ├── commands/          # All CLI commands
+│   │   │   │   ├── run.ts         # vibe check command
+│   │   │   │   ├── suite.ts       # vibe set/get commands
+│   │   │   │   ├── runs.ts        # vibe get runs command
+│   │   │   │   ├── models.ts      # vibe get models command
+│   │   │   │   ├── org.ts         # vibe get org command
+│   │   │   │   ├── redeem.ts      # vibe redeem command
+│   │   │   │   ├── onboarding.ts  # Interactive onboarding
+│   │   │   │   └── interactive-run.ts # Interactive mode
+│   │   │   ├── ui/                # Interactive UI components
+│   │   │   │   └── interactive.ts # Blessed-based terminal UI
+│   │   │   └── utils/             # Utilities
+│   │   │       ├── display.ts     # Display formatting
+│   │   │       ├── config.ts      # Configuration management
+│   │   │       └── auth-error.ts  # Authentication error handling
 │   │   └── package.json           # Bins: vibe, vibes
 │   │
 │   └── shared/                    # Shared types & schemas (open source)
@@ -42,10 +54,22 @@ vibecheck/
 │       └── package.json
 │
 ├── examples/                      # Example YAML eval files
-├── claude.md                      # This file
-├── .cursorrules                   # Symlink to claude.md
-├── README.md                      # Main documentation
-└── package.json                   # Root workspace config
+│   ├── hello-world.yaml          # Basic checks example
+│   ├── multilingual-pbj.yaml     # Multilingual testing
+│   ├── financial-evals.yaml      # MCP tool calling
+│   └── politics.yaml             # Political evaluation
+├── scripts/                       # Publishing and build scripts
+│   └── publish.sh                # npm publishing script
+├── tests/                         # Test suites
+│   ├── integration/              # Integration tests
+│   ├── e2e/                      # End-to-end tests
+│   ├── fixtures/                 # Test fixtures
+│   └── helpers/                  # Test utilities
+├── claude.md                     # This file
+├── .cursorrules                  # Symlink to claude.md
+├── README.md                     # Main documentation
+├── CONTRIBUTING.md               # Development guidelines
+└── package.json                  # Root workspace config
 ```
 
 ## Key Concepts
@@ -56,8 +80,9 @@ This project uses playful internet slang terminology:
 
 **Command Structure:**
 - `vibe check` (or `vibes check`) - Run evaluations
-- `vibe get` - List or retrieve suites
 - `vibe set` - Save a suite
+- `vibe get` - List or retrieve resources (suites, runs, models, org)
+- `vibe redeem` - Redeem invite codes
 
 **Results:**
 - ✨ **good vibes** = 100% pass rate
@@ -65,8 +90,8 @@ This project uses playful internet slang terminology:
 - 🚩 **bad vibes** = <80% pass rate
 
 **Individual Conditionals:**
-- ✅ **white flag** = PASS (conditional passed)
-- 🚩 **red flag** = FAIL (conditional failed)
+- ✅ **PASS** - Check passed
+- 🚩 **FAIL** - Check failed
 
 ### Evaluation Suite Format
 
@@ -77,6 +102,10 @@ metadata:
   name: suite-name
   model: anthropic/claude-3.5-sonnet
   system_prompt: You are a helpful assistant  # optional
+  mcp_server:  # optional
+    url: "https://your-mcp-server.com"
+    name: "server-name"
+    authorization_token: "your-token"
 
 evals:
   - prompt: Question to ask the model
@@ -132,16 +161,114 @@ checks:
     - match: "*hi*"
 ```
 
-### Workflow
+## CLI Commands Reference
 
-1. User runs `vibe check -f eval.yaml`
-2. CLI validates YAML with Zod schemas
-3. CLI sends eval suite to VibeCheck API
-4. API runs each evaluation and checks checks
-5. CLI polls for results and displays streaming output
-6. Exit code 1 if <80% pass rate
+### `vibe check` - Run Evaluations
+
+Run evaluations from a YAML file.
+
+```bash
+vibe check -f examples/hello-world.yaml
+vibe check -f examples/hello-world.yaml --interactive  # Interactive mode
+vibe check -f examples/hello-world.yaml --async        # Non-blocking
+vibe check  # Auto-detect evals.yaml, eval.yaml, evals.yml, eval.yml
+```
+
+**Options:**
+- `-f, --file <path>` - Path to YAML file (required if no auto-detected file)
+- `-i, --interactive` - Run in interactive mode with terminal UI
+- `-a, --async` - Exit immediately after starting (non-blocking)
+- `-d, --debug` - Enable debug logging (hidden option)
+
+**Interactive Mode:**
+- Use `:check <file>` to run evaluations
+- Use `:exit` or `:quit` to exit
+- Auto-detects files and shows content
+
+### `vibe set` - Save Suites
+
+Save an evaluation suite from a YAML file.
+
+```bash
+vibe set -f my-eval.yaml
+vibe set -f my-eval.yaml --debug
+```
+
+**Options:**
+- `-f, --file <path>` - Path to YAML file (required)
+- `-d, --debug` - Enable debug logging (hidden option)
+
+### `vibe get` - List/Retrieve Resources
+
+Get various resources with filtering options.
+
+#### Suites
+```bash
+vibe get suites                    # List all suites
+vibe get suite <name>             # Get specific suite
+vibe get evals                    # Alias for suites
+vibe get eval <name>              # Alias for suite
+```
+
+#### Runs
+```bash
+vibe get runs                     # List all runs
+vibe get runs <id>                # Get specific run
+vibe get runs --suite <name>      # Filter by suite
+vibe get runs --status completed  # Filter by status
+vibe get runs --success-gt 80     # Filter by success rate
+vibe get runs --time-lt 60        # Filter by duration
+vibe get runs --limit 10          # Limit results
+vibe get runs --offset 20         # Pagination offset
+```
+
+#### Models
+```bash
+vibe get models                   # List all models
+vibe get models --mcp             # Only MCP-supported models
+vibe get models --price 1,2       # Filter by price quartiles
+vibe get models --provider anthropic,openai  # Filter by providers
+```
+
+#### Organization
+```bash
+vibe get org                      # Organization info
+vibe get credits                  # Credits/usage info
+```
+
+**Common Options:**
+- `-l, --limit <number>` - Limit results (default: 50)
+- `-o, --offset <number>` - Offset for pagination (default: 0)
+- `-d, --debug` - Enable debug logging (hidden option)
+
+### `vibe redeem` - Redeem Invite Codes
+
+Redeem an invite code to create an organization and receive an API key.
+
+```bash
+vibe redeem <code>
+vibe redeem <code> --debug
+```
+
+**Arguments:**
+- `<code>` - The invite code to redeem (required)
+
+**Options:**
+- `-d, --debug` - Enable debug logging (hidden option)
 
 ## Development Guidelines
+
+### Project Rules
+
+**Always follow this approach:**
+1. **Research** (optional) - Understand the problem/feature
+2. **Plan** - Create a clear plan with todos
+3. **Build** - Implement with tests
+
+**Testing Requirements:**
+- Always add tests when creating new features
+- Always run tests before completing a task
+- Maintain 80%+ test coverage for critical paths
 
 ### Build Order
 
@@ -154,24 +281,52 @@ Or use: `npm run build` (runs in correct order)
 ### Running Locally
 
 ```bash
+# Install dependencies
+npm install
+
 # Build and run CLI
 npm run build
-npm run start -- check -f examples/evals.yaml
+npm run start -- check -f examples/hello-world.yaml
 
-# Or watch mode
+# Or watch mode for development
 npm run dev
+
+# Link CLI globally
+npm run build:link
+vibe check -f examples/hello-world.yaml
 ```
+
+### Publishing
+
+Use the publishing script for safe releases:
+
+```bash
+./scripts/publish.sh
+```
+
+The script handles:
+- Git status validation
+- Test execution (unit + integration)
+- Build verification
+- Version bumping (patch/minor/major)
+- npm publish with `--access public`
 
 ### Environment Variables
 
-Create a `.env` file in the project root:
+Create a configuration file at `~/.vibecheck/.env`:
 
 ```bash
 # Required: Get your API key at https://vibescheck.io
 VIBECHECK_API_KEY=your-api-key-here
 
-# Optional: Override the API URL (defaults to http://localhost:3000)
-VIBECHECK_URL=http://localhost:3000
+# Optional: Override the API URL (defaults to production)
+VIBECHECK_URL=https://api.vibescheck.io
+```
+
+Quick setup:
+```bash
+mkdir -p ~/.vibecheck
+echo "VIBECHECK_API_KEY=your-api-key-here" > ~/.vibecheck/.env
 ```
 
 ### Authentication
@@ -185,63 +340,13 @@ Error handling:
 - **401 Unauthorized**: Invalid or missing API key
 - **500 Server Error**: The VibeCheck API encountered an error
 
-### Adding New Conditional Types
+### Adding New Check Types
 
 1. Add type to shared types (`packages/shared/src/types.ts`)
 2. Update Zod schema in shared package
 3. Rebuild shared package: `npm run build -w @vibecheck/shared`
 
 Note: Server-side conditional implementation is handled by the VibeCheck API.
-
-## Common Commands
-
-```bash
-# Install all dependencies
-npm install
-
-# Build CLI
-npm run build
-
-# Build specific package
-npm run build -w @vibecheck/shared
-npm run build -w @vibecheck/cli
-
-# Run CLI in dev mode
-npm run dev
-
-# Run CLI
-npm run start -- check -f examples/evals.yaml
-
-# Link CLI globally
-cd packages/cli && npm link
-vibe check -f examples/evals.yaml
-```
-
-## CLI Output Format
-
-The CLI provides rich, colored output:
-- **Blue** - Prompts
-- **Gray** - Responses
-- **Green** - Passed items, good vibes
-- **Yellow** - Sketchy vibes (≥80%)
-- **Red** - Failed items, bad vibes
-
-Summary uses GitHub-style diff notation:
-```
-eval-name-1  ----|+++++  ✅ in 2.3s
-eval-name-2  ---|++++++  ✅ in 1.8s
-```
-
-Where `-` = failed conditional, `+` = passed conditional
-
-## Important Notes
-
-- The CLI supports both `vibe` and `vibes` commands (aliases)
-- Documentation consistently uses `vibe` for clarity
-- Exit code 1 when vibe rating < 80%
-- Results are streamed in real-time via polling
-- The CLI is **open source (MIT)** - encourage contributions!
-- Get your API key at **vibescheck.io**
 
 ## Testing
 
@@ -256,7 +361,7 @@ The project uses **Jest** with TypeScript for testing. Tests are organized into 
 - **YAML Parsing & Validation** (`utils/yaml-parser.test.ts`)
   - Valid/invalid YAML schemas
   - Zod validation errors
-  - All conditional types (string_contains, semantic_similarity, llm_judge, token_length)
+  - All conditional types (match, semantic, llm_judge, token_length)
   - Edge cases and optional fields
 
 - **Display Utilities** (`utils/display.test.ts`)
@@ -288,7 +393,7 @@ Uses **nock** for HTTP mocking to simulate API responses.
 - Real API integration
 - Actual model evaluations
 
-**Note:** E2E tests are currently disabled pending setup of test helpers. See `tests/e2e/README.md` for setup instructions. The e2e test file exists but requires additional helper utilities to run.
+**Note:** E2E tests are currently disabled pending setup of test helpers. See `tests/e2e/README.md` for setup instructions.
 
 ### Running Tests
 
@@ -315,22 +420,22 @@ npm run test:coverage
 npm run test:ci
 ```
 
-### Test Fixtures
+### Pre-commit Testing
 
-Test fixtures are located in `tests/fixtures/`:
+**IMPORTANT:** Always run tests before committing:
 
-- `valid-eval.yaml` - Valid evaluation suite
-- `invalid-schema.yaml` - Missing required fields
-- `malformed.yaml` - Invalid YAML syntax
-- `all-check-types.yaml` - All conditional types
-- `mock-responses.ts` - Mock API responses
+```bash
+# Quick check (unit + integration)
+npm run test:unit && npm run test:integration
 
-### Test Helpers
+# Full check including coverage
+npm run test:coverage
+```
 
-Located in `tests/helpers/`:
-
-- `api-mocks.ts` - HTTP mocking utilities using nock
-- `test-utils.ts` - Common test utilities (env helpers, file operations, etc.)
+Ensure:
+- All tests pass
+- No console errors or warnings
+- Coverage remains above 80% for critical paths
 
 ### Writing New Tests
 
@@ -375,73 +480,82 @@ describe('My Feature Integration', () => {
 });
 ```
 
-### Pre-commit Testing
+## CLI Output Format
 
-**IMPORTANT:** Always run tests before committing:
+The CLI provides rich, colored output:
+- **Blue** - Prompts
+- **Gray** - Responses
+- **Green** - Passed items, good vibes
+- **Yellow** - Sketchy vibes (≥80%)
+- **Red** - Failed items, bad vibes
 
-```bash
-# Quick check (unit + integration)
-npm run test:unit && npm run test:integration
-
-# Full check including coverage
-npm run test:coverage
+Summary uses GitHub-style diff notation:
+```
+eval-name-1  ----|+++++  ✅ in 2.3s
+eval-name-2  ---|++++++  ✅ in 1.8s
 ```
 
-Ensure:
-- All tests pass
-- No console errors or warnings
-- Coverage remains above 80% for critical paths
+Where `-` = failed conditional, `+` = passed conditional
 
-### CI/CD Integration
-
-For continuous integration:
+## Common Commands
 
 ```bash
-# In your CI pipeline
+# Install all dependencies
 npm install
+
+# Build CLI
 npm run build
-npm run test:ci
+
+# Build specific package
+npm run build -w @vibecheck/shared
+npm run build -w @vibecheck/cli
+
+# Run CLI in dev mode
+npm run dev
+
+# Run CLI
+npm run start -- check -f examples/hello-world.yaml
+
+# Link CLI globally
+cd packages/cli && npm link
+vibe check -f examples/hello-world.yaml
+
+# Run tests
+npm test
+npm run test:unit
+npm run test:integration
+npm run test:coverage
+
+# Publish to npm
+./scripts/publish.sh
 ```
 
-The `test:ci` command:
-- Runs in non-interactive mode
-- Generates coverage reports
-- Limits workers for CI environments
-- Fails on any test failures
+## Important Notes
 
-### Coverage Goals
-
-- **Unit tests**: 80%+ coverage of utilities and parsers
-- **Integration tests**: All commands with mocked API
-- **E2E tests**: Critical user workflows
-
-### Debugging Tests
-
-```bash
-# Run specific test file
-npm test -- path/to/test.test.ts
-
-# Run tests matching pattern
-npm test -- --testNamePattern="YAML parsing"
-
-# Verbose output
-npm test -- --verbose
-
-# Debug with Node inspector
-node --inspect-brk node_modules/.bin/jest --runInBand
-```
-
-### Manual Testing
-
-Run evaluations against your prompts:
-```bash
-vibe check -f examples/evals.yaml
-```
-
-The suite passes if ≥80% of evaluations pass.
+- The CLI supports both `vibe` and `vibes` commands (aliases)
+- Documentation consistently uses `vibe` for clarity
+- Exit code 1 when vibe rating < 80%
+- Results are streamed in real-time via polling
+- The CLI is **open source (MIT)** - encourage contributions!
+- Get your API key at **vibescheck.io**
 
 ## Troubleshooting
 
 **"API Error"** - Ensure your `VIBECHECK_API_KEY` is set correctly
 **"Invalid YAML"** - Check YAML against schema in `@vibecheck/shared`
 **Build errors** - Rebuild `@vibecheck/shared` first, then other packages
+**Test failures** - Run `npm run test:unit && npm run test:integration` before committing
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines.
+
+**Before submitting a PR:**
+- Run tests: `npm test`
+- Check coverage: `npm run test:coverage`
+- Update documentation if needed
+
+**Report Issues:**
+- **API Problems**: File an issue with error details
+- **Feature Requests**: Describe your use case
+- **Bug Reports**: Include steps to reproduce

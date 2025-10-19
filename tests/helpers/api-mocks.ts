@@ -64,6 +64,13 @@ export class ApiMock {
     return this;
   }
 
+  mockGetSuiteWithResponse(name: string, response: any, statusCode = 200) {
+    this.scope
+      .get(`/api/suite/${encodeURIComponent(name)}`)
+      .reply(statusCode, response);
+    return this;
+  }
+
   mockSaveSuite(statusCode = 200) {
     this.scope
       .post('/api/suite/save')

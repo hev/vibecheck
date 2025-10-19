@@ -5,7 +5,7 @@ import path from 'path';
 import * as fs from 'fs';
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { runCommand, runInteractiveMode } from './commands/run';
+import { runCommand, runInteractiveMode, runSuiteCommand, runSuiteInteractiveMode } from './commands/run';
 import { saveCommand, listCommand, getCommand as getSuiteCommand } from './commands/suite';
 import { orgCommand } from './commands/org';
 import { listRunsCommand, listRunsBySuiteCommand, getRunCommand } from './commands/runs';
@@ -64,60 +64,102 @@ program
 
 // Check command - runs in non-interactive mode by default, or interactive with -i/--interactive flag
 const checkCommand = program
-  .command('check')
-  .description('Check vibes by running evaluations from a YAML file')
+  .command('check [suite-name]')
+  .description('Check vibes by running evaluations from a YAML file or saved suite')
   .option('-f, --file <path>', 'Path to the YAML file containing evaluations')
+  .option('-m, --model <model-id>', 'Override model from suite metadata')
+  .option('-s, --system-prompt <prompt>', 'Override system prompt from suite metadata')
+  .option('-t, --threads <number>', 'Override thread count from suite metadata', parseInt)
+  .option('--mcp-url <url>', 'Override or set MCP server URL')
+  .option('--mcp-name <name>', 'Override or set MCP server name')
+  .option('--mcp-token <token>', 'Override or set MCP server authorization token')
   .option('-i, --interactive', 'Run in interactive mode')
   .option('-a, --async', 'Exit immediately after starting the run (non-blocking)')
-  .action((options, command) => {
+  .action(async (suiteName, options, command) => {
     if (options.debug) {
       console.log('[DEBUG] Commander options object:', options);
+      console.log('[DEBUG] Suite name:', suiteName);
       console.log('[DEBUG] options.file from flag:', options.file);
     }
 
-    let foundFile = options.file;
-
-    // Auto-detect eval file if not provided
-    if (!foundFile) {
-      if (options.debug) {
-        console.log('[DEBUG] No file specified, attempting auto-detection...');
-      }
-      const evalFiles = ['./evals.yaml', './eval.yaml', './evals.yml', './eval.yml'];
-      for (const file of evalFiles) {
-        if (fs.existsSync(file)) {
-          foundFile = file;
-          if (options.debug) {
-            console.log(`[DEBUG] Auto-detected file: ${foundFile}`);
-          }
-          break;
-        }
-      }
-    } else {
-      if (options.debug) {
-        console.log(`[DEBUG] Using specified file: ${foundFile}`);
-      }
-      // Validate that the specified file exists
-      if (!fs.existsSync(foundFile)) {
-        console.error(chalk.redBright(`Error: File not found: ${foundFile}`));
-        process.exit(1);
-      }
-    }
-
-    if (!foundFile) {
-      console.error(chalk.redBright('Error: No evaluation file found or specified'));
-      console.error(chalk.gray('Use -f <file> or create one of: evals.yaml, eval.yaml, evals.yml, eval.yml'));
+    // Check for conflicts
+    if (suiteName && options.file) {
+      console.error(chalk.redBright('Error: Cannot specify both suite name and --file option'));
+      console.error(chalk.gray('Use either: vibe check <suite-name> or vibe check -f <file>'));
       process.exit(1);
     }
 
-    if (options.debug) {
-      console.log(`[DEBUG] Final file to use: ${foundFile}`);
-    }
+    // Route to appropriate execution path
+    if (suiteName) {
+      // Suite-based execution
+      if (options.debug) {
+        console.log(`[DEBUG] Running suite-based check for: ${suiteName}`);
+      }
+      
+      const suiteOptions = {
+        suiteName,
+        model: options.model,
+        systemPrompt: options.systemPrompt,
+        threads: options.threads,
+        mcpUrl: options.mcpUrl,
+        mcpName: options.mcpName,
+        mcpToken: options.mcpToken,
+        debug: options.debug,
+        interactive: options.interactive,
+        async: options.async
+      };
 
-    // Run interactive mode if -i/--interactive flag is present
-    if (options.interactive) {
-      runInteractiveMode({ file: foundFile });
+      if (options.interactive) {
+        await runSuiteInteractiveMode(suiteOptions);
+      } else {
+        await runSuiteCommand(suiteOptions);
+      }
     } else {
-      runCommand({ file: foundFile, debug: options.debug, interactive: false, async: options.async });
+      // File-based execution (existing logic)
+      let foundFile = options.file;
+
+      // Auto-detect eval file if not provided
+      if (!foundFile) {
+        if (options.debug) {
+          console.log('[DEBUG] No file specified, attempting auto-detection...');
+        }
+        const evalFiles = ['./evals.yaml', './eval.yaml', './evals.yml', './eval.yml'];
+        for (const file of evalFiles) {
+          if (fs.existsSync(file)) {
+            foundFile = file;
+            if (options.debug) {
+              console.log(`[DEBUG] Auto-detected file: ${foundFile}`);
+            }
+            break;
+          }
+        }
+      } else {
+        if (options.debug) {
+          console.log(`[DEBUG] Using specified file: ${foundFile}`);
+        }
+        // Validate that the specified file exists
+        if (!fs.existsSync(foundFile)) {
+          console.error(chalk.redBright(`Error: File not found: ${foundFile}`));
+          process.exit(1);
+        }
+      }
+
+      if (!foundFile) {
+        console.error(chalk.redBright('Error: No evaluation file found or specified'));
+        console.error(chalk.gray('Use -f <file> or create one of: evals.yaml, eval.yaml, evals.yml, eval.yml'));
+        process.exit(1);
+      }
+
+      if (options.debug) {
+        console.log(`[DEBUG] Final file to use: ${foundFile}`);
+      }
+
+      // Run interactive mode if -i/--interactive flag is present
+      if (options.interactive) {
+        runInteractiveMode({ file: foundFile });
+      } else {
+        runCommand({ file: foundFile, debug: options.debug, interactive: false, async: options.async });
+      }
     }
   });
 

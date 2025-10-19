@@ -32,6 +32,19 @@ interface RunOptions {
   async?: boolean;
 }
 
+interface SuiteRunOptions {
+  suiteName: string;
+  model?: string;
+  systemPrompt?: string;
+  threads?: number;
+  mcpUrl?: string;
+  mcpName?: string;
+  mcpToken?: string;
+  debug?: boolean;
+  interactive?: boolean;
+  async?: boolean;
+}
+
 export async function runInteractiveMode(options: RunOptions) {
   return runInteractiveCommand(options);
 }
@@ -154,6 +167,160 @@ export async function runCommand(options: RunOptions) {
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
       displayInvitePrompt();
+      process.exit(1);
+    } else if (error.response?.status === 402) {
+      const errorMsg = error.response.data?.error?.message ||
+                       error.response.data?.error ||
+                       'Payment required: Your credits are running low';
+      console.error(chalk.redBright(`\n${errorMsg}`));
+      console.error(chalk.gray('Visit https://vibescheck.io to add credits'));
+      process.exit(1);
+    } else if (error.response?.status === 500) {
+      console.error(chalk.redBright('\nServer error: The VibeCheck API encountered an error'));
+      process.exit(1);
+    } else if (error.response?.data?.error) {
+      const errorMsg = typeof error.response.data.error === 'string'
+        ? error.response.data.error
+        : error.response.data.error.message || JSON.stringify(error.response.data.error);
+      console.error(chalk.redBright(`\nAPI Error: ${errorMsg}`));
+      process.exit(1);
+    } else {
+      console.error(chalk.redBright(`\n${error.message}`));
+      process.exit(1);
+    }
+  }
+}
+
+export async function runSuiteInteractiveMode(options: SuiteRunOptions) {
+  // For now, we'll implement this as a simple wrapper that calls runSuiteCommand
+  // In the future, this could be enhanced to provide interactive suite selection
+  return runSuiteCommand(options);
+}
+
+export async function runSuiteCommand(options: SuiteRunOptions) {
+  const { suiteName, model, systemPrompt, threads, mcpUrl, mcpName, mcpToken, debug, async: asyncMode } = options;
+
+  const spinner = ora(`Fetching suite "${suiteName}"...`).start();
+
+  try {
+    // Fetch suite from API
+    const suiteResponse = await axios.get(`${API_URL}/api/suite/${encodeURIComponent(suiteName)}`, {
+      headers: getAuthHeaders()
+    });
+
+    if (suiteResponse.data.error) {
+      spinner.fail(chalk.redBright(`Error: ${suiteResponse.data.error}`));
+      process.exit(1);
+    }
+
+    const suite = suiteResponse.data.suite;
+    spinner.text = 'Parsing suite...';
+
+    // Parse YAML content from the suite
+    const data = yaml.load(suite.yamlContent);
+
+    // Validate YAML structure
+    const parseResult = EvalSuiteSchema.safeParse(data);
+
+    if (!parseResult.success) {
+      spinner.fail(chalk.redBright('Invalid suite format 🚩'));
+      console.error(chalk.redBright('\nValidation errors:'));
+      parseResult.error.errors.forEach(err => {
+        console.error(chalk.redBright(`  - ${err.path.join('.')}: ${err.message}`));
+      });
+      process.exit(1);
+    }
+
+    const evalSuite = parseResult.data;
+    spinner.text = 'Applying overrides...';
+
+    // Apply metadata overrides
+    if (model) {
+      evalSuite.metadata.model = model;
+    }
+    if (systemPrompt !== undefined) {
+      evalSuite.metadata.system_prompt = systemPrompt;
+    }
+    if (threads !== undefined) {
+      evalSuite.metadata.threads = threads;
+    }
+
+    // Handle MCP server overrides
+    if (mcpUrl || mcpName || mcpToken) {
+      evalSuite.metadata.mcp_server = {
+        url: mcpUrl || evalSuite.metadata.mcp_server?.url || '',
+        name: mcpName || evalSuite.metadata.mcp_server?.name || '',
+        authorization_token: mcpToken || evalSuite.metadata.mcp_server?.authorization_token
+      };
+    }
+
+    spinner.succeed(chalk.green(`Suite "${suiteName}" loaded successfully ✨`));
+
+    // Warning for missing system_prompt
+    if (!evalSuite.metadata.system_prompt) {
+      console.log(chalk.yellow('⚠️  Warning: system_prompt is optional but recommended for better results'));
+    }
+
+    const requestPayload = {
+      evalSuite,
+      yamlContent: suite.yamlContent
+    };
+
+    if (debug) {
+      const headers = getAuthHeaders();
+      const debugHeaders = { ...headers };
+      if (debugHeaders['X-API-KEY']) {
+        debugHeaders['X-API-KEY'] = `${debugHeaders['X-API-KEY'].substring(0, 10)}...`;
+      }
+      console.log(chalk.cyan('\n[DEBUG] Request to:'), `${API_URL}/api/eval/run`);
+      console.log(chalk.cyan('[DEBUG] Headers:'), JSON.stringify(debugHeaders, null, 2));
+      console.log(chalk.cyan('[DEBUG] Request payload:'), JSON.stringify(requestPayload, null, 2));
+      console.log();
+    }
+
+    const response = await axios.post(`${API_URL}/api/eval/run`, requestPayload, {
+      headers: getAuthHeaders()
+    });
+
+    if (debug) {
+      console.log(chalk.cyan('[DEBUG] Response status:'), response.status);
+      console.log(chalk.cyan('[DEBUG] Response data:'), JSON.stringify(response.data, null, 2));
+      console.log();
+    }
+
+    if (response.data.error) {
+      const errorMsg = typeof response.data.error === 'string'
+        ? response.data.error
+        : response.data.error.message || JSON.stringify(response.data.error);
+      console.error(chalk.redBright(`API Error 🚩: ${errorMsg}`));
+      process.exit(1);
+    }
+
+    const runId = response.data.runId;
+
+    // If async mode, exit immediately after starting the run
+    if (asyncMode) {
+      console.log(chalk.green(`✨ Run started successfully!`));
+      console.log(chalk.cyan(`Run ID: ${runId}`));
+      console.log(chalk.gray(`\nCheck status with: vibe get run ${runId}`));
+      process.exit(0);
+    }
+
+    console.log(chalk.blue(`Checking vibes... Run ID: ${runId}\n`));
+
+    // Stream results using existing function
+    await streamResults(runId, debug);
+
+  } catch (error: any) {
+    spinner.fail(chalk.redBright('Failed to check vibes 🚩'));
+
+    // Handle specific HTTP error codes
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      displayInvitePrompt();
+      process.exit(1);
+    } else if (error.response?.status === 404) {
+      console.error(chalk.redBright(`\nSuite "${suiteName}" not found`));
+      console.error(chalk.gray('Use "vibe get suites" to list available suites'));
       process.exit(1);
     } else if (error.response?.status === 402) {
       const errorMsg = error.response.data?.error?.message ||

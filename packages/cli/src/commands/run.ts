@@ -7,6 +7,7 @@ import { EvalSuiteSchema, EvalResult, ConditionalResult } from '../types';
 import { runInteractiveCommand } from './interactive-run';
 import { displaySummary } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
+import { writeRunOutput } from '../utils/output-writer';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 const API_KEY = process.env.VIBECHECK_API_KEY;
@@ -159,7 +160,7 @@ export async function runCommand(options: RunOptions) {
     console.log(chalk.blue(`Checking vibes... Run ID: ${runId}\n`));
 
     // Stream results using EventSource or polling
-    await streamResults(runId, debug);
+    await streamResults(runId, debug, fileContent);
 
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to check vibes 🚩'));
@@ -309,7 +310,7 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
     console.log(chalk.blue(`Checking vibes... Run ID: ${runId}\n`));
 
     // Stream results using existing function
-    await streamResults(runId, debug);
+    await streamResults(runId, debug, suite.yamlContent);
 
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to check vibes 🚩'));
@@ -345,7 +346,7 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
   }
 }
 
-async function streamResults(runId: string, debug?: boolean) {
+async function streamResults(runId: string, debug?: boolean, yamlContent?: string) {
   // Allow polling interval to be configured via env var (default: 1000ms / 1 second)
   const pollInterval = process.env.VIBECHECK_POLL_INTERVAL
     ? parseInt(process.env.VIBECHECK_POLL_INTERVAL, 10)
@@ -401,6 +402,20 @@ async function streamResults(runId: string, debug?: boolean) {
           displayResults(results.slice(lastDisplayedCount));
         }
         completed = true;
+        
+        // Save run output to file
+        try {
+          const outputPath = await writeRunOutput({
+            runId,
+            results,
+            totalTimeMs,
+            yamlContent
+          });
+          console.log(chalk.gray(`\nOutput saved to: ${outputPath}`));
+        } catch (error: any) {
+          console.log(chalk.yellow(`\nWarning: Failed to save output: ${error.message}`));
+        }
+        
         await displaySummary(results, totalTimeMs);
       } else if (status === 'failed') {
         spinner.stop();
@@ -419,6 +434,20 @@ async function streamResults(runId: string, debug?: boolean) {
           const errorMsg = statusError?.message || statusError;
           console.log(chalk.yellow(`   ${errorMsg}`));
         }
+        
+        // Save run output to file
+        try {
+          const outputPath = await writeRunOutput({
+            runId,
+            results,
+            totalTimeMs,
+            yamlContent
+          });
+          console.log(chalk.gray(`\nOutput saved to: ${outputPath}`));
+        } catch (error: any) {
+          console.log(chalk.yellow(`\nWarning: Failed to save output: ${error.message}`));
+        }
+        
         await displaySummary(results, totalTimeMs);
         process.exit(1);
       } else if (status === 'timed_out') {
@@ -432,6 +461,20 @@ async function streamResults(runId: string, debug?: boolean) {
           const errorMsg = statusError?.message || statusError;
           console.log(chalk.yellow(`   ${errorMsg}`));
         }
+        
+        // Save run output to file
+        try {
+          const outputPath = await writeRunOutput({
+            runId,
+            results,
+            totalTimeMs,
+            yamlContent
+          });
+          console.log(chalk.gray(`\nOutput saved to: ${outputPath}`));
+        } catch (error: any) {
+          console.log(chalk.yellow(`\nWarning: Failed to save output: ${error.message}`));
+        }
+        
         await displaySummary(results, totalTimeMs);
         process.exit(1);
       } else if (status === 'error') {

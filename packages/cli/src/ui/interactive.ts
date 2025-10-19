@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { EvalResult, ConditionalResult } from '../types';
+import { writeRunOutput as writeRunOutputToFile } from '../utils/output-writer';
 
 // Configurable table width - easy to tweak
 const TABLE_WIDTH = 120;
@@ -860,91 +861,15 @@ export class InteractiveUI {
       return;
     }
 
-    const outputPath = path.join(this.outputDir, `${this.currentRunId}.txt`);
-    const output: string[] = [];
-
-    // Header
-    output.push('='.repeat(80));
-    output.push('VIBECHECK RUN OUTPUT');
-    output.push('='.repeat(80));
-    output.push('');
-    output.push(`Run ID: ${this.currentRunId}`);
-    output.push(`Timestamp: ${new Date().toISOString()}`);
-    output.push('');
-
-    // YAML content
-    if (this.yamlContent) {
-      output.push('='.repeat(80));
-      output.push('EVALUATION YAML');
-      output.push('='.repeat(80));
-      output.push('');
-      output.push(this.yamlContent);
-      output.push('');
-    }
-
-    // Streamed logs
-    output.push('='.repeat(80));
-    output.push('EXECUTION LOG');
-    output.push('='.repeat(80));
-    output.push('');
-    output.push(...this.runLog);
-    output.push('');
-
-    // Summary
-    output.push('='.repeat(80));
-    output.push('SUMMARY');
-    output.push('='.repeat(80));
-    output.push('');
-
-    const displayNames = await Promise.all(results.map(r => this.truncatePrompt(r.prompt)));
-    const maxNameLength = Math.max(...displayNames.map(n => n.length), 20);
-
-    results.forEach((result, index) => {
-      const paddedName = displayNames[index].padEnd(maxNameLength);
-      const passedChecks = result.checkResults.filter(c => c.passed).length;
-      const failedChecks = result.checkResults.filter(c => !c.passed).length;
-      const failBar = '-'.repeat(failedChecks);
-      const passBar = '+'.repeat(passedChecks);
-      const timeStr = result.executionTimeMs ? `in ${(result.executionTimeMs / 1000).toFixed(1)}s` : '';
-      const status = result.passed ? '✅' : '🚩';
-
-      output.push(`${paddedName}  ${failBar}|${passBar}  ${status} ${timeStr}`);
-    });
-
-    const totalEvals = results.length;
-    const passedEvals = results.filter(r => r.passed).length;
-    const passRate = totalEvals > 0 ? (passedEvals / totalEvals) * 100 : 0;
-
-    output.push('');
-    output.push('-'.repeat(80));
-
-    let vibeStatus = '🚩 bad vibes';
-    if (passRate > 80) {
-      vibeStatus = '✨ good vibes';
-    } else if (passRate >= 50) {
-      vibeStatus = '😬 sketchy vibes';
-    }
-
-    output.push(`Vibe Rating: ${passedEvals}/${totalEvals} (${passRate.toFixed(1)}%) - ${vibeStatus}`);
-    if (totalTimeMs) {
-      output.push(`Total Time: ${(totalTimeMs / 1000).toFixed(2)}s`);
-    }
-    output.push('-'.repeat(80));
-    output.push('');
-
-    if (passRate < 50) {
-      output.push('🚩 Bad vibes detected: Vibe rating below 50%');
-    } else {
-      output.push('✨ Good vibes all around!');
-    }
-
-    output.push('');
-    output.push(`Output saved to: ${outputPath}`);
-    output.push('');
-
-    // Write to file
     try {
-      fs.writeFileSync(outputPath, output.join('\n'));
+      const outputPath = await writeRunOutputToFile({
+        runId: this.currentRunId,
+        results,
+        totalTimeMs,
+        yamlContent: this.yamlContent || undefined,
+        runLog: this.runLog,
+        outputDir: this.outputDir
+      });
       this.displayInfo(`Output saved to: ${outputPath}`);
     } catch (error: any) {
       this.displayError(`Failed to write output file: ${error.message}`);

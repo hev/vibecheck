@@ -42,6 +42,7 @@ export class InteractiveUI {
   private currentRunId: string | null = null;
   private yamlContent: string | null = null;
   private outputDir: string;
+  private isUserScrolling: boolean = false;
 
   constructor(outputDir?: string) {
     // Set up output directory (priority: parameter > env var > default)
@@ -63,10 +64,11 @@ export class InteractiveUI {
     this.resultsBox = blessed.box({
       top: 0,
       left: 0,
-      width: '100%',
+      width: '100%-2',
       height: '70%-1',
       content: '{bold}{cyan-fg}✨ VibeCheck - Ready to check those vibes{/cyan-fg}{/bold}\n\nLoad a file to get started',
       tags: true,
+      wrap: false,
       border: {
         type: 'line',
       },
@@ -94,10 +96,11 @@ export class InteractiveUI {
     this.summaryBox = blessed.box({
       top: '70%',
       left: 0,
-      width: '100%',
+      width: '100%-2',
       height: '30%-2',
       content: '',
       tags: true,
+      wrap: false,
       border: {
         type: 'line',
       },
@@ -193,12 +196,14 @@ export class InteractiveUI {
       process.exit(0);
     });
 
-    // Tab to toggle focus between results and command input
+    // Tab to cycle focus between results, summary, and command input
     this.screen.key(['tab'], () => {
-      if (this.screen.focused === this.summaryBox) {
+      if (this.screen.focused === this.resultsBox) {
+        this.summaryBox.focus();
+      } else if (this.screen.focused === this.summaryBox) {
         this.commandInput.focus();
       } else {
-        this.summaryBox.focus();
+        this.resultsBox.focus();
       }
       this.screen.render();
     });
@@ -209,23 +214,52 @@ export class InteractiveUI {
       this.screen.render();
     });
 
-    // Scroll keys - only work when results box is focused
+    // Scroll keys for resultsBox
+    this.resultsBox.key(['up', 'k'], () => {
+      this.isUserScrolling = true;
+      this.resultsBox.scroll(-1);
+      this.screen.render();
+    });
+
+    this.resultsBox.key(['down', 'j'], () => {
+      this.isUserScrolling = true;
+      this.resultsBox.scroll(1);
+      this.screen.render();
+    });
+
+    this.resultsBox.key(['pageup'], () => {
+      this.isUserScrolling = true;
+      this.resultsBox.scroll(-10);
+      this.screen.render();
+    });
+
+    this.resultsBox.key(['pagedown'], () => {
+      this.isUserScrolling = true;
+      this.resultsBox.scroll(10);
+      this.screen.render();
+    });
+
+    // Scroll keys for summaryBox
     this.summaryBox.key(['up', 'k'], () => {
+      this.isUserScrolling = true;
       this.summaryBox.scroll(-1);
       this.screen.render();
     });
 
     this.summaryBox.key(['down', 'j'], () => {
+      this.isUserScrolling = true;
       this.summaryBox.scroll(1);
       this.screen.render();
     });
 
     this.summaryBox.key(['pageup'], () => {
+      this.isUserScrolling = true;
       this.summaryBox.scroll(-10);
       this.screen.render();
     });
 
     this.summaryBox.key(['pagedown'], () => {
+      this.isUserScrolling = true;
       this.summaryBox.scroll(10);
       this.screen.render();
     });
@@ -251,7 +285,9 @@ export class InteractiveUI {
   appendResults(text: string) {
     this.resultsContent.push(text);
     this.resultsBox.setContent(this.resultsContent.join('\n'));
-    this.resultsBox.setScrollPerc(100); // Auto-scroll to bottom
+    if (!this.isUserScrolling) {
+      this.resultsBox.setScrollPerc(100); // Auto-scroll to bottom only if user isn't scrolling
+    }
     this.screen.render();
 
     // Add to run log (strip blessed tags for plain text)
@@ -410,7 +446,9 @@ export class InteractiveUI {
     }
 
     this.summaryBox.setContent(lines.join('\n'));
-    this.summaryBox.setScrollPerc(100); // Auto-scroll to bottom
+    if (!this.isUserScrolling) {
+      this.summaryBox.setScrollPerc(100); // Auto-scroll to bottom only if user isn't scrolling
+    }
 
     // Auto-focus the results box so user can scroll immediately
     this.summaryBox.focus();
@@ -510,6 +548,166 @@ export class InteractiveUI {
     this.summaryBox.setContent(message);
     this.summaryBox.setScrollPerc(100); // Auto-scroll to bottom
     this.screen.render();
+  }
+
+  displayOrgInfo(orgInfo: any) {
+    const lines: string[] = [];
+    lines.push('{bold}{cyan-fg}Organization Information:{/cyan-fg}{/bold}');
+    lines.push('');
+    lines.push('{cyan-fg}Organization:{/cyan-fg} {white-fg}' + this.escapeText(orgInfo.name) + '{/white-fg}');
+    lines.push('{cyan-fg}Slug:{/cyan-fg} {white-fg}' + this.escapeText(orgInfo.slug) + '{/white-fg}');
+    lines.push('{cyan-fg}Status:{/cyan-fg} {white-fg}' + this.escapeText(orgInfo.status) + '{/white-fg}');
+    
+    // Color code credits based on amount
+    const creditsAmount = `$${orgInfo.credits.toFixed(2)}`;
+    const creditsColor = orgInfo.credits < 1.00 ? '{red-fg}' : '{white-fg}';
+    lines.push('{cyan-fg}Available Credits:{/cyan-fg} ' + creditsColor + creditsAmount + '{/white-fg} {gray-fg}(Credit balance may be delayed.){/gray-fg}');
+    
+    lines.push('{cyan-fg}Created:{/cyan-fg} {gray-fg}' + new Date(orgInfo.created_at).toLocaleString() + '{/gray-fg}');
+    lines.push('');
+
+    this.displayInfo(lines.join('\n'));
+  }
+
+  displaySuites(suites: any[]) {
+    const lines: string[] = [];
+    
+    if (suites.length === 0) {
+      lines.push('{yellow-fg}No suites found{/yellow-fg}');
+    } else {
+      lines.push('{bold}Available Suites:{/bold}');
+      lines.push('');
+      lines.push('{bold}Name'.padEnd(30) + 'Last Run'.padEnd(25) + 'Last Edit'.padEnd(25) + '# Evals{/bold}');
+      lines.push('='.repeat(100));
+
+      suites.forEach((suite: any) => {
+        const lastRun = suite.lastRun ? new Date(suite.lastRun).toLocaleString() : 'Never';
+        const lastEdit = new Date(suite.lastEdit).toLocaleString();
+
+        lines.push(
+          '{cyan-fg}' + suite.name.padEnd(30) + '{/cyan-fg}' +
+          '{gray-fg}' + lastRun.padEnd(25) + '{/gray-fg}' +
+          '{gray-fg}' + lastEdit.padEnd(25) + '{/gray-fg}' +
+          '{white-fg}' + suite.evalCount + '{/white-fg}'
+        );
+      });
+    }
+
+    lines.push('');
+    this.displayInfo(lines.join('\n'));
+  }
+
+  displaySuite(suite: any) {
+    const lines: string[] = [];
+    lines.push('{bold}{cyan-fg}Suite: ' + this.escapeText(suite.name) + '{/cyan-fg}{/bold}');
+    lines.push('');
+    lines.push('{gray-fg}' + this.escapeText(suite.yamlContent) + '{/gray-fg}');
+    lines.push('');
+
+    this.displayInfo(lines.join('\n'));
+  }
+
+  displayRuns(runs: any[]) {
+    const lines: string[] = [];
+    
+    if (runs.length === 0) {
+      lines.push('{yellow-fg}No runs found{/yellow-fg}');
+    } else {
+      lines.push('{bold}Available Runs:{/bold}');
+      lines.push('');
+      lines.push('{bold}ID'.padEnd(20) + 'Suite'.padEnd(25) + 'Status'.padEnd(15) + 'Success'.padEnd(10) + 'Duration'.padEnd(12) + 'Created{/bold}');
+      lines.push('='.repeat(120));
+
+      runs.forEach((run: any) => {
+        const successRate = run.successRate !== undefined ? `${run.successRate.toFixed(1)}%` : 'N/A';
+        const duration = run.duration ? `${(run.duration / 1000).toFixed(1)}s` : 'N/A';
+        const created = new Date(run.created_at).toLocaleString();
+
+        let statusColor = '{gray-fg}';
+        if (run.status === 'completed') statusColor = '{green-fg}';
+        else if (run.status === 'failed') statusColor = '{red-fg}';
+        else if (run.status === 'running') statusColor = '{yellow-fg}';
+
+        lines.push(
+          '{cyan-fg}' + run.id.substring(0, 19).padEnd(20) + '{/cyan-fg}' +
+          '{white-fg}' + (run.suite_name || 'N/A').padEnd(25) + '{/white-fg}' +
+          statusColor + run.status.padEnd(15) + '{/white-fg}' +
+          '{white-fg}' + successRate.padEnd(10) + '{/white-fg}' +
+          '{white-fg}' + duration.padEnd(12) + '{/white-fg}' +
+          '{gray-fg}' + created + '{/gray-fg}'
+        );
+      });
+    }
+
+    lines.push('');
+    this.displayInfo(lines.join('\n'));
+  }
+
+  displayRun(run: any) {
+    const lines: string[] = [];
+    lines.push('{bold}{cyan-fg}Run Details:{/cyan-fg}{/bold}');
+    lines.push('');
+    lines.push('{cyan-fg}ID:{/cyan-fg} {white-fg}' + this.escapeText(run.id) + '{/white-fg}');
+    lines.push('{cyan-fg}Suite:{/cyan-fg} {white-fg}' + this.escapeText(run.suite_name || 'N/A') + '{/white-fg}');
+    lines.push('{cyan-fg}Status:{/cyan-fg} {white-fg}' + this.escapeText(run.status) + '{/white-fg}');
+    lines.push('{cyan-fg}Success Rate:{/cyan-fg} {white-fg}' + (run.successRate !== undefined ? `${run.successRate.toFixed(1)}%` : 'N/A') + '{/white-fg}');
+    lines.push('{cyan-fg}Duration:{/cyan-fg} {white-fg}' + (run.duration ? `${(run.duration / 1000).toFixed(1)}s` : 'N/A') + '{/white-fg}');
+    lines.push('{cyan-fg}Created:{/cyan-fg} {gray-fg}' + new Date(run.created_at).toLocaleString() + '{/gray-fg}');
+    
+    if (run.results && run.results.length > 0) {
+      lines.push('');
+      lines.push('{bold}Results:{/bold}');
+      run.results.forEach((result: any, index: number) => {
+        const status = result.passed ? '{green-fg}✅ PASS{/green-fg}' : '{red-fg}🚩 FAIL{/red-fg}';
+        lines.push(`  ${index + 1}. ${status} ${this.escapeText(result.prompt.substring(0, 50))}...`);
+      });
+    }
+    
+    lines.push('');
+    this.displayInfo(lines.join('\n'));
+  }
+
+  displayModels(models: any[], filters: any = {}) {
+    const lines: string[] = [];
+    
+    if (models.length === 0) {
+      lines.push('{yellow-fg}No models available{/yellow-fg}');
+    } else {
+      // Build filter description
+      let filterDesc = '';
+      if (filters.mcp || filters.price || filters.provider) {
+        const filterParts: string[] = [];
+        if (filters.mcp) filterParts.push('MCP only');
+        if (filters.price) filterParts.push(`Price: ${filters.price}`);
+        if (filters.provider) filterParts.push(`Provider: ${filters.provider}`);
+        filterDesc = ` [${filterParts.join('] [')}]`;
+      }
+
+      lines.push('{bold}Models (' + models.length + ')' + filterDesc + '{/bold}');
+      lines.push('');
+      lines.push('{bold}ID'.padEnd(40) + 'Description'.padEnd(50) + 'MCP'.padEnd(5) + 'Price{/bold}');
+      lines.push('-'.repeat(101));
+
+      models.forEach((model: any) => {
+        const id = String(model.id || '');
+        const desc = String(model.description || model.name || '');
+        const mcp = Array.isArray(model.supported_parameters) && model.supported_parameters.includes('tools') ? 'yes' : 'no';
+        
+        // Simple price tier calculation (simplified for display)
+        const hasPricing = model.pricing?.prompt && model.pricing?.completion;
+        const priceTier = hasPricing ? '$$' : '-';
+
+        lines.push(
+          '{cyan-fg}' + id.padEnd(40) + '{/cyan-fg}' +
+          '{gray-fg}' + desc.padEnd(50) + '{/gray-fg}' +
+          (mcp === 'yes' ? '{green-fg}' : '{gray-fg}') + mcp.padEnd(5) + '{/white-fg}' +
+          '{white-fg}' + priceTier + '{/white-fg}'
+        );
+      });
+    }
+
+    lines.push('');
+    this.displayInfo(lines.join('\n'));
   }
 
   private escapeText(text: string): string {
@@ -623,14 +821,20 @@ export class InteractiveUI {
       '',
       '{bold}{yellow-fg}Available Commands:{/yellow-fg}{/bold}',
       '',
-      '{cyan-fg}:check{/cyan-fg}              - Run the loaded evaluation file',
-      '{cyan-fg}:exit, :quit, :q{/cyan-fg} - Exit the interactive mode',
+      '{cyan-fg}:check [file]{/cyan-fg}        - Run evaluation file (or current file)',
+      '{cyan-fg}:get suites{/cyan-fg}          - List all evaluation suites',
+      '{cyan-fg}:get suite <name>{/cyan-fg}    - Get specific suite YAML',
+      '{cyan-fg}:get runs [options]{/cyan-fg}  - List runs (--suite, --status, --limit, etc.)',
+      '{cyan-fg}:get run <id>{/cyan-fg}        - Get specific run details',
+      '{cyan-fg}:get models [options]{/cyan-fg} - List models (--mcp, --price, --provider)',
+      '{cyan-fg}:get org{/cyan-fg}             - Show organization info and credits',
+      '{cyan-fg}:exit, :quit, :q{/cyan-fg}     - Exit the interactive mode',
       '',
       '{bold}{yellow-fg}Navigation:{/yellow-fg}{/bold}',
       '',
-      '{cyan-fg}Tab{/cyan-fg}              - Toggle focus between Results and command input',
-      '{cyan-fg}↑/↓ or j/k{/cyan-fg}      - Scroll Results pane (when focused)',
-      '{cyan-fg}Page Up/Down{/cyan-fg}    - Fast scroll in Results pane (when focused)',
+      '{cyan-fg}Tab{/cyan-fg}              - Cycle focus: Results → Summary → Command input',
+      '{cyan-fg}↑/↓ or j/k{/cyan-fg}      - Scroll focused pane',
+      '{cyan-fg}Page Up/Down{/cyan-fg}    - Fast scroll focused pane',
       '{cyan-fg}Escape{/cyan-fg}           - Return to command input',
       '{cyan-fg}Ctrl+C{/cyan-fg}           - Exit and show summary in terminal',
       '',
@@ -752,6 +956,15 @@ export class InteractiveUI {
   }
 
   destroy() {
-    this.screen.destroy();
+    try {
+      // Suppress terminal capability errors during cleanup
+      const originalStderrWrite = process.stderr.write;
+      process.stderr.write = (() => {}) as any;
+      this.screen.destroy();
+      // Restore stderr
+      process.stderr.write = originalStderrWrite;
+    } catch (error) {
+      // Ignore blessed cleanup errors
+    }
   }
 }

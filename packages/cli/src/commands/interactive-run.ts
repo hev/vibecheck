@@ -5,6 +5,15 @@ import { EvalSuiteSchema, EvalResult } from '../types';
 import { InteractiveUI } from '../ui/interactive';
 import { runOnboarding } from './onboarding';
 import { displayInvitePrompt } from '../utils/auth-error';
+import { 
+  fetchOrgInfo, 
+  fetchSuites, 
+  fetchSuite, 
+  fetchRuns, 
+  fetchRun, 
+  fetchModels, 
+  handleApiError 
+} from '../utils/command-helpers';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 
@@ -55,13 +64,16 @@ export async function runInteractiveCommand(options: RunOptions) {
 
       currentFile = filePath;
       await runEvaluation(filePath, ui, options.debug);
+    } else if (cmd === 'get') {
+      // Get command - handle all get subcommands
+      await handleGetCommand(parts.slice(1), ui, options.debug);
     } else if (cmd === 'exit' || cmd === 'quit' || cmd === 'q') {
       // Print summary to console before exiting
       await ui.printSummaryToConsole();
       ui.destroy();
       process.exit(0);
     } else if (trimmedCommand !== '') {
-      ui.displayError(`Unknown command: ${cmd}. Available commands: check, exit`);
+      ui.displayError(`Unknown command: ${cmd}. Available commands: check, get, exit`);
     }
   });
 
@@ -89,6 +101,103 @@ export async function runInteractiveCommand(options: RunOptions) {
   }
 
   ui.render();
+}
+
+async function handleGetCommand(args: string[], ui: InteractiveUI, debug?: boolean) {
+  if (args.length === 0) {
+    ui.displayError('Usage: :get <noun> [identifier] [options]');
+    ui.displayError('Available nouns: suites, suite, runs, run, models, org, credits');
+    return;
+  }
+
+  const noun = args[0].toLowerCase();
+  const identifier = args[1];
+  const options = parseGetOptions(args.slice(2));
+
+  try {
+    switch (noun) {
+      case 'suites':
+      case 'evals':
+        const suites = await fetchSuites(debug);
+        ui.displaySuites(suites);
+        break;
+
+      case 'suite':
+      case 'eval':
+        if (!identifier) {
+          ui.displayError('Suite name required. Usage: :get suite <name>');
+          return;
+        }
+        const suite = await fetchSuite(identifier, debug);
+        ui.displaySuite(suite);
+        break;
+
+      case 'runs':
+        const runs = await fetchRuns(options, debug);
+        ui.displayRuns(runs);
+        break;
+
+      case 'run':
+        if (!identifier) {
+          ui.displayError('Run ID required. Usage: :get run <id>');
+          return;
+        }
+        const run = await fetchRun(identifier, debug);
+        ui.displayRun(run);
+        break;
+
+      case 'models':
+        const models = await fetchModels(debug);
+        ui.displayModels(models, options);
+        break;
+
+      case 'org':
+      case 'credits':
+        const orgInfo = await fetchOrgInfo(debug);
+        ui.displayOrgInfo(orgInfo);
+        break;
+
+      default:
+        ui.displayError(`Unknown resource: ${noun}`);
+        ui.displayError('Available nouns: suites, suite, runs, run, models, org, credits');
+    }
+  } catch (error: any) {
+    ui.displayError(`Error: ${error.message}`);
+  }
+}
+
+function parseGetOptions(args: string[]): any {
+  const options: any = {};
+  
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg === '--mcp') {
+      options.mcp = true;
+    } else if (arg === '--price' && i + 1 < args.length) {
+      options.price = args[++i];
+    } else if (arg === '--provider' && i + 1 < args.length) {
+      options.provider = args[++i];
+    } else if (arg === '--suite' && i + 1 < args.length) {
+      options.suite = args[++i];
+    } else if (arg === '--status' && i + 1 < args.length) {
+      options.status = args[++i];
+    } else if (arg === '--success-gt' && i + 1 < args.length) {
+      options.successGt = parseInt(args[++i], 10);
+    } else if (arg === '--success-lt' && i + 1 < args.length) {
+      options.successLt = parseInt(args[++i], 10);
+    } else if (arg === '--time-gt' && i + 1 < args.length) {
+      options.timeGt = parseFloat(args[++i]);
+    } else if (arg === '--time-lt' && i + 1 < args.length) {
+      options.timeLt = parseFloat(args[++i]);
+    } else if (arg === '--limit' && i + 1 < args.length) {
+      options.limit = parseInt(args[++i], 10);
+    } else if (arg === '--offset' && i + 1 < args.length) {
+      options.offset = parseInt(args[++i], 10);
+    }
+  }
+  
+  return options;
 }
 
 async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {

@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { runCommand, runInteractiveMode, runSuiteCommand, runSuiteInteractiveMode } from './commands/run';
+import { runInteractiveCommand } from './commands/interactive-run';
 import { saveCommand, listCommand, getCommand as getSuiteCommand } from './commands/suite';
 import { orgCommand } from './commands/org';
 import { listRunsCommand, listRunsBySuiteCommand, getRunCommand } from './commands/runs';
@@ -60,7 +61,16 @@ const program = new Command();
 program
   .name('vibe')
   .description('CLI tool for running language model evaluations')
-  .version('0.1.0');
+  .version('0.1.0')
+  .action(() => {
+    // Check if user explicitly requested help or version
+    if (process.argv.includes('--help') || process.argv.includes('-h') || 
+        process.argv.includes('--version') || process.argv.includes('-V')) {
+      return; // Let commander handle these
+    }
+    // Launch interactive mode with no file
+    runInteractiveCommand({ file: undefined, debug: false });
+  });
 
 // Check command - runs in non-interactive mode by default, or interactive with -i/--interactive flag
 const checkCommand = program
@@ -145,9 +155,10 @@ const checkCommand = program
       }
 
       if (!foundFile) {
-        console.error(chalk.redBright('Error: No evaluation file found or specified'));
-        console.error(chalk.gray('Use -f <file> or create one of: evals.yaml, eval.yaml, evals.yml, eval.yml'));
-        process.exit(1);
+        // Launch interactive mode instead of exiting
+        console.log(chalk.yellow('No evaluation file found. Launching interactive mode...\n'));
+        await runInteractiveCommand({ file: undefined, debug: options.debug });
+        return;
       }
 
       if (options.debug) {

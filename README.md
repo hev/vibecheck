@@ -236,10 +236,24 @@ metadata:
   name: my-eval-suite     # Required: Suite name
   model: anthropic/claude-3.5-sonnet  # Required: Model to test
   system_prompt: "You are a helpful assistant"  # Optional: System prompt
+  threads: 4              # Optional: Parallel threads for execution
   mcp_server:             # Optional: MCP server config
     url: "https://your-server.com"
     name: "server-name"
     authorization_token: "your-token"
+```
+
+> Note: For a one-time run of a saved suite, you can override any metadata at the command line (model, system prompt, threads, and MCP settings).
+
+```bash
+# Run a saved suite with one-time overrides
+vibe check my-eval-suite \
+  --model openai/gpt-4o \
+  --system-prompt "You are a terse, helpful assistant." \
+  --threads 8 \
+  --mcp-url https://your-mcp-server.com \
+  --mcp-name server-name \
+  --mcp-token your-token
 ```
 
 ## Vibe Ratings

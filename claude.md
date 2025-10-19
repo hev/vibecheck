@@ -56,7 +56,6 @@ vibecheck/
 ├── examples/                      # Example YAML eval files
 │   ├── hello-world.yaml          # Basic checks example
 │   ├── multilingual-pbj.yaml     # Multilingual testing
-│   ├── financial-evals.yaml      # MCP tool calling
 │   └── politics.yaml             # Political evaluation
 ├── scripts/                       # Publishing and build scripts
 │   └── publish.sh                # npm publishing script

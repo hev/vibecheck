@@ -78,26 +78,28 @@ evals:
       max_tokens: 300
 ```
 
-### 🏦 Financial Tool Integration
-Validate MCP (Model Context Protocol) tool calling with financial data:
+### 🔧 MCP Tool Integration
+Validate MCP (Model Context Protocol) tool calling with external services:
 
 ```yaml
-# examples/financial-evals.yaml
+# examples/mcp-evals.yaml
 metadata:
-  name: financial_advice
+  name: mcp_tool_test
   model: anthropic/claude-3.5-sonnet
   system_prompt: |
-    You are an AI assistant for financial prospects.
-    For specific financial questions, you have access to Taffrail tools.
+    You are an AI assistant with access to external tools.
+    Use the available tools to answer questions accurately.
   mcp_server:
     url: "https://your-mcp-server.com"
-    name: "taffrail-financial-tools"
+    name: "your-tool-server"
     authorization_token: "your-token"
 
 evals:
-  - prompt: "How much can I contribute to my Roth IRA?"
+  - prompt: "What's the weather like today?"
     checks:
-      match: "*TF766d_1Q8-6X-ZSZIvL3PH*"  # Tool response ID
+      match: "*weather*"  # Should use weather tool
+      min_tokens: 10
+      max_tokens: 200
 ```
 
 ### 🧠 Advanced Evaluation Patterns

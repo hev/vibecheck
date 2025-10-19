@@ -12,7 +12,7 @@ save the results, and tweak your system prompts with incredibly tight feedback l
 
 > 🎃 **Get Your Invite** 👻
 >
-> vibe check is currently being offered as an exclusive invite-only Halloween pop up! 🦇 Join the #hacktoberfest spirits and summon your API key at [vibescheck.io](https://vibescheck.io) to read the haunted FAQ. 🕷️
+> vibe check is currently being offered as an exclusive invite-only halloween pop up! Read our FAQ and summon your API key at [vibescheck.io](https://vibescheck.io).
 
 ## Installation
 
@@ -22,8 +22,14 @@ npm install -g @vibecheck/cli
 
 **Get your API key at [vibescheck.io](https://vibescheck.io)**
 
-## Quick Example
+## Quick Start 
 
+> 💡 Tip: Try the interactive onboarding experience
+>
+> ```bash
+> vibe check --interactive
+> ```
+>
 Create a simple evaluation file:
 
 ```yaml

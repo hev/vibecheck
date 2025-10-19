@@ -1,13 +1,14 @@
-# VibeCheck CLI ✨
+# vibecheck CLI ✨
 
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/your-org/vibecheck/actions)
 [![Coverage](https://img.shields.io/badge/coverage-80%25-green)](https://github.com/your-org/vibecheck)
 [![npm version](https://img.shields.io/npm/v/@vibecheck/cli)](https://www.npmjs.com/package/@vibecheck/cli)
 [![License](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/licenses/MIT)
 
-**The agent evaluation framework for any LLM** - Test your language models with vibe-themed conditional checks across multiple providers.
+**An agent evaluation framework for any LLM** - A simple and intuitive YAML based DSL for language evals.
 
-VibeCheck makes it easy to evaluate any language model with a simple YAML configuration. Whether you're testing Claude, GPT, Gemini, or any other LLM, VibeCheck provides a consistent interface for running evaluations and getting clear pass/fail results.
+vibe check makes it easy to evaluate any language model with a simple YAML configuration. Run evals,
+save the results, and tweak your system prompts with incredibly tight feedback loop from the command line.
 
 ## Installation
 
@@ -78,28 +79,26 @@ evals:
       max_tokens: 300
 ```
 
-### 🔧 MCP Tool Integration
-Validate MCP (Model Context Protocol) tool calling with external services:
+### 🏦 Financial Tool Integration
+Validate MCP (Model Context Protocol) tool calling with financial data:
 
 ```yaml
-# examples/mcp-evals.yaml
+# examples/financial-evals.yaml
 metadata:
-  name: mcp_tool_test
+  name: financial_advice
   model: anthropic/claude-3.5-sonnet
   system_prompt: |
-    You are an AI assistant with access to external tools.
-    Use the available tools to answer questions accurately.
+    You are an AI assistant for financial prospects.
+    For specific financial questions, you have access to Taffrail tools.
   mcp_server:
     url: "https://your-mcp-server.com"
-    name: "your-tool-server"
+    name: "taffrail-financial-tools"
     authorization_token: "your-token"
 
 evals:
-  - prompt: "What's the weather like today?"
+  - prompt: "How much can I contribute to my Roth IRA?"
     checks:
-      match: "*weather*"  # Should use weather tool
-      min_tokens: 10
-      max_tokens: 200
+      match: "*TF766d_1Q8-6X-ZSZIvL3PH*"  # Tool response ID
 ```
 
 ### 🧠 Advanced Evaluation Patterns
@@ -120,7 +119,9 @@ evals:
 
   - prompt: What is 2+2?
     checks:
-      match: "*4*"
+      or:
+        match: "*4*"
+        match: "*four*"
       llm_judge:
         criteria: "Is this a correct mathematical answer to 2+2?"
       min_tokens: 1

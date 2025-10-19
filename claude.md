@@ -10,8 +10,8 @@ VibeCheck is a vibe-themed CLI tool for running language model evaluations. This
 
 This is a monorepo managed with npm workspaces:
 
-- **@evalit/cli** (`packages/cli`) - The main CLI interface (open source)
-- **@evalit/shared** (`packages/shared`) - Shared TypeScript types and Zod schemas
+- **@vibecheck/cli** (`packages/cli`) - The main CLI interface (open source)
+- **@vibecheck/shared** (`packages/shared`) - Shared TypeScript types and Zod schemas
 
 ### Languages & Tech Stack
 
@@ -104,6 +104,34 @@ evals:
 5. **semantic** - Compare semantic meaning using embeddings (local)
 6. **llm_judge** - Use an LLM to judge the response quality
 
+### Check Logic
+
+**AND Logic (Implicit)**: Multiple checks at the same level must ALL pass
+```yaml
+checks:
+  match: "*hello*"      # AND
+  min_tokens: 5         # AND
+  max_tokens: 100       # AND
+```
+
+**OR Logic (Explicit)**: Use the `or:` field when you want ANY of the patterns to pass
+```yaml
+checks:
+  or:                   # OR (at least one must pass)
+    - match: "*yes*"
+    - match: "*affirmative*"
+    - match: "*correct*"
+```
+
+**Combined Logic**: You can mix AND and OR logic
+```yaml
+checks:
+  min_tokens: 10        # AND (must pass)
+  or:                   # OR (one of these must pass)
+    - match: "*hello*"
+    - match: "*hi*"
+```
+
 ### Workflow
 
 1. User runs `vibe check -f eval.yaml`
@@ -118,8 +146,8 @@ evals:
 ### Build Order
 
 Build packages in this order:
-1. `@evalit/shared`
-2. `@evalit/cli`
+1. `@vibecheck/shared`
+2. `@vibecheck/cli`
 
 Or use: `npm run build` (runs in correct order)
 
@@ -161,7 +189,7 @@ Error handling:
 
 1. Add type to shared types (`packages/shared/src/types.ts`)
 2. Update Zod schema in shared package
-3. Rebuild shared package: `npm run build -w @evalit/shared`
+3. Rebuild shared package: `npm run build -w @vibecheck/shared`
 
 Note: Server-side conditional implementation is handled by the VibeCheck API.
 
@@ -175,8 +203,8 @@ npm install
 npm run build
 
 # Build specific package
-npm run build -w @evalit/shared
-npm run build -w @evalit/cli
+npm run build -w @vibecheck/shared
+npm run build -w @vibecheck/cli
 
 # Run CLI in dev mode
 npm run dev
@@ -415,5 +443,5 @@ The suite passes if ≥80% of evaluations pass.
 ## Troubleshooting
 
 **"API Error"** - Ensure your `VIBECHECK_API_KEY` is set correctly
-**"Invalid YAML"** - Check YAML against schema in `@evalit/shared`
-**Build errors** - Rebuild `@evalit/shared` first, then other packages
+**"Invalid YAML"** - Check YAML against schema in `@vibecheck/shared`
+**Build errors** - Rebuild `@vibecheck/shared` first, then other packages

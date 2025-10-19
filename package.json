@@ -6,11 +6,11 @@
     "packages/*"
   ],
   "scripts": {
-    "cli": "npm run dev -w @evalit/cli",
-    "dev": "npm run dev -w @evalit/cli",
-    "build": "npm run build -w @evalit/cli",
-    "build:link": "npm run build && npm link -w @evalit/cli",
-    "start": "npm run start -w @evalit/cli",
+    "cli": "npm run dev -w @vibecheck/cli",
+    "dev": "npm run dev -w @vibecheck/cli",
+    "build": "npm run build -w @vibecheck/cli",
+    "build:link": "npm run build && npm link -w @vibecheck/cli",
+    "start": "npm run start -w @vibecheck/cli",
     "test": "jest",
     "test:unit": "jest --selectProjects=unit",
     "test:integration": "jest --selectProjects=integration",

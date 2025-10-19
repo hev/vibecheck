@@ -1,5 +1,5 @@
 {
-  "name": "@evalit/cli",
+  "name": "@vibecheck/cli",
   "version": "0.1.0",
   "main": "dist/index.js",
   "bin": {
@@ -10,7 +10,8 @@
     "build": "tsc",
     "build:link": "npm run build && npm link",
     "dev": "tsc --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
     "@types/blessed": "^0.1.25",

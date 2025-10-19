@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# VibeCheck CLI Publishing Script
+# vibecheck CLI Publishing Script
 # This script handles the complete publishing process with safety checks
 
 set -e  # Exit on any error
 
-echo "🚀 VibeCheck CLI Publishing Script"
+echo "🚀 vibecheck CLI Publishing Script"
 echo "=================================="
 
 # Check if we're in the right directory

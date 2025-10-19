@@ -1,8 +1,8 @@
-# VibeCheck Project Guide
+# vibecheck Project Guide
 
 ## Project Overview
 
-VibeCheck is a vibe-themed CLI tool for running language model evaluations. This is the open source CLI tool (MIT licensed) that connects to the VibeCheck API at vibescheck.io.
+vibecheck is a vibe-themed CLI tool for running language model evaluations. This is the open source CLI tool (MIT licensed) that connects to the vibecheck API at vibescheck.io.
 
 **Get your API key at [vibescheck.io](https://vibescheck.io)**
 
@@ -20,7 +20,7 @@ This is a monorepo managed with npm workspaces:
 - **CLI Framework**: Commander.js
 - **Schema Validation**: Zod
 - **CLI Styling**: chalk, ora
-- **API**: VibeCheck API at vibescheck.io
+- **API**: vibecheck API at vibescheck.io
 
 ## Project Structure
 
@@ -337,7 +337,7 @@ The CLI uses **bearer token authentication** for all API requests:
 
 Error handling:
 - **401 Unauthorized**: Invalid or missing API key
-- **500 Server Error**: The VibeCheck API encountered an error
+- **500 Server Error**: The vibecheck API encountered an error
 
 ### Adding New Check Types
 
@@ -345,7 +345,7 @@ Error handling:
 2. Update Zod schema in shared package
 3. Rebuild shared package: `npm run build -w @vibecheck/shared`
 
-Note: Server-side conditional implementation is handled by the VibeCheck API.
+Note: Server-side conditional implementation is handled by the vibecheck API.
 
 ## Testing
 
@@ -386,7 +386,7 @@ Uses **nock** for HTTP mocking to simulate API responses.
 
 #### 3. E2E Tests (`tests/e2e/**/*.test.ts`)
 
-**Live server required.** Test against real VibeCheck API:
+**Live server required.** Test against real vibecheck API:
 
 - Full workflow validation
 - Real API integration

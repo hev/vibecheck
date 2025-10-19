@@ -1,6 +1,6 @@
-# Contributing to VibeCheck CLI
+# Contributing to vibecheck CLI
 
-Thank you for your interest in contributing to VibeCheck! This guide will help you get started with development and understand our contribution process.
+Thank you for your interest in contributing to vibecheck! This guide will help you get started with development and understand our contribution process.
 
 ## Development Setup
 
@@ -261,8 +261,8 @@ Releases are handled by maintainers using the `scripts/publish.sh` script:
 
 ## License
 
-By contributing to VibeCheck, you agree that your contributions will be licensed under the MIT License.
+By contributing to vibecheck, you agree that your contributions will be licensed under the MIT License.
 
 ---
 
-Thank you for contributing to VibeCheck! 🎉
+Thank you for contributing to vibecheck! 🎉

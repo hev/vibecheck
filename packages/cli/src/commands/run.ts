@@ -9,6 +9,7 @@ import { runInteractiveCommand } from './interactive-run';
 import { displaySummary } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { writeRunOutput } from '../utils/output-writer';
+import { isNetworkError, displayNetworkError } from '../utils/network-error';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 const API_KEY = process.env.VIBECHECK_API_KEY;
@@ -172,6 +173,12 @@ export async function runCommand(options: RunOptions) {
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to check vibes 🚩'));
 
+    // Handle network errors first
+    if (isNetworkError(error)) {
+      displayNetworkError();
+      process.exit(1);
+    }
+
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
       displayInvitePrompt();
@@ -324,6 +331,12 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
 
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to check vibes 🚩'));
+
+    // Handle network errors first
+    if (isNetworkError(error)) {
+      displayNetworkError();
+      process.exit(1);
+    }
 
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
@@ -508,6 +521,13 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
       }
     } catch (error: any) {
       spinner.stop();
+      
+      // Handle network errors first
+      if (isNetworkError(error)) {
+        displayNetworkError();
+        process.exit(1);
+      }
+      
       // Handle specific HTTP error codes
       if (error.response?.status === 401 || error.response?.status === 403) {
         displayInvitePrompt();

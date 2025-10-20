@@ -5,6 +5,7 @@ import ora from 'ora';
 import axios from 'axios';
 import { EvalSuiteSchema } from '../types';
 import { displayInvitePrompt } from '../utils/auth-error';
+import { isNetworkError, displayNetworkError } from '../utils/network-error';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 
@@ -97,6 +98,12 @@ export async function saveCommand(options: SaveOptions) {
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to save suite'));
 
+    // Handle network errors first
+    if (isNetworkError(error)) {
+      displayNetworkError();
+      process.exit(1);
+    }
+
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
       displayInvitePrompt();
@@ -170,6 +177,12 @@ export async function listCommand(debug: boolean = false) {
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to list suites'));
 
+    // Handle network errors first
+    if (isNetworkError(error)) {
+      displayNetworkError();
+      process.exit(1);
+    }
+
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
       displayInvitePrompt();
@@ -226,6 +239,12 @@ export async function getCommand(name: string, debug: boolean = false) {
     console.log(suite.yamlContent);
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to get suite'));
+
+    // Handle network errors first
+    if (isNetworkError(error)) {
+      displayNetworkError();
+      process.exit(1);
+    }
 
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {

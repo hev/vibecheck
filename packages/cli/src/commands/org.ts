@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import axios from 'axios';
 import { displayInvitePrompt } from '../utils/auth-error';
+import { isNetworkError, displayNetworkError } from '../utils/network-error';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 
@@ -68,6 +69,12 @@ export async function orgCommand(debug: boolean = false) {
     console.log('');
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to fetch organization info'));
+
+    // Handle network errors first
+    if (isNetworkError(error)) {
+      displayNetworkError();
+      process.exit(1);
+    }
 
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {

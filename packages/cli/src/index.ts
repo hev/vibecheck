@@ -63,7 +63,7 @@ program
   .name('vibe')
   .description('CLI tool for running language model evaluations')
   .version('0.1.0')
-  .action(() => {
+  .action(async () => {
     // Check if user explicitly requested help or version
     if (process.argv.includes('--help') || process.argv.includes('-h') || 
         process.argv.includes('--version') || process.argv.includes('-V')) {
@@ -72,9 +72,15 @@ program
     // Auth preflight before launching interactive mode
     try {
       // Will trigger unauth flow if missing/invalid
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      fetchOrgInfo(false);
-    } catch {}
+      await fetchOrgInfo(false);
+    } catch (error: any) {
+      // Handle network errors with Halloween message
+      if (error.message.includes('🎃 The Halloween pop-up can no longer be reached')) {
+        console.error(error.message);
+        process.exit(1);
+      }
+      // Ignore other auth errors - interactive mode will handle them
+    }
     // Launch interactive mode with no file
     runInteractiveCommand({ file: undefined, debug: false });
   });
@@ -166,9 +172,15 @@ const checkCommand = program
         console.log(chalk.yellow('No evaluation file found. Launching interactive mode...\n'));
         try {
           // Auth preflight
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          fetchOrgInfo(!!options.debug);
-        } catch {}
+          await fetchOrgInfo(!!options.debug);
+        } catch (error: any) {
+          // Handle network errors with Halloween message
+          if (error.message.includes('🎃 The Halloween pop-up can no longer be reached')) {
+            console.error(error.message);
+            process.exit(1);
+          }
+          // Ignore other auth errors - interactive mode will handle them
+        }
         await runInteractiveCommand({ file: undefined, debug: options.debug });
         return;
       }
@@ -181,9 +193,15 @@ const checkCommand = program
       if (options.interactive) {
         try {
           // Auth preflight
-          // eslint-disable-next-line @typescript-eslint/no-floating-promises
-          fetchOrgInfo(!!options.debug);
-        } catch {}
+          await fetchOrgInfo(!!options.debug);
+        } catch (error: any) {
+          // Handle network errors with Halloween message
+          if (error.message.includes('🎃 The Halloween pop-up can no longer be reached')) {
+            console.error(error.message);
+            process.exit(1);
+          }
+          // Ignore other auth errors - interactive mode will handle them
+        }
         runInteractiveMode({ file: foundFile });
       } else {
         runCommand({ file: foundFile, debug: options.debug, interactive: false, async: options.async });

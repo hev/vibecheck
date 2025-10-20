@@ -130,11 +130,10 @@ async function performRedeem({ code, debug }: { code: string; debug: boolean }) 
       console.error(chalk.gray('Server error: The VibeCheck API encountered an error'));
       process.exit(2);
     } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
-      console.error(chalk.redBright('\n❌ Failed to connect to VibeCheck server'));
-      console.error(chalk.gray(`URL: ${API_URL}`));
-      if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
-        console.error(chalk.gray('Request timed out after 30 seconds'));
-      }
+      console.error(chalk.redBright('\n🎃 The Halloween pop-up can no longer be reached'));
+      console.error(chalk.gray('\nYour run logs are available at: ') + chalk.cyan('~/.vibecheck/runs'));
+      console.error(chalk.gray('Go to ') + chalk.cyan('vibescheck.io') + chalk.gray(' to find out what\'s next.'));
+      console.error('');
       process.exit(2);
     } else if (error.response?.data?.error) {
       console.error(chalk.redBright(`\n❌ ${error.response.data.error}`));

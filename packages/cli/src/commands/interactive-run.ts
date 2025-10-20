@@ -14,6 +14,7 @@ import {
   fetchModels, 
   handleApiError 
 } from '../utils/command-helpers';
+import { isNetworkError, getNetworkErrorMessage } from '../utils/network-error';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 
@@ -165,6 +166,13 @@ async function handleGetCommand(args: string[], ui: InteractiveUI, debug?: boole
         ui.displayError('Available nouns: suites, suite, runs, run, models, org, credits');
     }
   } catch (error: any) {
+    // Handle network errors first
+    if (isNetworkError(error)) {
+      const networkMessages = getNetworkErrorMessage();
+      networkMessages.forEach(msg => ui.displayError(msg));
+      return;
+    }
+
     ui.displayError(`Error: ${error.message}`);
   }
 }
@@ -259,6 +267,13 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
     await streamResults(runId, ui, debug);
 
   } catch (error: any) {
+    // Handle network errors first
+    if (isNetworkError(error)) {
+      const networkMessages = getNetworkErrorMessage();
+      networkMessages.forEach(msg => ui.displayError(msg));
+      return;
+    }
+
     if (error.response?.status === 401) {
       ui.displayError('Unauthorized: Invalid or missing API key');
       ui.displayError('Get your API key at https://vibescheck.io');
@@ -367,6 +382,14 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
         await new Promise(resolve => setTimeout(resolve, pollInterval));
       }
     } catch (error: any) {
+      // Handle network errors first
+      if (isNetworkError(error)) {
+        const networkMessages = getNetworkErrorMessage();
+        networkMessages.forEach(msg => ui.displayError(msg));
+        completed = true;
+        return;
+      }
+
       if (error.response?.status === 401) {
         ui.displayError('Unauthorized: Invalid or missing API key');
         ui.displayError('Get your API key at https://vibescheck.io');

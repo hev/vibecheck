@@ -4,6 +4,7 @@ import axios from 'axios';
 import { EvalResult, ConditionalResult } from '../types';
 import { displaySummary } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
+import { isNetworkError, displayNetworkError } from '../utils/network-error';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 
@@ -471,6 +472,12 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
 
 // Error handler
 function handleError(error: any, url: string) {
+  // Handle network errors first
+  if (isNetworkError(error)) {
+    displayNetworkError();
+    process.exit(1);
+  }
+
   if (error.response?.status === 401 || error.response?.status === 403) {
     displayInvitePrompt();
     process.exit(1);

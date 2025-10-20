@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { displayInvitePrompt } from './auth-error';
 import { spawnSync } from 'child_process';
+import { isNetworkError } from './network-error';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 
@@ -27,20 +28,24 @@ export async function fetchOrgInfo(debug: boolean = false) {
     console.log(`[DEBUG] Request URL: ${url}`);
   }
 
-  const response = await axios.get(url, {
-    headers: getAuthHeaders()
-  });
+  try {
+    const response = await axios.get(url, {
+      headers: getAuthHeaders()
+    });
 
-  if (debug) {
-    console.log(`[DEBUG] Response status: ${response.status}`);
-    console.log(`[DEBUG] Response data:`, JSON.stringify(response.data, null, 2));
+    if (debug) {
+      console.log(`[DEBUG] Response status: ${response.status}`);
+      console.log(`[DEBUG] Response data:`, JSON.stringify(response.data, null, 2));
+    }
+
+    if (response.data.error) {
+      throw new Error(response.data.error);
+    }
+
+    return response.data;
+  } catch (error: any) {
+    handleApiError(error);
   }
-
-  if (response.data.error) {
-    throw new Error(response.data.error);
-  }
-
-  return response.data;
 }
 
 // Suites
@@ -160,6 +165,11 @@ export async function fetchModels(debug: boolean = false) {
 
 // Error handling
 export function handleApiError(error: any): never {
+  // Handle network errors first
+  if (isNetworkError(error)) {
+    throw new Error('🎃 The Halloween pop-up can no longer be reached\n\nYour run logs are available at: ~/.vibecheck/runs\nGo to vibescheck.io to find out what\'s next.');
+  }
+
   if (error.response?.status === 401 || error.response?.status === 403) {
     displayInvitePrompt();
     spawnSync('vibe', ['redeem'], { stdio: 'inherit' });

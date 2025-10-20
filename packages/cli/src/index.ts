@@ -11,7 +11,8 @@ import { saveCommand, listCommand, getCommand as getSuiteCommand } from './comma
 import { orgCommand } from './commands/org';
 import { listRunsCommand, listRunsBySuiteCommand, getRunCommand } from './commands/runs';
 import { modelsCommand } from './commands/models';
-import { redeemCommand } from './commands/redeem';
+import { redeemCommand, redeemFlow } from './commands/redeem';
+import { fetchOrgInfo } from './utils/command-helpers';
 
 // Load .env from user's home directory
 const os = require('os');
@@ -68,6 +69,12 @@ program
         process.argv.includes('--version') || process.argv.includes('-V')) {
       return; // Let commander handle these
     }
+    // Auth preflight before launching interactive mode
+    try {
+      // Will trigger unauth flow if missing/invalid
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      fetchOrgInfo(false);
+    } catch {}
     // Launch interactive mode with no file
     runInteractiveCommand({ file: undefined, debug: false });
   });
@@ -157,6 +164,11 @@ const checkCommand = program
       if (!foundFile) {
         // Launch interactive mode instead of exiting
         console.log(chalk.yellow('No evaluation file found. Launching interactive mode...\n'));
+        try {
+          // Auth preflight
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          fetchOrgInfo(!!options.debug);
+        } catch {}
         await runInteractiveCommand({ file: undefined, debug: options.debug });
         return;
       }
@@ -167,6 +179,11 @@ const checkCommand = program
 
       // Run interactive mode if -i/--interactive flag is present
       if (options.interactive) {
+        try {
+          // Auth preflight
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          fetchOrgInfo(!!options.debug);
+        } catch {}
         runInteractiveMode({ file: foundFile });
       } else {
         runCommand({ file: foundFile, debug: options.debug, interactive: false, async: options.async });
@@ -265,10 +282,10 @@ getCommand.addOption(new (require('commander').Option)('-d, --debug', 'Enable de
 const redeemCmd = program
   .command('redeem')
   .description('Redeem an invite code to create an organization and receive an API key')
-  .argument('<code>', 'The invite code to redeem')
-  .action((code: string, options: any) => {
+  .argument('[code]', 'The invite code to redeem (optional)')
+  .action((code: string | undefined, options: any) => {
     const debug = options?.debug || false;
-    redeemCommand(code, debug);
+    redeemFlow({ code, debug });
   });
 redeemCmd.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
 

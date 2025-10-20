@@ -6,8 +6,9 @@ import chalk from 'chalk';
 export function displayInvitePrompt(): void {
   console.error(chalk.redBright('\nUnauthorized: Invalid or missing API key'));
   console.error('');
-  console.error(chalk.yellow('🎃 Enter an invite code to join the Halloween pop up! 🎃'));
+  console.error(chalk.yellow('vibe check is currently invite only. Enter your code to proceed.'));
   console.error('');
-  console.error(chalk.gray('Usage: ') + chalk.cyan('vibe redeem <invite-code>'));
+  console.error(chalk.gray('Need an invite? Visit ') + chalk.cyan('vibescheck.io'));
+  console.error(chalk.gray('Have an invite? Use ') + chalk.cyan('vibe redeem') + chalk.gray(' to set up your API key'));
   console.error('');
 }

@@ -2,7 +2,7 @@
 
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/your-org/vibecheck/actions)
 [![Coverage](https://img.shields.io/badge/coverage-80%25-green)](https://github.com/your-org/vibecheck)
-[![npm version](https://img.shields.io/npm/v/@vibecheck/cli)](https://www.npmjs.com/package/@vibecheck/cli)
+[![npm version](https://img.shields.io/npm/v/@vibe/cli)](https://www.npmjs.com/package/@vibe/cli)
 [![License](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/licenses/MIT)
 
 **An agent evaluation framework for any LLM** - A simple and intuitive YAML based DSL for language evals.
@@ -16,8 +16,14 @@ save the results, and tweak your system prompts with incredibly tight feedback l
 
 ## Installation
 
+### npm (Recommended)
 ```bash
-npm install -g @vibecheck/cli
+npm install -g @vibe/cli
+```
+
+### Homebrew (macOS/Linux)
+```bash
+brew install yourusername/vibe
 ```
 
 **Get your API key at [vibescheck.io](https://vibescheck.io)**

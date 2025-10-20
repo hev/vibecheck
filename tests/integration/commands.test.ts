@@ -173,7 +173,7 @@ evals:
       exitMock.mockRestore();
     });
 
-    it('should handle API unauthorized error', async () => {
+    it('should handle API unauthorized error (triggers redeem flow)', async () => {
       const validYaml = `metadata:
   name: test-suite
   model: anthropic/claude-3-5-sonnet-20241022
@@ -192,6 +192,11 @@ evals:
         throw new Error(`process.exit: ${code}`);
       });
 
+      // Stub redeem flow to avoid interactive readline in CI
+      const ch = require('../../packages/cli/src/utils/command-helpers');
+      const redeemModule = require('../../packages/cli/src/commands/redeem');
+      const redeemSpy = jest.spyOn(redeemModule, 'redeemFlow').mockResolvedValue(undefined as any);
+
       await suppressConsole(async () => {
         try {
           await runCommand({ file: tempFile, debug: false, interactive: false });
@@ -199,6 +204,8 @@ evals:
           expect(error.message).toContain('process.exit: 1');
         }
       });
+      expect(redeemSpy).toHaveBeenCalled();
+      redeemSpy.mockRestore();
 
       exitMock.mockRestore();
     });
@@ -233,7 +240,7 @@ evals:
       exitMock.mockRestore();
     });
 
-    it('should handle missing API key', async () => {
+    it('should handle missing API key (triggers redeem flow)', async () => {
       const validYaml = `metadata:
   name: test-suite
   model: anthropic/claude-3-5-sonnet-20241022
@@ -251,6 +258,9 @@ evals:
       });
 
       await withEnv({ VIBECHECK_API_KEY: undefined }, async () => {
+        // Stub redeem flow to avoid interactive readline in CI
+        const redeemModule = require('../../packages/cli/src/commands/redeem');
+        const redeemSpy = jest.spyOn(redeemModule, 'redeemFlow').mockResolvedValue(undefined as any);
         await suppressConsole(async () => {
           try {
             await runCommand({ file: tempFile, debug: false, interactive: false });
@@ -258,6 +268,8 @@ evals:
             expect(error.message).toContain('process.exit: 1');
           }
         });
+        expect(redeemSpy).toHaveBeenCalled();
+        redeemSpy.mockRestore();
       });
 
       exitMock.mockRestore();

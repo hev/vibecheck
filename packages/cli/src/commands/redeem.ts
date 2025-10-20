@@ -1,7 +1,9 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import axios from 'axios';
-import { saveApiKey, getConfigPath, readApiKey, debugConfig } from '../utils/config';
+import * as fs from 'fs';
+import * as readline from 'readline';
+import { saveApiKey, getConfigPath, readApiKey, debugConfig, readEnvFile } from '../utils/config';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 
@@ -22,6 +24,10 @@ export async function redeemCommand(code: string, debug: boolean = false) {
     process.exit(1);
   }
 
+  await performRedeem({ code, debug });
+}
+
+async function performRedeem({ code, debug }: { code: string; debug: boolean }) {
   const spinner = ora('Redeeming invite code...').start();
 
   try {
@@ -50,6 +56,24 @@ export async function redeemCommand(code: string, debug: boolean = false) {
     }
 
     const { apiKey, org } = response.data;
+
+    // Welcome back + overwrite prompt if .env exists
+    const envPath = getConfigPath();
+    const envExists = fs.existsSync(envPath) && readEnvFile().length > 0;
+    if (envExists) {
+      spinner.stop();
+      console.log('');
+      console.log(chalk.magenta('🦇 Welcome back, ghoulfriend! It looks like you have an existing coffin (config).'));
+      console.log(chalk.gray(`Found: ${envPath}`));
+      const shouldOverwrite = await promptYesNo(
+        chalk.yellow('Would you like to overwrite your existing VIBECHECK_API_KEY? [y/N] ')
+      );
+      if (!shouldOverwrite) {
+        console.log(chalk.gray('\nNo worries — keeping your existing key. You can re-run `vibe redeem` anytime.'));
+        process.exit(0);
+      }
+      spinner.start();
+    }
 
     // Save API key to config
     saveApiKey(apiKey);
@@ -113,4 +137,52 @@ export async function redeemCommand(code: string, debug: boolean = false) {
       process.exit(2);
     }
   }
+}
+
+export async function redeemFlow({ code, debug = false }: { code?: string; debug?: boolean }) {
+  let finalCode = code?.trim();
+  if (!finalCode) {
+    printSpookyHeader();
+    console.log(chalk.gray('Tip: Press Enter with no code to cancel.'));
+    finalCode = (await promptLine(chalk.yellow('Enter your invite code: '))).trim();
+    if (!finalCode) {
+      console.log(chalk.gray('No code entered. Exiting redeem.'));
+      process.exit(0);
+    }
+  }
+
+  await performRedeem({ code: finalCode, debug: !!debug });
+}
+
+function printSpookyHeader() {
+  const pumpkin = '🎃';
+  const ghost = '👻';
+  const lines = [
+    `${pumpkin} meet your redeemer — a vibe check awaits`,
+    `${ghost} something wicked this way comes — time for a vibe check`,
+    `${pumpkin} step into the circle — commence the vibe check`,
+    `${ghost} heed the call of the night — begin your vibe check`,
+    `${pumpkin} from the crypt we rise — initiate your vibe check`,
+  ];
+  const pick = lines[Math.floor(Math.random() * lines.length)];
+  console.log('');
+  console.log(chalk.yellow(pick));
+  console.log('');
+}
+
+function promptLine(question: string): Promise<string> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
+
+async function promptYesNo(question: string): Promise<boolean> {
+  const answer = (await promptLine(question)).trim().toLowerCase();
+  if (answer === 'y' || answer === 'yes') return true;
+  if (answer === 'n' || answer === 'no' || answer === '') return false;
+  return false;
 }

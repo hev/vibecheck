@@ -10,7 +10,7 @@ vibecheck is a vibe-themed CLI tool for running language model evaluations. This
 
 This is a monorepo managed with npm workspaces:
 
-- **@vibecheck/cli** (`packages/cli`) - The main CLI interface (open source)
+- **@vibe/cli** (`packages/cli`) - The main CLI interface (open source)
 - **@vibecheck/shared** (`packages/shared`) - Shared TypeScript types and Zod schemas
 
 ### Languages & Tech Stack
@@ -273,7 +273,7 @@ vibe redeem <code> --debug
 
 Build packages in this order:
 1. `@vibecheck/shared`
-2. `@vibecheck/cli`
+2. `@vibe/cli`
 
 Or use: `npm run build` (runs in correct order)
 
@@ -300,15 +300,51 @@ vibe check -f examples/hello-world.yaml
 Use the publishing script for safe releases:
 
 ```bash
+# Default: Publish to npm, ask about Homebrew
 ./scripts/publish.sh
+
+# Publish only to npm
+./scripts/publish.sh --npm-only
+
+# Publish only to Homebrew
+./scripts/publish.sh --homebrew-only
+
+# Publish to both npm and Homebrew automatically
+./scripts/publish.sh --auto-homebrew
+
+# Show help
+./scripts/publish.sh --help
 ```
 
 The script handles:
 - Git status validation
 - Test execution (unit + integration)
 - Build verification
-- Version bumping (patch/minor/major)
+- Version bumping (patch/minor/major) - npm only
 - npm publish with `--access public`
+- Homebrew tap publishing
+
+#### Homebrew Publishing
+
+The project includes support for Homebrew distribution:
+
+```bash
+# Publish to Homebrew tap only
+./scripts/publish-homebrew.sh
+
+# Or use the main script which offers Homebrew publishing after npm
+./scripts/publish.sh
+```
+
+**Prerequisites for Homebrew:**
+1. Create a GitHub repository named `vibe` (not `homebrew-vibe`)
+2. Update `TAP_REPO` in `scripts/publish-homebrew.sh` with your GitHub username
+3. Ensure the npm package is published first (Homebrew formula sources from npm)
+
+**Installation will be:**
+```bash
+brew install yourusername/vibe
+```
 
 ### Environment Variables
 
@@ -507,7 +543,7 @@ npm run build
 
 # Build specific package
 npm run build -w @vibecheck/shared
-npm run build -w @vibecheck/cli
+npm run build -w @vibe/cli
 
 # Run CLI in dev mode
 npm run dev

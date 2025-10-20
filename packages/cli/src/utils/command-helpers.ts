@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { displayInvitePrompt } from './auth-error';
+import { spawnSync } from 'child_process';
 
 const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
 
@@ -8,6 +9,8 @@ export function getAuthHeaders() {
   
   if (!currentApiKey) {
     displayInvitePrompt();
+    // Run the redeem command to prompt for code interactively
+    spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
     process.exit(1);
   }
 
@@ -70,7 +73,7 @@ export async function fetchSuite(name: string, debug: boolean = false) {
   }
 
   const response = await axios.get(url, {
-    headers: getAuthHeaders()
+    headers: await getAuthHeaders()
   });
 
   if (debug) {
@@ -159,6 +162,7 @@ export async function fetchModels(debug: boolean = false) {
 export function handleApiError(error: any): never {
   if (error.response?.status === 401 || error.response?.status === 403) {
     displayInvitePrompt();
+    spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
     process.exit(1);
   } else if (error.response?.status === 500) {
     throw new Error('Server error: The VibeCheck API encountered an error');

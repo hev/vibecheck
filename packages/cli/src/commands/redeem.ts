@@ -69,7 +69,13 @@ async function performRedeem({ code, debug }: { code: string; debug: boolean }) 
         chalk.yellow('Would you like to overwrite your existing VIBECHECK_API_KEY? [y/N] ')
       );
       if (!shouldOverwrite) {
-        console.log(chalk.gray('\nNo worries — keeping your existing key. You can re-run `vibe redeem` anytime.'));
+        // Show the fresh API key so the user can copy it elsewhere
+        console.log('');
+        console.log(chalk.cyan('Organization: ') + chalk.white(org.name));
+        console.log(chalk.cyan('Credits: ') + chalk.white(org.credits.toFixed(1)));
+        console.log(chalk.cyan('API Key: ') + chalk.white(apiKey));
+        console.log('');
+        console.log(chalk.gray("Your API Key is above. Save this API key as you won't be able to access it again."));
         process.exit(0);
       }
       spinner.start();

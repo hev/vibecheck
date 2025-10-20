@@ -192,10 +192,9 @@ evals:
         throw new Error(`process.exit: ${code}`);
       });
 
-      // Stub redeem flow to avoid interactive readline in CI
-      const ch = require('../../packages/cli/src/utils/command-helpers');
-      const redeemModule = require('../../packages/cli/src/commands/redeem');
-      const redeemSpy = jest.spyOn(redeemModule, 'redeemFlow').mockResolvedValue(undefined as any);
+      // Stub spawnSync for redeem to avoid launching an interactive process in CI
+      const childProc = require('child_process');
+      const spawnSpy = jest.spyOn(childProc, 'spawnSync').mockReturnValue({ status: 0 } as any);
 
       await suppressConsole(async () => {
         try {
@@ -204,8 +203,8 @@ evals:
           expect(error.message).toContain('process.exit: 1');
         }
       });
-      expect(redeemSpy).toHaveBeenCalled();
-      redeemSpy.mockRestore();
+      expect(spawnSpy).toHaveBeenCalledWith('vibe', ['redeem'], { stdio: 'inherit' });
+      spawnSpy.mockRestore();
 
       exitMock.mockRestore();
     });
@@ -258,9 +257,9 @@ evals:
       });
 
       await withEnv({ VIBECHECK_API_KEY: undefined }, async () => {
-        // Stub redeem flow to avoid interactive readline in CI
-        const redeemModule = require('../../packages/cli/src/commands/redeem');
-        const redeemSpy = jest.spyOn(redeemModule, 'redeemFlow').mockResolvedValue(undefined as any);
+        // Stub spawnSync for redeem to avoid launching an interactive process in CI
+        const childProc = require('child_process');
+        const spawnSpy = jest.spyOn(childProc, 'spawnSync').mockReturnValue({ status: 0 } as any);
         await suppressConsole(async () => {
           try {
             await runCommand({ file: tempFile, debug: false, interactive: false });
@@ -268,8 +267,8 @@ evals:
             expect(error.message).toContain('process.exit: 1');
           }
         });
-        expect(redeemSpy).toHaveBeenCalled();
-        redeemSpy.mockRestore();
+        expect(spawnSpy).toHaveBeenCalledWith('vibe', ['redeem'], { stdio: 'inherit' });
+        spawnSpy.mockRestore();
       });
 
       exitMock.mockRestore();

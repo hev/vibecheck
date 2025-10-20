@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { spawnSync } from 'child_process';
 import * as yaml from 'js-yaml';
 import chalk from 'chalk';
 import ora from 'ora';
@@ -17,6 +18,12 @@ function getAuthHeaders() {
   
   if (!currentApiKey) {
     displayInvitePrompt();
+    // Trigger interactive redeem flow for users to obtain an API key
+    try {
+      spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+    } catch {
+      // ignore spawn errors in non-interactive test environments
+    }
     process.exit(1);
   }
 
@@ -168,6 +175,9 @@ export async function runCommand(options: RunOptions) {
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
       displayInvitePrompt();
+      try {
+        spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+      } catch {}
       process.exit(1);
     } else if (error.response?.status === 402) {
       const errorMsg = error.response.data?.error?.message ||
@@ -318,6 +328,9 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
       displayInvitePrompt();
+      try {
+        spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+      } catch {}
       process.exit(1);
     } else if (error.response?.status === 404) {
       console.error(chalk.redBright(`\nSuite "${suiteName}" not found`));
@@ -486,7 +499,12 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
       }
 
       if (!completed) {
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        await new Promise(resolve => {
+          const timer: any = setTimeout(resolve, pollInterval);
+          if (typeof timer?.unref === 'function') {
+            timer.unref();
+          }
+        });
       }
     } catch (error: any) {
       spinner.stop();

@@ -76,7 +76,8 @@ async function performRedeem({ code, debug }: { code: string; debug: boolean }) 
         console.log(chalk.cyan('API Key: ') + chalk.white(apiKey));
         console.log('');
         console.log(chalk.gray("Your API Key is above. Save this API key as you won't be able to access it again."));
-        process.exit(0);
+        // Exit outside try block to avoid being caught by error handling
+        return;
       }
       spinner.start();
     }
@@ -157,7 +158,12 @@ export async function redeemFlow({ code, debug = false }: { code?: string; debug
     }
   }
 
-  await performRedeem({ code: finalCode, debug: !!debug });
+  const result = await performRedeem({ code: finalCode, debug: !!debug });
+  
+  // If performRedeem returns early (user chose not to overwrite), exit with success
+  if (result === undefined) {
+    process.exit(0);
+  }
 }
 
 function printSpookyHeader() {

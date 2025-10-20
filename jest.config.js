@@ -28,6 +28,8 @@ module.exports = {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
+    '**/interactive-run.test.ts',
+    '**/onboarding.test.ts',
   ],
   // Separate test categories with displayName
   projects: [

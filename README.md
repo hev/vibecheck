@@ -3,7 +3,7 @@
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/your-org/vibecheck/actions)
 [![Coverage](https://img.shields.io/badge/coverage-80%25-green)](https://github.com/your-org/vibecheck)
 [![npm version](https://img.shields.io/npm/v/vibecheck-cli)](https://www.npmjs.com/package/vibecheck-cli)
-[![License](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](https://opensource.org/licenses/Apache-2.0)
 
 **An agent evaluation framework for any LLM** - A simple and intuitive YAML based DSL for language evals.
 

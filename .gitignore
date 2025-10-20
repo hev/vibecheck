@@ -1,6 +1,9 @@
 # Instructions directory
 .instructions/
 
+# Cursor directory
+.cursor/
+
 # Eval files (user-specific)
 eval.yaml
 eval.yml

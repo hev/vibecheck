@@ -1,16 +1,16 @@
 {
   "name": "vibecheck-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "cli": "npm run dev -w @vibe/cli",
-    "dev": "npm run dev -w @vibe/cli",
-    "build": "npm run build -w @vibe/cli",
-    "build:link": "npm run build && npm link -w @vibe/cli",
-    "start": "npm run start -w @vibe/cli",
+    "cli": "npm run dev -w vibecheck-cli",
+    "dev": "npm run dev -w vibecheck-cli",
+    "build": "npm run build -w vibecheck-cli",
+    "build:link": "npm run build && npm link -w vibecheck-cli",
+    "start": "npm run start -w vibecheck-cli",
     "test": "jest",
     "test:unit": "jest --selectProjects=unit",
     "test:integration": "jest --selectProjects=integration",

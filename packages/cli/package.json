@@ -1,6 +1,7 @@
 {
   "name": "vibecheck-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "private": false,
   "main": "dist/index.js",
   "bin": {
     "vibe": "./dist/index.js",
@@ -11,7 +12,7 @@
     "build:link": "npm run build && npm link",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@types/blessed": "^0.1.25",
@@ -22,6 +23,7 @@
     "dotenv": "^16.3.1",
     "js-yaml": "^4.1.0",
     "ora": "^5.4.1",
+    "string-width": "^7.2.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

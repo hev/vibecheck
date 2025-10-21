@@ -6,7 +6,7 @@ import { displaySummary } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
 
-const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
+const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
 
 function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;

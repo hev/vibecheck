@@ -3,7 +3,7 @@ import { displayInvitePrompt } from './auth-error';
 import { spawnSync } from 'child_process';
 import { isNetworkError } from './network-error';
 
-const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
+const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
 
 export function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;

@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as readline from 'readline';
 import { saveApiKey, getConfigPath, readApiKey, debugConfig, readEnvFile } from '../utils/config';
 
-const API_URL = process.env.VIBECHECK_URL || 'http://localhost:3000';
+const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
 
 interface RedeemResponse {
   apiKey: string;

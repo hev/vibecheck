@@ -62,7 +62,7 @@ const program = new Command();
 program
   .name('vibe')
   .description('CLI tool for running language model evaluations')
-  .version('0.1.0')
+  .version('0.1.1')
   .action(async () => {
     // Check if user explicitly requested help or version
     if (process.argv.includes('--help') || process.argv.includes('-h') || 

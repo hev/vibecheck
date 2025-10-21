@@ -16,14 +16,8 @@ save the results, and tweak your system prompts with incredibly tight feedback l
 
 ## Installation
 
-### npm (Recommended)
 ```bash
 npm install -g vibecheck-cli
-```
-
-### Homebrew (macOS/Linux)
-```bash
-brew install yourusername/vibe
 ```
 
 **Get your API key at [vibescheck.io](https://vibescheck.io)**

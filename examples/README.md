@@ -129,12 +129,6 @@ vibe check -f examples/healthcare.yaml
 vibe check -f examples/finance.yaml
 ```
 
-### Option 3: Interactive Mode
-```bash
-# Run in interactive mode for real-time feedback
-vibe check -f examples/hello-world.yaml --interactive
-```
-
 ## Testing Across Multiple Models
 
 Once you've saved a suite, you can easily test it across multiple models:
@@ -145,25 +139,13 @@ Once you've saved a suite, you can easily test it across multiple models:
 vibe set -f examples/strawberry.yaml
 ```
 
-### Test Across All Available Models
-```bash
-# Get list of available models
-vibe get models
-
-# Run saved suite across multiple models
-vibe check strawberry --model anthropic/claude-3.5-sonnet --async
-vibe check strawberry --model openai/gpt-4o --async
-vibe check strawberry --model meta-llama/llama-3.1-8b --async
-vibe check strawberry --model google/gemini-1.5-pro --async
-```
-
 ### One-Liner for Model Comparison
 ```bash
 # Quick model comparison (run these in parallel)
-vibe check strawberry --model anthropic/claude-3.5-sonnet --async &
-vibe check strawberry --model openai/gpt-4o --async &
-vibe check strawberry --model meta-llama/llama-3.1-8b --async &
-vibe check strawberry --model google/gemini-1.5-pro --async &
+vibe check strawberry --model anthropic/claude-3.5-sonnet --async && \
+vibe check strawberry --model openai/gpt-4o --async && \
+vibe check strawberry --model meta-llama/llama-3-8b-instruct --async && \ 
+vibe check strawberry --model google/gemini-2.5-pro --async && \
 wait
 ```
 
@@ -177,82 +159,3 @@ vibe get runs
 vibe get runs --suite strawberry
 ```
 
-## Understanding Results
-
-### Vibe Ratings
-- ✨ **Good vibes** = 100% pass rate
-- 😬 **Sketchy vibes** = 50-80% pass rate  
-- 🚩 **Bad vibes** = <50% pass rate
-
-### Individual Check Results
-- ✅ **PASS** - Check passed
-- 🚩 **FAIL** - Check failed
-
-### Exit Codes
-- `0` - Good or sketchy vibes (≥50% pass rate)
-- `1` - Bad vibes (<50% pass rate)
-
-## Customizing Examples
-
-### Adding New Questions
-```yaml
-evals:
-  - prompt: "Your new question here"
-    checks:
-      match: "*expected pattern*"
-      llm_judge:
-        criteria: "What should the response demonstrate?"
-      min_tokens: 10
-      max_tokens: 100
-```
-
-### Creating New Suites
-1. Copy an existing suite as a template
-2. Update the `metadata.name` field
-3. Add your questions to the `evals` array
-4. Run with `vibe check -f your-suite.yaml`
-
-## Best Practices
-
-### Question Design
-- **Be specific**: Clear, unambiguous questions work best
-- **Test boundaries**: Include both positive and negative test cases
-- **Use realistic scenarios**: Questions should reflect real-world usage
-
-### Check Configuration
-- **Mix check types**: Use multiple validation methods for robust testing
-- **Set appropriate token limits**: Balance thoroughness with efficiency
-- **Use semantic checks**: For meaning-based validation when exact text matching isn't sufficient
-- **Include LLM judges**: For subjective quality assessment
-
-### Suite Organization
-- **Group related questions**: Keep similar topics together
-- **Progressive difficulty**: Start with easier questions, build complexity
-- **Clear naming**: Use descriptive suite names that indicate purpose
-
-## Troubleshooting
-
-### Common Issues
-- **"API Error"**: Check your `VIBECHECK_API_KEY` is set correctly
-- **"Invalid YAML"**: Validate YAML syntax and schema compliance
-- **"No evals found"**: Ensure `evals` array contains valid questions
-
-### Getting Help
-- Check the [main README](../README.md) for detailed documentation
-- Review [CONTRIBUTING.md](../CONTRIBUTING.md) for development guidelines
-- Visit [vibescheck.io](https://vibescheck.io) for API key and support
-
-## Contributing
-
-Want to add new examples or improve existing ones?
-
-1. **Fork the repository**
-2. **Create your eval suite** following the established patterns
-3. **Test thoroughly** with `vibe check -f your-suite.yaml`
-4. **Submit a pull request** with clear description of changes
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed guidelines.
-
----
-
-**Ready to check the vibe?** Start with `hello-world.yaml` and explore the diverse evaluation capabilities! 🚀

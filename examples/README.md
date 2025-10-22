@@ -167,37 +167,6 @@ vibe check strawberry --model google/gemini-1.5-pro --async &
 wait
 ```
 
-### Auto-Discover and Test All Models
-```bash
-# Get all available models and run tests automatically
-vibe get models --provider openai --price 1,2 | awk '/^openai\// {print $1}' | while read model; do
-  if [ ! -z "$model" ]; then
-    echo "Testing model: $model"
-    vibe check strawberry --model "$model" --async &
-  fi
-done
-wait
-echo "All model tests completed!"
-```
-
-### Test Specific Provider's Models
-```bash
-# Test all OpenAI models
-vibe get models --provider openai | awk '/^openai\// {print $1}' | while read model; do
-  if [ ! -z "$model" ]; then
-    vibe check strawberry --model "$model" --async &
-  fi
-done
-wait
-
-# Test all Anthropic models  
-vibe get models --provider anthropic | awk '/^anthropic\// {print $1}' | while read model; do
-  if [ ! -z "$model" ]; then
-    vibe check strawberry --model "$model" --async &
-  fi
-done
-wait
-```
 
 ### Compare Results
 ```bash

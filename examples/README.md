@@ -170,7 +170,7 @@ wait
 ### Auto-Discover and Test All Models
 ```bash
 # Get all available models and run tests automatically
-vibe get models --provider openai --price 1,2 | grep -E '^\s*[a-zA-Z0-9_/-]+' | while read model; do
+vibe get models --provider openai --price 1,2 | awk '/^openai\// {print $1}' | while read model; do
   if [ ! -z "$model" ]; then
     echo "Testing model: $model"
     vibe check strawberry --model "$model" --async &
@@ -183,7 +183,7 @@ echo "All model tests completed!"
 ### Test Specific Provider's Models
 ```bash
 # Test all OpenAI models
-vibe get models --provider openai | grep -E '^\s*[a-zA-Z0-9_/-]+' | while read model; do
+vibe get models --provider openai | awk '/^openai\// {print $1}' | while read model; do
   if [ ! -z "$model" ]; then
     vibe check strawberry --model "$model" --async &
   fi
@@ -191,7 +191,7 @@ done
 wait
 
 # Test all Anthropic models  
-vibe get models --provider anthropic | grep -E '^\s*[a-zA-Z0-9_/-]+' | while read model; do
+vibe get models --provider anthropic | awk '/^anthropic\// {print $1}' | while read model; do
   if [ ! -z "$model" ]; then
     vibe check strawberry --model "$model" --async &
   fi

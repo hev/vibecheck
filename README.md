@@ -27,7 +27,7 @@ npm install -g vibecheck-cli
 > 💡 Tip: Try the interactive onboarding experience
 >
 > ```bash
-> vibe check --interactive
+> vibe check
 > ```
 >
 Create a simple evaluation file:

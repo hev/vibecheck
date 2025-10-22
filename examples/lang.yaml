@@ -1,5 +1,5 @@
 metadata:
-  name: "multilingual-pbj"
+  name: "lang"
   model: "meta-llama/llama-4-maverick"
   system_prompt: "You are a translator. Respond both in the language the question is asked as well as English."
   # MCP Server configuration for tool calling (uncomment to enable)
@@ -108,3 +108,47 @@ evals:
       min_tokens: 20
       max_tokens: 300
 
+  # Portuguese
+  - prompt: "Descreva como fazer um sanduíche de manteiga de amendoim e geleia."
+    checks:
+      match: "*pão*"
+      llm_judge:
+        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Portuguese"
+      min_tokens: 20
+      max_tokens: 300
+
+  # Italian
+  - prompt: "Descrivi come fare un panino con burro di arachidi e marmellata."
+    checks:
+      match: "*pane*"
+      llm_judge:
+        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Italian"
+      min_tokens: 20
+      max_tokens: 300
+
+  # Hindi
+  - prompt: "मूंगफली के मक्खन और जेली सैंडविच बनाने का तरीका बताएं।"
+    checks:
+      match: "*रोटी*"
+      llm_judge:
+        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Hindi"
+      min_tokens: 20
+      max_tokens: 300
+
+  # Swahili
+  - prompt: "Eleza jinsi ya kutengeneza sandwich ya siagi ya karanga na jamu."
+    checks:
+      match: "*mkate*"
+      llm_judge:
+        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Swahili"
+      min_tokens: 20
+      max_tokens: 300
+
+  # Vietnamese
+  - prompt: "Mô tả cách làm bánh sandwich bơ đậu phộng và mứt."
+    checks:
+      match: "*bánh mì*"
+      llm_judge:
+        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Vietnamese"
+      min_tokens: 20
+      max_tokens: 300

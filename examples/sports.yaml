@@ -1,0 +1,187 @@
+metadata:
+  name: "sports"
+  model: "anthropic/claude-3.5-sonnet"
+  system_prompt: "You are a knowledgeable sports analyst. Provide accurate information about recent sporting events and athletes."
+
+evals:
+  - prompt: "Who won the 2024 Paris Olympics men's 100m sprint?"
+    checks:
+      match: ["*Marco*", "*Jacobs*", "*Italy*"]
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 Olympics men's 100m winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Which country won the most gold medals at the 2024 Paris Olympics?"
+    checks:
+      or:
+        - match: "*United States*"
+        - match: "*USA*"
+        - match: "*America*"
+      llm_judge:
+        criteria: "Does the response correctly identify the country with the most gold medals at the 2024 Olympics?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Who won the 2024 World Series?"
+    checks:
+      or:
+        - match: "*Texas Rangers*"
+        - match: "*Rangers*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 World Series winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Which team won the 2024 Super Bowl?"
+    checks:
+      or:
+        - match: "*Kansas City Chiefs*"
+        - match: "*Chiefs*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 Super Bowl winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Who won the women's gymnastics all-around at the 2024 Olympics?"
+    checks:
+      or:
+        - match: "*Simone Biles*"
+        - match: "*Biles*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 Olympics women's gymnastics all-around winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Which country hosted the 2024 Summer Olympics?"
+    checks:
+      or:
+        - match: "*France*"
+        - match: "*Paris*"
+      llm_judge:
+        criteria: "Does the response correctly identify the host country/city of the 2024 Olympics?"
+      min_tokens: 5
+      max_tokens: 50
+
+  - prompt: "Who won the 2024 NBA Finals MVP?"
+    checks:
+      or:
+        - match: "*Jayson Tatum*"
+        - match: "*Tatum*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 NBA Finals MVP?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Which team won the 2024 Stanley Cup?"
+    checks:
+      or:
+        - match: "*Florida Panthers*"
+        - match: "*Panthers*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 Stanley Cup winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Who won the 2024 Wimbledon men's singles title?"
+    checks:
+      or:
+        - match: "*Carlos Alcaraz*"
+        - match: "*Alcaraz*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 Wimbledon men's singles winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Which country won the most medals overall at the 2024 Olympics?"
+    checks:
+      or:
+        - match: "*United States*"
+        - match: "*USA*"
+        - match: "*America*"
+      llm_judge:
+        criteria: "Does the response correctly identify the country with the most total medals at the 2024 Olympics?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Who won the 2024 Tour de France?"
+    checks:
+      or:
+        - match: "*Tadej Pogacar*"
+        - match: "*Pogacar*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 Tour de France winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Which team won the 2024 UEFA Champions League?"
+    checks:
+      or:
+        - match: "*Real Madrid*"
+        - match: "*Madrid*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 UEFA Champions League winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Who won the 2024 Olympics women's 100m sprint?"
+    checks:
+      or:
+        - match: "*Elaine Thompson-Herah*"
+        - match: "*Thompson-Herah*"
+        - match: "*Thompson*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 Olympics women's 100m winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Which country won the 2024 Olympics men's basketball gold medal?"
+    checks:
+      or:
+        - match: "*United States*"
+        - match: "*USA*"
+        - match: "*America*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 Olympics men's basketball gold medal winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Who won the 2024 Olympics men's swimming 100m freestyle?"
+    checks:
+      or:
+        - match: "*Kyle Chalmers*"
+        - match: "*Chalmers*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 Olympics men's 100m freestyle winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Which team won the 2024 World Cup (if applicable) or most recent major international soccer tournament?"
+    checks:
+      or:
+        - match: "*Argentina*"
+        - match: "*Messi*"
+      llm_judge:
+        criteria: "Does the response correctly identify a recent major international soccer tournament winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Who won the 2024 Olympics women's tennis singles gold medal?"
+    checks:
+      or:
+        - match: "*Coco Gauff*"
+        - match: "*Gauff*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 Olympics women's tennis singles gold medal winner?"
+      min_tokens: 10
+      max_tokens: 100
+
+  - prompt: "Which country won the 2024 Olympics women's soccer gold medal?"
+    checks:
+      or:
+        - match: "*Spain*"
+        - match: "*Spanish*"
+      llm_judge:
+        criteria: "Does the response correctly identify the 2024 Olympics women's soccer gold medal winner?"
+      min_tokens: 10
+      max_tokens: 100

@@ -76,7 +76,19 @@ export async function runCommand(options: RunOptions) {
     }
 
     const fileContent = fs.readFileSync(file, 'utf8');
-    const data = yaml.load(fileContent);
+    
+    // Parse YAML with specific error handling
+    let data;
+    try {
+      data = yaml.load(fileContent);
+    } catch (yamlError: any) {
+      spinner.fail(chalk.redBright('Failed to parse YAML file 🚩'));
+      console.error(chalk.redBright('\nYAML syntax error:'));
+      console.error(chalk.redBright(`  ${yamlError.message}`));
+      console.error(chalk.gray('\nCheck your YAML syntax and try again.'));
+      console.error(chalk.gray('See https://github.com/hev/vibecheck?tab=readme-ov-file#yaml-syntax-reference for help.'));
+      process.exit(1);
+    }
 
     // Check for old format (array of checks with type field)
     if (data && typeof data === 'object' && 'evals' in data && Array.isArray(data.evals)) {
@@ -86,10 +98,10 @@ export async function runCommand(options: RunOptions) {
             if (check && typeof check === 'object' && 'type' in check) {
               spinner.fail(chalk.redBright('Old YAML format detected 🚩'));
               console.error(chalk.redBright('\nPlease update your YAML file to use the new syntax.'));
-              console.error(chalk.gray('See https://docs.vibescheck.io/yaml-syntax for migration guide.\n'));
+              console.error(chalk.gray('See https://github.com/hev/vibecheck?tab=readme-ov-file#yaml-syntax-reference for migration guide.\n'));
               console.error(chalk.yellow('Key changes:'));
               console.error(chalk.gray('  - checks is now an object, not an array'));
-              console.error(chalk.gray('  - string_contains → match (with glob patterns)'));
+              console.error(chalk.gray('  - string_contains → match (supports glob and regex patterns)'));
               console.error(chalk.gray('  - semantic_similarity → semantic'));
               console.error(chalk.gray('  - token_length → min_tokens/max_tokens'));
               console.error(chalk.gray('  - system_prompt is now optional'));

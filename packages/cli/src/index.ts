@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import * as fs from 'fs';
 import chalk from 'chalk';
+import axios from 'axios';
 import { Command } from 'commander';
 import { runCommand, runInteractiveMode, runSuiteCommand, runSuiteInteractiveMode } from './commands/run';
 import { runInteractiveCommand } from './commands/interactive-run';
@@ -45,7 +46,7 @@ if (process.argv.includes('--debug')) {
   }
 }
 
-dotenv.config({ path: envPath, override: true });
+dotenv.config({ path: envPath, override: false });
 
 // Debug logging after dotenv loading
 if (process.argv.includes('--debug')) {
@@ -57,16 +58,65 @@ if (process.argv.includes('--debug')) {
   }
 }
 
+const CLI_VERSION = '0.1.2';
+
+async function getServerVersion(apiUrl: string): Promise<string | null> {
+  try {
+    const response = await axios.get(`${apiUrl}/api/version`, { timeout: 5000 });
+    return response.data.version || 'unknown';
+  } catch (error) {
+    return null;
+  }
+}
+
+async function getApiUrl(): Promise<string> {
+  // Check environment variables in order of preference
+  const apiUrl = process.env.VIBECHECK_URL || 
+                 process.env.VIBECHECK_API_URL || 
+                 process.env.API_BASE_URL || 
+                 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
+  return apiUrl;
+}
+
+async function displayVersion() {
+  console.log(chalk.cyan(`vibe CLI v${CLI_VERSION}`));
+  
+  const apiUrl = await getApiUrl();
+  console.log(chalk.gray(`Connected to: ${apiUrl}`));
+  
+  const serverVersion = await getServerVersion(apiUrl);
+  if (serverVersion) {
+    console.log(chalk.green(`Server version: ${serverVersion}`));
+  } else {
+    console.log(chalk.red('Server: unreachable'));
+  }
+}
+
 const program = new Command();
 
 program
   .name('vibe')
-  .description('CLI tool for running language model evaluations')
-  .version('0.1.1')
+  .description('CLI tool for running language model evaluations');
+
+// Override the default version command
+program
+  .command('version')
+  .description('display version information')
   .action(async () => {
-    // Check if user explicitly requested help or version
-    if (process.argv.includes('--help') || process.argv.includes('-h') || 
-        process.argv.includes('--version') || process.argv.includes('-V')) {
+    await displayVersion();
+  });
+
+// Add version option
+program
+  .option('-V, --version', 'display version information')
+  .on('option:version', async () => {
+    await displayVersion();
+    process.exit(0);
+  });
+
+program.action(async () => {
+    // Check if user explicitly requested help
+    if (process.argv.includes('--help') || process.argv.includes('-h')) {
       return; // Let commander handle these
     }
     // Auth preflight before launching interactive mode

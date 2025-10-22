@@ -26,7 +26,7 @@ export function isNetworkError(error: any): boolean {
 export function displayNetworkError(): void {
   console.error(chalk.redBright('\n🎃 The Halloween pop-up can no longer be reached'));
   console.error(chalk.gray('\nYour run logs are available at: ') + chalk.cyan('~/.vibecheck/runs'));
-  console.error(chalk.gray('Go to ') + chalk.cyan('vibescheck.io') + chalk.gray(' to find out what\'s next.'));
+  console.error(chalk.gray('Go to ') + chalk.cyan('https://vibescheck.io') + chalk.gray(' to find out what\'s next.'));
   console.error('');
 }
 
@@ -37,6 +37,6 @@ export function getNetworkErrorMessage(): string[] {
   return [
     '🎃 The Halloween pop-up can no longer be reached',
     'Your run logs are available at: ~/.vibecheck/runs',
-    'Go to vibescheck.io to find out what\'s next.'
+    'Go to https://vibescheck.io to find out what\'s next.'
   ];
 }

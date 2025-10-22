@@ -125,8 +125,10 @@ evals:
 
 ### Check Types
 
-1. **match** - Glob pattern matching (e.g., `*hello*`, `goodbye*`)
-2. **not_match** - Negated glob patterns
+1. **match** - Pattern matching supporting both glob and regex syntax
+   - **Glob patterns** (recommended): `*hello*`, `goodbye*`, `*world`, `exact`
+   - **Regex patterns** (advanced): `.*hello.*`, `^goodbye`, `world$`
+2. **not_match** - Negated patterns (must NOT match)
 3. **or** - OR operator for multiple patterns
 4. **min_tokens**/**max_tokens** - Token length constraints
 5. **semantic** - Compare semantic meaning using embeddings (local)

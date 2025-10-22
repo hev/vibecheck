@@ -167,7 +167,7 @@ export async function fetchModels(debug: boolean = false) {
 export function handleApiError(error: any): never {
   // Handle network errors first
   if (isNetworkError(error)) {
-    throw new Error('🎃 The Halloween pop-up can no longer be reached\n\nYour run logs are available at: ~/.vibecheck/runs\nGo to vibescheck.io to find out what\'s next.');
+    throw new Error('🎃 The Halloween pop-up can no longer be reached\n\nYour run logs are available at: ~/.vibecheck/runs\nGo to https://vibescheck.io to find out what\'s next.');
   }
 
   if (error.response?.status === 401 || error.response?.status === 403) {

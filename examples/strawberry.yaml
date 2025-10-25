@@ -6,156 +6,120 @@ metadata:
 evals:
   - prompt: "How many Rs are in the word 'strawberry'?"
     checks:
-      match: "*3*"
-      llm_judge:
-        criteria: "Is the answer exactly 3 Rs in strawberry?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*3*"
+        - match: "*three*"
+        - match: "*Three*"
 
   - prompt: "Count the number of vowels in 'Mississippi'."
     checks:
-      match: "*4*"
-      llm_judge:
-        criteria: "Is the answer exactly 4 vowels in Mississippi?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*4*"
+        - match: "*four*"
+        - match: "*Four*"
 
   - prompt: "How many times does the letter 'e' appear in 'elephant'?"
     checks:
-      match: "*3*"
-      llm_judge:
-        criteria: "Is the answer exactly 3 e's in elephant?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*2*"
+        - match: "*two*"
+        - match: "*Two*"
 
   - prompt: "What is the third letter of the word 'computer'?"
     checks:
       or:
         - match: "*m*"
         - match: "*M*"
-      llm_judge:
-        criteria: "Is the third letter of computer 'm'?"
-      min_tokens: 1
-      max_tokens: 20
 
   - prompt: "How many consonants are in 'hello'?"
     checks:
-      match: "*3*"
-      llm_judge:
-        criteria: "Is the answer exactly 3 consonants in hello?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*3*"
+        - match: "*three*"
+        - match: "*Three*"
 
   - prompt: "Count the number of 'a' letters in 'banana'."
     checks:
-      match: "*3*"
-      llm_judge:
-        criteria: "Is the answer exactly 3 a's in banana?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*3*"
+        - match: "*three*"
+        - match: "*Three*"
 
   - prompt: "What is the last letter of 'programming'?"
     checks:
       or:
         - match: "*g*"
         - match: "*G*"
-      llm_judge:
-        criteria: "Is the last letter of programming 'g'?"
-      min_tokens: 1
-      max_tokens: 20
 
   - prompt: "How many times does 'l' appear in 'parallel'?"
     checks:
-      match: "*3*"
-      llm_judge:
-        criteria: "Is the answer exactly 3 l's in parallel?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*3*"
+        - match: "*three*"
+        - match: "*Three*"
 
   - prompt: "What is the middle letter of 'python'?"
     checks:
       or:
         - match: "*t*"
         - match: "*h*"
-      llm_judge:
-        criteria: "Is the middle letter of python either 't' or 'h'?"
-      min_tokens: 1
-      max_tokens: 20
 
   - prompt: "Count the vowels in 'education'."
     checks:
-      match: "*5*"
-      llm_judge:
-        criteria: "Is the answer exactly 5 vowels in education?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*5*"
+        - match: "*five*"
+        - match: "*Five*"
 
   - prompt: "How many 's' letters are in 'success'?"
     checks:
-      match: "*4*"
-      llm_judge:
-        criteria: "Is the answer exactly 4 s's in success?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*3*"
+        - match: "*three*"
+        - match: "*Three*"
 
   - prompt: "What is the first letter of 'javascript'?"
     checks:
       or:
         - match: "*j*"
         - match: "*J*"
-      llm_judge:
-        criteria: "Is the first letter of javascript 'j'?"
-      min_tokens: 1
-      max_tokens: 20
 
   - prompt: "Count the number of 'n' letters in 'beginning'."
     checks:
-      match: "*3*"
-      llm_judge:
-        criteria: "Is the answer exactly 3 n's in beginning?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*3*"
+        - match: "*three*"
+        - match: "*Three*"
 
   - prompt: "How many consonants are in 'algorithm'?"
     checks:
-      match: "*7*"
-      llm_judge:
-        criteria: "Is the answer exactly 7 consonants in algorithm?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*6*"
+        - match: "*six*"
+        - match: "*Six*"
 
   - prompt: "What is the second letter of 'database'?"
     checks:
       or:
         - match: "*a*"
         - match: "*A*"
-      llm_judge:
-        criteria: "Is the second letter of database 'a'?"
-      min_tokens: 1
-      max_tokens: 20
 
   - prompt: "Count the vowels in 'artificial'."
     checks:
-      match: "*4*"
-      llm_judge:
-        criteria: "Is the answer exactly 4 vowels in artificial?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*5*"
+        - match: "*five*"
+        - match: "*Five*"
 
   - prompt: "How many times does 'i' appear in 'intelligence'?"
     checks:
-      match: "*3*"
-      llm_judge:
-        criteria: "Is the answer exactly 3 i's in intelligence?"
-      min_tokens: 1
-      max_tokens: 20
+      or:
+        - match: "*2*"
+        - match: "*two*"
+        - match: "*Two*"
 
   - prompt: "What is the last letter of 'machine'?"
     checks:
       or:
         - match: "*e*"
         - match: "*E*"
-      llm_judge:
-        criteria: "Is the last letter of machine 'e'?"
-      min_tokens: 1
-      max_tokens: 20

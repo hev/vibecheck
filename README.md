@@ -278,6 +278,96 @@ vibes breakdown as follows.
 - `0` - Good or sketchy vibes (≥50% pass rate)
 - `1` - Bad vibes (<50% pass rate)
 
+## Model Comparison & Scoring
+
+vibecheck provides a comprehensive scoring system to help you compare models across multiple dimensions.
+
+### Score Calculation
+
+The **Score** column in `vibe get runs` combines three key factors:
+
+```
+Score = success_percentage / (cost * 1000 + duration_seconds * 0.1)
+```
+
+**Components:**
+- **Success Rate**: Percentage of evaluations that passed
+- **Cost Factor**: Total cost in dollars (multiplied by 1000 for scaling)
+- **Latency Factor**: Duration in seconds (multiplied by 0.1 for small penalty)
+
+**Higher scores indicate better overall performance** (more accurate, cheaper, and faster).
+
+### Score Color Coding
+
+- 🟢 **Green (≥1.0)**: Excellent performance
+- 🟡 **Yellow (0.3-1.0)**: Good performance  
+- 🔴 **Red (<0.3)**: Poor performance
+- ⚪ **Gray (N/A)**: Cannot calculate (incomplete runs or missing cost data)
+
+**Note**: Scores are only calculated for completed runs to ensure fair cost comparisons. Incomplete runs show "N/A" to avoid skewing results with partial token processing.
+
+### Multi-Model Comparison
+
+Run evaluations on multiple models using flexible selection patterns:
+
+#### Comma-Delimited Models
+```bash
+# Run on specific models
+vibe check -f my-eval.yaml -m "anthropic/claude-3.5-sonnet,openai/gpt-4"
+
+# Mix and match any combination
+vibe check -f my-eval.yaml -m "openai/gpt-4,anthropic/claude-3.5-sonnet,google/gemini-pro"
+```
+
+#### Wildcard Selection
+```bash
+# Run on all OpenAI models
+vibe check -f my-eval.yaml -m "openai*"
+
+# Run on multiple providers
+vibe check -f my-eval.yaml -m "openai*,anthropic*"
+
+# Mix wildcards and specific models
+vibe check -f my-eval.yaml -m "openai*,anthropic/claude-3.5-sonnet"
+```
+
+#### Select All Models
+```bash
+# Run on all available models
+vibe check -f my-eval.yaml -m all
+```
+
+#### Filter by Criteria
+Combine selection with filters to narrow down:
+
+```bash
+# All $ models with MCP support
+vibe check -f my-eval.yaml -m all --price 1 --mcp
+
+# All OpenAI models in the cheapest quartile
+vibe check -f my-eval.yaml -m openai* --price 1
+
+# All Anthropic and Google models with MCP
+vibe check -f my-eval.yaml -m "anthropic*,google*" --mcp
+```
+
+**View results sorted by score:**
+```bash
+vibe get runs --sort-by price-performance
+```
+
+### Sorting Options
+
+Sort runs by different criteria:
+
+```bash
+vibe get runs --sort-by created          # Default: chronological
+vibe get runs --sort-by success          # By success rate
+vibe get runs --sort-by cost             # By total cost
+vibe get runs --sort-by time             # By duration
+vibe get runs --sort-by price-performance # By score (recommended)
+```
+
 ---
 
 **Wanna check the vibe?** Get started at [vibescheck.io](https://vibescheck.io) 🚀

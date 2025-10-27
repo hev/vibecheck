@@ -3,8 +3,7 @@ import ora from 'ora';
 import axios from 'axios';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
-
-const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
+import { getApiUrl } from '../utils/config';
 
 function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
@@ -24,7 +23,7 @@ export async function orgCommand(debug: boolean = false) {
   const spinner = ora('Fetching organization info...').start();
 
   try {
-    const url = `${API_URL}/api/orginfo`;
+    const url = `${getApiUrl()}/api/orginfo`;
     if (debug) {
       spinner.stop();
       console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));

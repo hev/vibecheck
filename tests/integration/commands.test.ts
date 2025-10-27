@@ -35,6 +35,21 @@ evals:
       apiMock.mockRunEval();
       apiMock.mockStatusCompleted();
 
+      // Mock InteractiveUI to prevent blessed from creating real terminal UI
+      const mockUI = {
+        setCommandHandler: jest.fn(),
+        displayFileContent: jest.fn(),
+        render: jest.fn(),
+        destroy: jest.fn(),
+        setOnboardingHandler: jest.fn(),
+        startOnboarding: jest.fn(),
+      };
+
+      // Mock the InteractiveUI constructor
+      jest.doMock('../../packages/cli/src/ui/interactive', () => ({
+        InteractiveUI: jest.fn(() => mockUI),
+      }));
+
       // Stub onboarding to immediately resolve with our temp file
       const onboardingModule = require('../../packages/cli/src/commands/onboarding');
       const onboardingSpy = jest.spyOn(onboardingModule, 'runOnboarding').mockResolvedValue(tempFile);
@@ -54,6 +69,7 @@ evals:
       });
 
       expect(onboardingSpy).toHaveBeenCalled();
+      expect(mockUI.destroy).toHaveBeenCalled();
 
       exitMock.mockRestore();
       onboardingSpy.mockRestore();
@@ -63,6 +79,8 @@ evals:
     cleanupApiMocks();
     cleanupTempFiles();
     jest.restoreAllMocks();
+    // Clear all mocks to prevent interference between tests
+    jest.clearAllMocks();
   });
 
   describe('vibe check command', () => {
@@ -702,4 +720,8 @@ evals:
       exitMock.mockRestore();
     });
   });
+
+  // Note: Multi-model and sorting tests are complex to mock properly
+  // The functionality is implemented and tested through unit tests
+  // Integration tests focus on the core command functionality
 });

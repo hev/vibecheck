@@ -6,8 +6,7 @@ import axios from 'axios';
 import { EvalSuiteSchema } from '../types';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
-
-const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
+import { getApiUrl } from '../utils/config';
 
 function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
@@ -63,7 +62,7 @@ export async function saveCommand(options: SaveOptions) {
     const evalSuite = parseResult.data;
     spinner.text = 'Saving suite...';
 
-    const url = `${API_URL}/api/suite/save`;
+    const url = `${getApiUrl()}/api/suite/save`;
     const requestBody = {
       evalSuite,
       yamlContent: fileContent
@@ -125,7 +124,7 @@ export async function listCommand(debug: boolean = false) {
   const spinner = ora('Fetching suites...').start();
 
   try {
-    const url = `${API_URL}/api/suite/list`;
+    const url = `${getApiUrl()}/api/suite/list`;
     if (debug) {
       spinner.stop();
       console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));
@@ -210,7 +209,7 @@ export async function getCommand(name: string, debug: boolean = false) {
   const spinner = ora(`Fetching suite "${name}"...`).start();
 
   try {
-    const url = `${API_URL}/api/suite/${encodeURIComponent(name)}`;
+    const url = `${getApiUrl()}/api/suite/${encodeURIComponent(name)}`;
     if (debug) {
       spinner.stop();
       console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));

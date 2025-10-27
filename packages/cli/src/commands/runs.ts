@@ -5,8 +5,31 @@ import { EvalResult, ConditionalResult } from '../types';
 import { displaySummary } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
+import { getApiUrl } from '../utils/config';
 
-const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
+/**
+ * Calculate price-performance-latency score
+ * Formula: success_percentage / (cost * 1000 + duration_seconds * 0.1)
+ * Higher score = better overall performance (cheaper + more accurate + faster)
+ * 
+ * The latency factor (duration_seconds * 0.1) adds a small penalty for slower runs
+ * This ensures faster models get a slight advantage in the score
+ */
+function calculatePricePerformanceScore(successPercentage: number, totalCost: number | null, durationSeconds: number | null): number | null {
+  if (totalCost === null || totalCost === 0) {
+    return null; // Cannot calculate without cost data
+  }
+  
+  if (successPercentage < 0 || successPercentage > 100) {
+    return null; // Invalid success percentage
+  }
+  
+  // Add latency penalty: duration in seconds * 0.1
+  const latencyPenalty = durationSeconds ? durationSeconds * 0.1 : 0;
+  const totalPenalty = (totalCost * 1000) + latencyPenalty;
+  
+  return successPercentage / totalPenalty;
+}
 
 function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
@@ -31,19 +54,25 @@ interface ListRunsOptions {
   successLt?: number;
   timeGt?: number;
   timeLt?: number;
+  sortBy?: string;
 }
 
 // List all runs with pagination
 export async function listRunsCommand(options: ListRunsOptions = {}, debug: boolean = false) {
-  const { limit = 50, offset = 0, suite, status, successGt, successLt, timeGt, timeLt } = options;
-  const spinner = ora('Fetching runs...').start();
+  const { limit = 50, offset = 0, suite, status, successGt, successLt, timeGt, timeLt, sortBy = 'created' } = options;
+  const spinner = suite 
+    ? ora(`Fetching runs for suite "${suite}"...`).start()
+    : ora('Fetching runs...').start();
 
   try {
-    const url = `${API_URL}/api/runs`;
+    // Use suite-specific endpoint when suite is specified
+    const url = suite 
+      ? `${getApiUrl()}/api/runs/by-suite/${encodeURIComponent(suite)}`
+      : `${getApiUrl()}/api/runs`;
 
     // Build query params
     const params: any = { limit, offset };
-    if (suite) params.suite = suite;
+    // Note: Suite filtering uses dedicated endpoint, not query params
     if (status) params.status = status;
     if (successGt !== undefined) params.successGt = successGt;
     if (successLt !== undefined) params.successLt = successLt;
@@ -78,24 +107,71 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
 
     const { runs, pagination } = response.data;
 
-    if (runs.length === 0) {
-      console.log(chalk.yellow('No runs found'));
+    // Sort runs based on sortBy parameter
+    const sortedRuns = [...runs].sort((a: any, b: any) => {
+      switch (sortBy) {
+        case 'created':
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        case 'success':
+          const aSuccess = parseFloat(a.success_percentage) || 0;
+          const bSuccess = parseFloat(b.success_percentage) || 0;
+          return bSuccess - aSuccess;
+        case 'cost':
+          const aCost = a.total_cost ? parseFloat(a.total_cost) : 0;
+          const bCost = b.total_cost ? parseFloat(b.total_cost) : 0;
+          return aCost - bCost; // Lower cost first
+        case 'time':
+          const aTime = parseFloat(a.duration_seconds) || 0;
+          const bTime = parseFloat(b.duration_seconds) || 0;
+          return aTime - bTime; // Lower time first
+        case 'price-performance':
+          // Only calculate scores for completed runs
+          const aCompleted = a.status === 'completed';
+          const bCompleted = b.status === 'completed';
+          
+          if (!aCompleted && !bCompleted) return 0; // Both incomplete, maintain order
+          if (!aCompleted) return 1; // Put incomplete runs at end
+          if (!bCompleted) return -1; // Put incomplete runs at end
+          
+          // Both completed, calculate and compare scores
+          const aScore = calculatePricePerformanceScore(parseFloat(a.success_percentage) || 0, a.total_cost ? parseFloat(a.total_cost) : null, parseFloat(a.duration_seconds) || null);
+          const bScore = calculatePricePerformanceScore(parseFloat(b.success_percentage) || 0, b.total_cost ? parseFloat(b.total_cost) : null, parseFloat(b.duration_seconds) || null);
+          if (aScore === null && bScore === null) return 0;
+          if (aScore === null) return 1; // Put null scores at end
+          if (bScore === null) return -1;
+          return bScore - aScore; // Higher score first
+        default:
+          return 0; // No sorting
+      }
+    });
+
+    if (sortedRuns.length === 0) {
+      if (suite) {
+        console.log(chalk.yellow(`No runs found for suite "${suite}"`));
+        console.log(chalk.gray('Use "vibe get suites" to list available suites'));
+      } else {
+        console.log(chalk.yellow('No runs found'));
+      }
       return;
     }
 
+    // Display sort indicator
+    const sortDirection = sortBy === 'created' ? 'descending' : 'ascending';
+    console.log(chalk.gray(`Sorted by: ${sortBy} (${sortDirection})`));
     console.log(chalk.bold('\nRuns:\n'));
     console.log(
       chalk.bold('ID'.padEnd(38)) +
       chalk.bold('Suite Name'.padEnd(20)) +
-      chalk.bold('Model'.padEnd(45)) +
+      chalk.bold('Model'.padEnd(35)) +
       chalk.bold('Status'.padEnd(18)) +
       chalk.bold('Pass/Fail'.padEnd(20)) +
       chalk.bold('Time'.padEnd(12)) +
-      chalk.bold('Cost')
+      chalk.bold('Cost'.padEnd(12)) +
+      chalk.bold('Score')
     );
-    console.log('='.repeat(162));
+    console.log('='.repeat(175));
 
-    runs.forEach((run: any) => {
+    sortedRuns.forEach((run: any) => {
       const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.redBright : chalk.yellow;
 
       // Parse fields from API (they come as strings)
@@ -132,42 +208,64 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         ? `$${totalCost.toFixed(6)}`
         : 'N/A';
 
+      // Calculate and format Score (price-performance-latency)
+      // Only show scores for completed runs to avoid skewing cost comparisons
+      let ppScore = null;
+      let ppScoreText = 'N/A';
+      let ppScoreColor = chalk.gray;
+      
+      if (run.status === 'completed') {
+        ppScore = calculatePricePerformanceScore(successPercentage, totalCost, durationSeconds);
+        
+        if (ppScore !== null) {
+          ppScoreText = ppScore.toFixed(2);
+          if (ppScore >= 1.0) {
+            ppScoreColor = chalk.green;
+          } else if (ppScore >= 0.3) {
+            ppScoreColor = chalk.yellow;
+          } else {
+            ppScoreColor = chalk.redBright;
+          }
+        }
+      }
+
       // Truncate model name if too long
       const modelName = run.model || 'N/A';
-      const truncatedModel = modelName.length > 45
-        ? modelName.substring(0, 42) + '...'
+      const truncatedModel = modelName.length > 35
+        ? modelName.substring(0, 32) + '...'
         : modelName;
 
       console.log(
         chalk.cyan(run.id.padEnd(38)) +
         chalk.white(run.suite_name.padEnd(20)) +
-        chalk.white(truncatedModel.padEnd(45)) +
+        chalk.white(truncatedModel.padEnd(35)) +
         statusColor(run.status.padEnd(18)) +
         passRate +
         chalk.gray(time.padEnd(12)) +
-        chalk.gray(cost)
+        chalk.gray(cost.padEnd(12)) +
+        ppScoreColor(ppScoreText.padEnd(12))
       );
     });
 
     console.log('');
 
     // Calculate summary metrics for the filtered runs
-    if (runs.length > 0) {
-      const totalSuccessRate = runs.reduce((sum: number, run: any) => {
+    if (sortedRuns.length > 0) {
+      const totalSuccessRate = sortedRuns.reduce((sum: number, run: any) => {
         return sum + (parseFloat(run.success_percentage) || 0);
       }, 0);
-      const avgSuccessRate = totalSuccessRate / runs.length;
+      const avgSuccessRate = totalSuccessRate / sortedRuns.length;
 
-      const costsWithValues = runs
+      const costsWithValues = sortedRuns
         .map((run: any) => run.total_cost ? parseFloat(run.total_cost) : null)
         .filter((cost: number | null) => cost !== null);
       const totalCost = costsWithValues.reduce((sum: number, cost: number) => sum + cost, 0);
 
-      const totalDuration = runs.reduce((sum: number, run: any) => {
+      const totalDuration = sortedRuns.reduce((sum: number, run: any) => {
         const duration = parseFloat(run.duration_seconds);
         return sum + (!isNaN(duration) ? duration : 0);
       }, 0);
-      const avgDuration = totalDuration / runs.length;
+      const avgDuration = totalDuration / sortedRuns.length;
 
       console.log(chalk.bold('Summary:'));
       console.log(
@@ -179,7 +277,7 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     }
 
     if (pagination) {
-      console.log(chalk.gray(`Showing ${offset + 1}-${offset + runs.length} of ${pagination.total} runs`));
+      console.log(chalk.gray(`Showing ${offset + 1}-${offset + sortedRuns.length} of ${pagination.total} runs`));
       if (pagination.hasMore) {
         console.log(chalk.gray(`Use --limit and --offset to paginate`));
       }
@@ -187,7 +285,10 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     }
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to list runs'));
-    handleError(error, `${API_URL}/api/runs`);
+    const errorUrl = suite 
+      ? `${getApiUrl()}/api/runs/by-suite/${encodeURIComponent(suite)}`
+      : `${getApiUrl()}/api/runs`;
+    handleError(error, errorUrl);
   }
 }
 
@@ -197,7 +298,7 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
   const spinner = ora(`Fetching runs for suite "${suiteName}"...`).start();
 
   try {
-    const response = await axios.get(`${API_URL}/api/runs/by-suite/${encodeURIComponent(suiteName)}`, {
+    const response = await axios.get(`${getApiUrl()}/api/runs/by-suite/${encodeURIComponent(suiteName)}`, {
       headers: getAuthHeaders(),
       params: { limit, offset }
     });
@@ -280,7 +381,7 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
     }
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to list runs'));
-    handleError(error, `${API_URL}/api/runs/by-suite/${encodeURIComponent(suiteName)}`);
+    handleError(error, `${getApiUrl()}/api/runs/by-suite/${encodeURIComponent(suiteName)}`);
   }
 }
 
@@ -289,7 +390,7 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
   const spinner = ora(`Fetching run "${runId}"...`).start();
 
   try {
-    const url = `${API_URL}/api/runs/${runId}`;
+    const url = `${getApiUrl()}/api/runs/${runId}`;
     if (debug) {
       spinner.stop();
       console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));
@@ -466,7 +567,7 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
     }
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to get run'));
-    handleError(error, `${API_URL}/api/runs/${runId}`);
+    handleError(error, `${getApiUrl()}/api/runs/${runId}`);
   }
 }
 

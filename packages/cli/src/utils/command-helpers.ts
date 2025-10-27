@@ -2,8 +2,7 @@ import axios from 'axios';
 import { displayInvitePrompt } from './auth-error';
 import { spawnSync } from 'child_process';
 import { isNetworkError } from './network-error';
-
-const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
+import { getApiUrl } from './config';
 
 export function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
@@ -23,7 +22,7 @@ export function getAuthHeaders() {
 
 // Organization info
 export async function fetchOrgInfo(debug: boolean = false) {
-  const url = `${API_URL}/api/orginfo`;
+  const url = `${getApiUrl()}/api/orginfo`;
   if (debug) {
     console.log(`[DEBUG] Request URL: ${url}`);
   }
@@ -50,7 +49,7 @@ export async function fetchOrgInfo(debug: boolean = false) {
 
 // Suites
 export async function fetchSuites(debug: boolean = false) {
-  const url = `${API_URL}/api/suite/list`;
+  const url = `${getApiUrl()}/api/suite/list`;
   if (debug) {
     console.log(`[DEBUG] Request URL: ${url}`);
   }
@@ -72,7 +71,7 @@ export async function fetchSuites(debug: boolean = false) {
 }
 
 export async function fetchSuite(name: string, debug: boolean = false) {
-  const url = `${API_URL}/api/suite/${encodeURIComponent(name)}`;
+  const url = `${getApiUrl()}/api/suite/${encodeURIComponent(name)}`;
   if (debug) {
     console.log(`[DEBUG] Request URL: ${url}`);
   }
@@ -95,7 +94,7 @@ export async function fetchSuite(name: string, debug: boolean = false) {
 
 // Runs
 export async function fetchRuns(options: any = {}, debug: boolean = false) {
-  const url = `${API_URL}/api/runs`;
+  const url = `${getApiUrl()}/api/runs`;
   if (debug) {
     console.log(`[DEBUG] Request URL: ${url}`);
     console.log(`[DEBUG] Request options:`, options);
@@ -119,7 +118,7 @@ export async function fetchRuns(options: any = {}, debug: boolean = false) {
 }
 
 export async function fetchRun(runId: string, debug: boolean = false) {
-  const url = `${API_URL}/api/runs/${encodeURIComponent(runId)}`;
+  const url = `${getApiUrl()}/api/runs/${encodeURIComponent(runId)}`;
   if (debug) {
     console.log(`[DEBUG] Request URL: ${url}`);
   }
@@ -142,7 +141,7 @@ export async function fetchRun(runId: string, debug: boolean = false) {
 
 // Models
 export async function fetchModels(debug: boolean = false) {
-  const url = `${API_URL}/api/models`;
+  const url = `${getApiUrl()}/api/models`;
   if (debug) {
     console.log(`[DEBUG] Request URL: ${url}`);
   }

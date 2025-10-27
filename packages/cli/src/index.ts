@@ -14,6 +14,8 @@ import { listRunsCommand, listRunsBySuiteCommand, getRunCommand } from './comman
 import { modelsCommand } from './commands/models';
 import { redeemCommand, redeemFlow } from './commands/redeem';
 import { fetchOrgInfo } from './utils/command-helpers';
+import { getApiUrl } from './utils/config';
+import { resolveModels } from './utils/model-resolver';
 
 // Load .env from user's home directory
 const os = require('os');
@@ -69,19 +71,11 @@ async function getServerVersion(apiUrl: string): Promise<string | null> {
   }
 }
 
-async function getApiUrl(): Promise<string> {
-  // Check environment variables in order of preference
-  const apiUrl = process.env.VIBECHECK_URL || 
-                 process.env.VIBECHECK_API_URL || 
-                 process.env.API_BASE_URL || 
-                 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
-  return apiUrl;
-}
 
 async function displayVersion() {
   console.log(chalk.cyan(`vibe CLI v${CLI_VERSION}`));
   
-  const apiUrl = await getApiUrl();
+  const apiUrl = getApiUrl();
   console.log(chalk.gray(`Connected to: ${apiUrl}`));
   
   const serverVersion = await getServerVersion(apiUrl);
@@ -140,12 +134,15 @@ const checkCommand = program
   .command('check [suite-name]')
   .description('Check vibes by running evaluations from a YAML file or saved suite')
   .option('-f, --file <path>', 'Path to the YAML file containing evaluations')
-  .option('-m, --model <model-id>', 'Override model from suite metadata')
+  .option('-m, --model <model-id>', 'Override model from suite metadata (supports comma-delimited list, "all", wildcards like "openai*")')
   .option('-s, --system-prompt <prompt>', 'Override system prompt from suite metadata')
   .option('-t, --threads <number>', 'Override thread count from suite metadata', parseInt)
   .option('--mcp-url <url>', 'Override or set MCP server URL')
   .option('--mcp-name <name>', 'Override or set MCP server name')
   .option('--mcp-token <token>', 'Override or set MCP server authorization token')
+  .option('--mcp', 'Filter to only models with MCP support (use with -m all or wildcards)')
+  .option('--price <quartiles>', 'Filter models by price quartiles (e.g., "1,2" for $ and $$)', '')
+  .option('--provider <providers>', 'Filter models by provider(s), comma-separated (e.g., "openai,anthropic")', '')
   .option('-i, --interactive', 'Run in interactive mode')
   .option('-a, --async', 'Exit immediately after starting the run (non-blocking)')
   .action(async (suiteName, options, command) => {
@@ -153,6 +150,54 @@ const checkCommand = program
       console.log('[DEBUG] Commander options object:', options);
       console.log('[DEBUG] Suite name:', suiteName);
       console.log('[DEBUG] options.file from flag:', options.file);
+    }
+
+    // Parse multi-model support
+    let models: string[] = [];
+    let isMultiModel = false;
+    
+    // Check if model specification needs resolution (contains "all" or wildcards)
+    const needsResolution = options.model && (
+      options.model.includes('all') || 
+      options.model.includes('*') ||
+      options.mcp ||
+      options.price ||
+      options.provider
+    );
+    
+    if (options.model) {
+      if (needsResolution) {
+        // Resolve model specification with filters
+        models = await resolveModels(
+          options.model,
+          {
+            mcp: options.mcp,
+            price: options.price,
+            provider: options.provider
+          },
+          options.debug
+        );
+        
+        if (models.length === 0) {
+          console.error(chalk.redBright('No models match the specified criteria'));
+          process.exit(1);
+        }
+        
+        if (options.debug) {
+          console.log(chalk.cyan(`[DEBUG] Resolved models: ${models.join(', ')}`));
+        }
+        
+        isMultiModel = models.length > 1;
+      } else {
+        // Simple comma-delimited list
+        models = options.model.split(',').map((m: string) => m.trim()).filter((m: string) => m.length > 0);
+        isMultiModel = models.length > 1;
+      }
+      
+      if (isMultiModel) {
+        console.log(chalk.yellow('Multiple models detected - running in async mode'));
+        options.async = true; // Force async mode for multi-model runs
+      }
     }
 
     // Check for conflicts
@@ -171,7 +216,8 @@ const checkCommand = program
       
       const suiteOptions = {
         suiteName,
-        model: options.model,
+        model: isMultiModel ? models : options.model,
+        models: isMultiModel ? models : undefined,
         systemPrompt: options.systemPrompt,
         threads: options.threads,
         mcpUrl: options.mcpUrl,
@@ -179,7 +225,10 @@ const checkCommand = program
         mcpToken: options.mcpToken,
         debug: options.debug,
         interactive: options.interactive,
-        async: options.async
+        async: options.async,
+        mcp: options.mcp,
+        priceFilter: options.price,
+        providerFilter: options.provider
       };
 
       if (options.interactive) {
@@ -254,7 +303,17 @@ const checkCommand = program
         }
         runInteractiveMode({ file: foundFile });
       } else {
-        runCommand({ file: foundFile, debug: options.debug, interactive: false, async: options.async });
+        runCommand({ 
+          file: foundFile, 
+          debug: options.debug, 
+          interactive: false, 
+          async: options.async,
+          model: isMultiModel ? models : options.model,
+          models: isMultiModel ? models : undefined,
+          mcp: options.mcp,
+          priceFilter: options.price,
+          providerFilter: options.provider
+        });
       }
     }
   });
@@ -290,6 +349,7 @@ const getCommand = program
   .option('--success-lt <percent>', 'Filter runs with success rate less than (0-100)', (val) => parseInt(val, 10))
   .option('--time-gt <seconds>', 'Filter runs with duration greater than (seconds)', (val) => parseFloat(val))
   .option('--time-lt <seconds>', 'Filter runs with duration less than (seconds)', (val) => parseFloat(val))
+  .option('--sort-by <field>', 'Sort runs by field: created, success, cost, time, price-performance (default: created)')
   .action((noun: string, identifier?: string, subcommand?: string, options?: any) => {
     const normalizedNoun = noun.toLowerCase();
     const debug = options?.debug || false;
@@ -324,6 +384,7 @@ const getCommand = program
       if (options?.successLt !== undefined) listOptions.successLt = options.successLt;
       if (options?.timeGt !== undefined) listOptions.timeGt = options.timeGt;
       if (options?.timeLt !== undefined) listOptions.timeLt = options.timeLt;
+      if (options?.sortBy) listOptions.sortBy = options.sortBy;
       listRunsCommand(listOptions, debug);
       return;
     }

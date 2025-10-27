@@ -6,11 +6,14 @@ import { getApiUrl } from './config';
 
 export function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
+  const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
   
   if (!currentApiKey) {
-    displayInvitePrompt();
-    // Run the redeem command to prompt for code interactively
-    spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+    if (!neverPrompt) {
+      displayInvitePrompt();
+      // Run the redeem command to prompt for code interactively
+      spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+    }
     process.exit(1);
   }
 
@@ -170,8 +173,11 @@ export function handleApiError(error: any): never {
   }
 
   if (error.response?.status === 401 || error.response?.status === 403) {
-    displayInvitePrompt();
-    spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+    const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
+    if (!neverPrompt) {
+      displayInvitePrompt();
+      spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+    }
     process.exit(1);
   } else if (error.response?.status === 500) {
     throw new Error('Server error: The VibeCheck API encountered an error');

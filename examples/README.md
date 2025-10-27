@@ -8,9 +8,6 @@ This directory contains comprehensive evaluation examples showcasing vibecheck's
 # Run a single eval suite
 vibe check -f examples/hello-world.yaml
 
-# Run all eval suites in parallel
-./scripts/run-all-evals.sh
-
 # Check results
 vibe get runs
 ```
@@ -112,16 +109,6 @@ Each suite showcases different combinations of vibecheck's check types:
 
 ## Running All Examples
 
-### Option 1: Run All Suites in Parallel
-```bash
-# Run all eval suites simultaneously (recommended)
-./scripts/run-all-evals.sh
-
-# Run with specific model
-./scripts/run-all-evals.sh openai/gpt-4o
-```
-
-### Option 2: Run Individual Suites
 ```bash
 # Run specific suites
 vibe check -f examples/strawberry.yaml
@@ -131,24 +118,45 @@ vibe check -f examples/finance.yaml
 
 ## Testing Across Multiple Models
 
-Once you've saved a suite, you can easily test it across multiple models:
+You can test evaluations across multiple models directly from the command line by specifying comma-separated model IDs:
 
-### Save Your Suite First
+### With a YAML File
+```bash
+# Run the same eval on multiple models (runs in async mode)
+vibe check -f examples/strawberry.yaml --model anthropic/claude-3.5-sonnet,openai/gpt-4o,meta-llama/llama-3-8b-instruct,google/gemini-2.5-pro
+```
+
+### With a Saved Suite
+First, save your suite:
 ```bash
 # Save a suite for reuse
 vibe set -f examples/strawberry.yaml
 ```
 
-### One-Liner for Model Comparison
+Then run on multiple models:
 ```bash
-# Quick model comparison (run these in parallel)
-vibe check strawberry --model anthropic/claude-3.5-sonnet --async && \
-vibe check strawberry --model openai/gpt-4o --async && \
-vibe check strawberry --model meta-llama/llama-3-8b-instruct --async && \ 
-vibe check strawberry --model google/gemini-2.5-pro --async && \
-wait
+# Run a saved suite on multiple models (runs in async mode)
+vibe check strawberry --model anthropic/claude-3.5-sonnet,openai/gpt-4o,meta-llama/llama-3-8b-instruct,google/gemini-2.5-pro
 ```
 
+### Advanced Options
+
+```bash
+# Run on ALL available models
+vibe check strawberry --model all
+
+# Run on all models with MCP support
+vibe check strawberry --model all --mcp
+
+# Run on all models in price quartiles 1 and 2 (cheapest half)
+vibe check strawberry --model all --price 1,2
+
+# Run on all models from specific providers
+vibe check strawberry --model all --provider anthropic,openai
+
+# Combine filters: all OpenAI models with MCP support
+vibe check strawberry --model openai* --mcp
+```
 
 ### Compare Results
 ```bash
@@ -157,5 +165,8 @@ vibe get runs
 
 # Filter by suite name
 vibe get runs --suite strawberry
+
+# Check a specific run
+vibe get runs <run-id>
 ```
 

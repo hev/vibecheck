@@ -15,6 +15,16 @@ import { getApiUrl } from '../utils/config';
  * The latency factor (duration_seconds * 0.1) adds a small penalty for slower runs
  * This ensures faster models get a slight advantage in the score
  */
+function formatDate(dateString: string | null): string {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${month}/${day} ${hours}:${minutes}`;
+}
+
 function calculatePricePerformanceScore(successPercentage: number, totalCost: number | null, durationSeconds: number | null): number | null {
   if (totalCost === null || totalCost === 0) {
     return null; // Cannot calculate without cost data
@@ -65,14 +75,19 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     : ora('Fetching runs...').start();
 
   try {
-    // Use suite-specific endpoint when suite is specified
-    const url = suite 
+    // Check if we have any filters other than suite
+    const hasOtherFilters = !!(status || successGt !== undefined || successLt !== undefined || timeGt !== undefined || timeLt !== undefined);
+    
+    // Use suite-specific endpoint when suite is specified WITHOUT other filters
+    // The by-suite endpoint doesn't support additional query params, so when we have
+    // other filters we need to use the main /api/runs endpoint with suite as a query param
+    const url = (suite && !hasOtherFilters)
       ? `${getApiUrl()}/api/runs/by-suite/${encodeURIComponent(suite)}`
       : `${getApiUrl()}/api/runs`;
 
     // Build query params
     const params: any = { limit, offset };
-    // Note: Suite filtering uses dedicated endpoint, not query params
+    if (suite && hasOtherFilters) params.suite = suite; // Add suite as query param when using main endpoint with filters
     if (status) params.status = status;
     if (successGt !== undefined) params.successGt = successGt;
     if (successLt !== undefined) params.successLt = successLt;
@@ -167,9 +182,10 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
       chalk.bold('Pass/Fail'.padEnd(20)) +
       chalk.bold('Time'.padEnd(12)) +
       chalk.bold('Cost'.padEnd(12)) +
-      chalk.bold('Score')
+      chalk.bold('Score'.padEnd(12)) +
+      chalk.bold('Date')
     );
-    console.log('='.repeat(175));
+    console.log('='.repeat(187));
 
     sortedRuns.forEach((run: any) => {
       const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.redBright : chalk.yellow;
@@ -235,6 +251,9 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         ? modelName.substring(0, 32) + '...'
         : modelName;
 
+      // Format date from created_at
+      const dateStr = formatDate(run.created_at);
+
       console.log(
         chalk.cyan(run.id.padEnd(38)) +
         chalk.white(run.suite_name.padEnd(20)) +
@@ -243,7 +262,8 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         passRate +
         chalk.gray(time.padEnd(12)) +
         chalk.gray(cost.padEnd(12)) +
-        ppScoreColor(ppScoreText.padEnd(12))
+        ppScoreColor(ppScoreText.padEnd(12)) +
+        chalk.gray(dateStr)
       );
     });
 
@@ -285,7 +305,9 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     }
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to list runs'));
-    const errorUrl = suite 
+    // Recalculate URL for error message consistency
+    const hasOtherFilters = !!(status || successGt !== undefined || successLt !== undefined || timeGt !== undefined || timeLt !== undefined);
+    const errorUrl = (suite && !hasOtherFilters)
       ? `${getApiUrl()}/api/runs/by-suite/${encodeURIComponent(suite)}`
       : `${getApiUrl()}/api/runs`;
     handleError(error, errorUrl);
@@ -323,9 +345,10 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
       chalk.bold('Status'.padEnd(12)) +
       chalk.bold('Pass/Fail'.padEnd(20)) +
       chalk.bold('Time'.padEnd(10)) +
-      chalk.bold('Started At')
+      chalk.bold('Started At'.padEnd(24)) +
+      chalk.bold('Date')
     );
-    console.log('='.repeat(100));
+    console.log('='.repeat(124));
 
     runs.forEach((run: any) => {
       const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.redBright : chalk.yellow;
@@ -360,13 +383,15 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
 
       // Use created_at from API response
       const startedAt = run.created_at ? new Date(run.created_at).toLocaleString() : 'N/A';
+      const dateStr = formatDate(run.created_at);
 
       console.log(
         chalk.cyan(run.id.padEnd(38)) +
         statusColor(run.status.padEnd(12)) +
         passRate +
         chalk.gray(time.padEnd(10)) +
-        chalk.gray(startedAt)
+        chalk.gray(startedAt.padEnd(24)) +
+        chalk.gray(dateStr)
       );
     });
 

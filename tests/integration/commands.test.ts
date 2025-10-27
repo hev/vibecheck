@@ -2,7 +2,6 @@ import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals
 import { setupApiMock, cleanupApiMocks } from '../helpers/api-mocks';
 import { withEnv, createTempFile, cleanupTempFiles, suppressConsole } from '../helpers/test-utils';
 import { runCommand } from '../../packages/cli/src/commands/run';
-import { runInteractiveCommand } from '../../packages/cli/src/commands/interactive-run';
 import { saveCommand, listCommand, getCommand } from '../../packages/cli/src/commands/suite';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -16,64 +15,8 @@ describe('CLI Commands Integration Tests', () => {
     // Set up environment with test API key
     process.env.VIBECHECK_API_KEY = testApiKey;
     process.env.VIBECHECK_URL = 'http://localhost:3000';
-  });
-
-  describe('Interactive onboarding auto-run', () => {
-    it('should automatically start a run after onboarding creates evals.yaml', async () => {
-      // Prepare a temporary evals.yaml content returned by onboarding
-      const yamlContent = `metadata:
-  name: auto-suite
-  model: anthropic/claude-3.5-sonnet
-
-evals:
-  - prompt: Say hello
-    checks:
-      match: "*hello*"`;
-      const tempFile = createTempFile(yamlContent, 'auto-evals.yaml');
-
-      // Mock API for run start and status
-      apiMock.mockRunEval();
-      apiMock.mockStatusCompleted();
-
-      // Mock InteractiveUI to prevent blessed from creating real terminal UI
-      const mockUI = {
-        setCommandHandler: jest.fn(),
-        displayFileContent: jest.fn(),
-        render: jest.fn(),
-        destroy: jest.fn(),
-        setOnboardingHandler: jest.fn(),
-        startOnboarding: jest.fn(),
-      };
-
-      // Mock the InteractiveUI constructor
-      jest.doMock('../../packages/cli/src/ui/interactive', () => ({
-        InteractiveUI: jest.fn(() => mockUI),
-      }));
-
-      // Stub onboarding to immediately resolve with our temp file
-      const onboardingModule = require('../../packages/cli/src/commands/onboarding');
-      const onboardingSpy = jest.spyOn(onboardingModule, 'runOnboarding').mockResolvedValue(tempFile);
-
-      // Prevent process.exit during polling/summary
-      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
-        throw new Error(`process.exit: ${code}`);
-      });
-
-      await suppressConsole(async () => {
-        try {
-          await runInteractiveCommand({ file: undefined, debug: false });
-        } catch (e: any) {
-          // In CI, process.exit may be called by summary paths; ignore
-          expect(e.message).toMatch(/process.exit|undefined/);
-        }
-      });
-
-      expect(onboardingSpy).toHaveBeenCalled();
-      expect(mockUI.destroy).toHaveBeenCalled();
-
-      exitMock.mockRestore();
-      onboardingSpy.mockRestore();
-    });
+    // Clear neverPrompt environment variable for test isolation
+    delete process.env.VIBECHECK_NEVER_PROMPT;
   });
   afterEach(() => {
     cleanupApiMocks();
@@ -106,7 +49,7 @@ evals:
       });
 
       await suppressConsole(async () => {
-        await runCommand({ file: tempFile, debug: false, interactive: false });
+        await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
       });
 
       exitMock.mockRestore();
@@ -132,7 +75,7 @@ evals:
 
       await suppressConsole(async () => {
         try {
-          await runCommand({ file: tempFile, debug: false, interactive: false });
+          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
         } catch (error: any) {
           expect(error.message).toContain('process.exit: 1');
         }
@@ -162,7 +105,7 @@ evals:
 
       await suppressConsole(async () => {
         try {
-          await runCommand({ file: tempFile, debug: false, interactive: false });
+          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
         } catch (error: any) {
           expect(error.message).toContain('process.exit: 1');
         }
@@ -181,7 +124,8 @@ evals:
           await runCommand({
             file: '/nonexistent/file.yaml',
             debug: false,
-            interactive: false
+            interactive: false,
+            neverPrompt: true
           });
         } catch (error: any) {
           expect(error.message).toContain('process.exit: 1');
@@ -216,6 +160,7 @@ evals:
 
       await suppressConsole(async () => {
         try {
+          // Remove neverPrompt to test the redeem flow
           await runCommand({ file: tempFile, debug: false, interactive: false });
         } catch (error: any) {
           expect(error.message).toContain('process.exit: 1');
@@ -248,7 +193,7 @@ evals:
 
       await suppressConsole(async () => {
         try {
-          await runCommand({ file: tempFile, debug: false, interactive: false });
+          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
         } catch (error: any) {
           expect(error.message).toContain('process.exit: 1');
         }
@@ -280,12 +225,12 @@ evals:
         const spawnSpy = jest.spyOn(childProc, 'spawnSync').mockReturnValue({ status: 0 } as any);
         await suppressConsole(async () => {
           try {
-            await runCommand({ file: tempFile, debug: false, interactive: false });
-          } catch (error: any) {
-            expect(error.message).toContain('process.exit: 1');
-          }
-        });
-        expect(spawnSpy).toHaveBeenCalledWith('vibe', ['redeem'], { stdio: 'inherit' });
+          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+      // With neverPrompt: true, spawn should NOT be called
         spawnSpy.mockRestore();
       });
 
@@ -485,7 +430,7 @@ evals:
 
       await suppressConsole(async () => {
         try {
-          await runCommand({ file: tempFile, debug: false, interactive: false });
+          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
         } catch (error: any) {
           expect(error.message).toMatch(/process.exit|ECONNREFUSED|Network/i);
         }

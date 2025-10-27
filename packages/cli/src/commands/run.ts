@@ -15,14 +15,17 @@ const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
+  const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
   
   if (!currentApiKey) {
-    displayInvitePrompt();
-    // Trigger interactive redeem flow for users to obtain an API key
-    try {
-      spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
-    } catch {
-      // ignore spawn errors in non-interactive test environments
+    if (!neverPrompt) {
+      displayInvitePrompt();
+      // Trigger interactive redeem flow for users to obtain an API key
+      try {
+        spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+      } catch {
+        // ignore spawn errors in non-interactive test environments
+      }
     }
     process.exit(1);
   }
@@ -43,6 +46,7 @@ interface RunOptions {
   mcp?: boolean;
   priceFilter?: string;
   providerFilter?: string;
+  neverPrompt?: boolean;
 }
 
 interface SuiteRunOptions {
@@ -67,7 +71,12 @@ export async function runInteractiveMode(options: RunOptions) {
 }
 
 export async function runCommand(options: RunOptions) {
-  const { file, debug, async: asyncMode, models } = options;
+  const { file, debug, async: asyncMode, models, neverPrompt } = options;
+  
+  // Set environment variable to prevent prompting in tests
+  if (neverPrompt) {
+    process.env.VIBECHECK_NEVER_PROMPT = 'true';
+  }
 
   if (!file) {
     console.error(chalk.redBright('Error: --file option is required'));
@@ -254,10 +263,13 @@ export async function runCommand(options: RunOptions) {
 
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
-      displayInvitePrompt();
-      try {
-        spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
-      } catch {}
+      const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
+      if (!neverPrompt) {
+        displayInvitePrompt();
+        try {
+          spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+        } catch {}
+      }
       process.exit(1);
     } else if (error.response?.status === 402) {
       const errorMsg = error.response.data?.error?.message ||
@@ -466,10 +478,13 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
 
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
-      displayInvitePrompt();
-      try {
-        spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
-      } catch {}
+      const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
+      if (!neverPrompt) {
+        displayInvitePrompt();
+        try {
+          spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+        } catch {}
+      }
       process.exit(1);
     } else if (error.response?.status === 404) {
       console.error(chalk.redBright(`\nSuite "${suiteName}" not found`));
@@ -656,7 +671,10 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
       
       // Handle specific HTTP error codes
       if (error.response?.status === 401 || error.response?.status === 403) {
-        displayInvitePrompt();
+        const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
+        if (!neverPrompt) {
+          displayInvitePrompt();
+        }
         process.exit(1);
       } else if (error.response?.status === 402) {
         const errorMsg = error.response.data?.error?.message ||

@@ -312,7 +312,8 @@ const checkCommand = program
           models: isMultiModel ? models : undefined,
           mcp: options.mcp,
           priceFilter: options.price,
-          providerFilter: options.provider
+          providerFilter: options.provider,
+          neverPrompt: options.neverPrompt
         });
       }
     }
@@ -320,6 +321,7 @@ const checkCommand = program
 
 // Add hidden debug option to check command
 checkCommand.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
+checkCommand.addOption(new (require('commander').Option)('--never-prompt', 'Never prompt for authentication (test mode)').hideHelp());
 
 // Removed: Default action was causing option conflicts with subcommands
 

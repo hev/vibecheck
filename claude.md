@@ -422,6 +422,15 @@ The project uses **Jest** with TypeScript for testing. Tests are organized into 
 
 Uses **nock** for HTTP mocking to simulate API responses.
 
+**⚠️ Interactive Commands Cannot Be Tested:**
+
+DO NOT add test coverage for these interactive commands:
+- `packages/cli/src/commands/interactive-run.ts` - Interactive mode with terminal UI
+- `packages/cli/src/commands/onboarding.ts` - Interactive onboarding flow
+- `packages/cli/src/ui/interactive.ts` - Blessed-based terminal UI
+
+These commands use terminal UI libraries (`blessed`, `readline`) that cause Jest to hang even with mocks. They are excluded from test coverage via `jest.config.js` `testPathIgnorePatterns`.
+
 #### 3. E2E Tests (`tests/e2e/**/*.test.ts`)
 
 **Live server required.** Test against real vibecheck API:

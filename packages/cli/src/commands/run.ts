@@ -10,20 +10,22 @@ import { displaySummary } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { writeRunOutput } from '../utils/output-writer';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
-
-const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
+import { getApiUrl } from '../utils/config';
 const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
+  const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
   
   if (!currentApiKey) {
-    displayInvitePrompt();
-    // Trigger interactive redeem flow for users to obtain an API key
-    try {
-      spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
-    } catch {
-      // ignore spawn errors in non-interactive test environments
+    if (!neverPrompt) {
+      displayInvitePrompt();
+      // Trigger interactive redeem flow for users to obtain an API key
+      try {
+        spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+      } catch {
+        // ignore spawn errors in non-interactive test environments
+      }
     }
     process.exit(1);
   }
@@ -39,11 +41,18 @@ interface RunOptions {
   debug?: boolean;
   interactive?: boolean;
   async?: boolean;
+  model?: string | string[];
+  models?: string[];
+  mcp?: boolean;
+  priceFilter?: string;
+  providerFilter?: string;
+  neverPrompt?: boolean;
 }
 
 interface SuiteRunOptions {
   suiteName: string;
-  model?: string;
+  model?: string | string[];
+  models?: string[];
   systemPrompt?: string;
   threads?: number;
   mcpUrl?: string;
@@ -52,6 +61,9 @@ interface SuiteRunOptions {
   debug?: boolean;
   interactive?: boolean;
   async?: boolean;
+  mcp?: boolean;
+  priceFilter?: string;
+  providerFilter?: string;
 }
 
 export async function runInteractiveMode(options: RunOptions) {
@@ -59,7 +71,12 @@ export async function runInteractiveMode(options: RunOptions) {
 }
 
 export async function runCommand(options: RunOptions) {
-  const { file, debug, async: asyncMode } = options;
+  const { file, debug, async: asyncMode, models, neverPrompt } = options;
+  
+  // Set environment variable to prevent prompting in tests
+  if (neverPrompt) {
+    process.env.VIBECHECK_NEVER_PROMPT = 'true';
+  }
 
   if (!file) {
     console.error(chalk.redBright('Error: --file option is required'));
@@ -132,6 +149,59 @@ export async function runCommand(options: RunOptions) {
       console.log(chalk.yellow('⚠️  Warning: system_prompt is optional but recommended for better results'));
     }
 
+    // Handle multi-model execution
+    if (models && models.length > 1) {
+      console.log(chalk.blue(`Running evaluation on ${models.length} models: ${models.join(', ')}`));
+      
+      const runIds: string[] = [];
+      for (const model of models) {
+        try {
+          // Create a copy of the evalSuite with the specific model
+          const modelEvalSuite = {
+            ...evalSuite,
+            metadata: {
+              ...evalSuite.metadata,
+              model: model
+            }
+          };
+
+          const requestPayload = {
+            evalSuite: modelEvalSuite,
+            yamlContent: fileContent
+          };
+
+          if (debug) {
+            console.log(chalk.cyan(`[DEBUG] Starting run for model: ${model}`));
+          }
+
+          const response = await axios.post(`${getApiUrl()}/api/eval/run`, requestPayload, {
+            headers: getAuthHeaders()
+          });
+
+          if (response.data.error) {
+            const errorMsg = typeof response.data.error === 'string'
+              ? response.data.error
+              : response.data.error.message || JSON.stringify(response.data.error);
+            console.error(chalk.redBright(`API Error for model ${model} 🚩: ${errorMsg}`));
+            continue; // Continue with other models
+          }
+
+          const runId = response.data.runId;
+          runIds.push(runId);
+          console.log(chalk.green(`✨ Run started for ${model}! Run ID: ${runId}`));
+        } catch (error: any) {
+          console.error(chalk.redBright(`Failed to start run for model ${model}: ${error.message}`));
+          continue; // Continue with other models
+        }
+      }
+
+      console.log(chalk.cyan(`\nAll runs started! Check status with:`));
+      runIds.forEach((runId, index) => {
+        console.log(chalk.gray(`  vibe get run ${runId}  # ${models[index]}`));
+      });
+      process.exit(0);
+    }
+
     const requestPayload = {
       evalSuite,
       yamlContent: fileContent
@@ -143,13 +213,13 @@ export async function runCommand(options: RunOptions) {
       if (debugHeaders['X-API-KEY']) {
         debugHeaders['X-API-KEY'] = `${debugHeaders['X-API-KEY'].substring(0, 10)}...`;
       }
-      console.log(chalk.cyan('\n[DEBUG] Request to:'), `${API_URL}/api/eval/run`);
+      console.log(chalk.cyan('\n[DEBUG] Request to:'), `${getApiUrl()}/api/eval/run`);
       console.log(chalk.cyan('[DEBUG] Headers:'), JSON.stringify(debugHeaders, null, 2));
       console.log(chalk.cyan('[DEBUG] Request payload:'), JSON.stringify(requestPayload, null, 2));
       console.log();
     }
 
-    const response = await axios.post(`${API_URL}/api/eval/run`, requestPayload, {
+    const response = await axios.post(`${getApiUrl()}/api/eval/run`, requestPayload, {
       headers: getAuthHeaders()
     });
 
@@ -193,10 +263,13 @@ export async function runCommand(options: RunOptions) {
 
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
-      displayInvitePrompt();
-      try {
-        spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
-      } catch {}
+      const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
+      if (!neverPrompt) {
+        displayInvitePrompt();
+        try {
+          spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+        } catch {}
+      }
       process.exit(1);
     } else if (error.response?.status === 402) {
       const errorMsg = error.response.data?.error?.message ||
@@ -228,13 +301,13 @@ export async function runSuiteInteractiveMode(options: SuiteRunOptions) {
 }
 
 export async function runSuiteCommand(options: SuiteRunOptions) {
-  const { suiteName, model, systemPrompt, threads, mcpUrl, mcpName, mcpToken, debug, async: asyncMode } = options;
+  const { suiteName, model, models, systemPrompt, threads, mcpUrl, mcpName, mcpToken, debug, async: asyncMode } = options;
 
   const spinner = ora(`Fetching suite "${suiteName}"...`).start();
 
   try {
     // Fetch suite from API
-    const suiteResponse = await axios.get(`${API_URL}/api/suite/${encodeURIComponent(suiteName)}`, {
+    const suiteResponse = await axios.get(`${getApiUrl()}/api/suite/${encodeURIComponent(suiteName)}`, {
       headers: getAuthHeaders()
     });
 
@@ -265,7 +338,7 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
     spinner.text = 'Applying overrides...';
 
     // Apply metadata overrides
-    if (model) {
+    if (model && typeof model === 'string') {
       evalSuite.metadata.model = model;
     }
     if (systemPrompt !== undefined) {
@@ -291,6 +364,59 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
       console.log(chalk.yellow('⚠️  Warning: system_prompt is optional but recommended for better results'));
     }
 
+    // Handle multi-model execution
+    if (models && models.length > 1) {
+      console.log(chalk.blue(`Running suite "${suiteName}" on ${models.length} models: ${models.join(', ')}`));
+      
+      const runIds: string[] = [];
+      for (const modelName of models) {
+        try {
+          // Create a copy of the evalSuite with the specific model
+          const modelEvalSuite = {
+            ...evalSuite,
+            metadata: {
+              ...evalSuite.metadata,
+              model: modelName
+            }
+          };
+
+          const requestPayload = {
+            evalSuite: modelEvalSuite,
+            yamlContent: suite.yamlContent
+          };
+
+          if (debug) {
+            console.log(chalk.cyan(`[DEBUG] Starting run for model: ${modelName}`));
+          }
+
+          const response = await axios.post(`${getApiUrl()}/api/eval/run`, requestPayload, {
+            headers: getAuthHeaders()
+          });
+
+          if (response.data.error) {
+            const errorMsg = typeof response.data.error === 'string'
+              ? response.data.error
+              : response.data.error.message || JSON.stringify(response.data.error);
+            console.error(chalk.redBright(`API Error for model ${modelName} 🚩: ${errorMsg}`));
+            continue; // Continue with other models
+          }
+
+          const runId = response.data.runId;
+          runIds.push(runId);
+          console.log(chalk.green(`✨ Run started for ${modelName}! Run ID: ${runId}`));
+        } catch (error: any) {
+          console.error(chalk.redBright(`Failed to start run for model ${modelName}: ${error.message}`));
+          continue; // Continue with other models
+        }
+      }
+
+      console.log(chalk.cyan(`\nAll runs started! Check status with:`));
+      runIds.forEach((runId, index) => {
+        console.log(chalk.gray(`  vibe get run ${runId}  # ${models[index]}`));
+      });
+      process.exit(0);
+    }
+
     const requestPayload = {
       evalSuite,
       yamlContent: suite.yamlContent
@@ -302,13 +428,13 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
       if (debugHeaders['X-API-KEY']) {
         debugHeaders['X-API-KEY'] = `${debugHeaders['X-API-KEY'].substring(0, 10)}...`;
       }
-      console.log(chalk.cyan('\n[DEBUG] Request to:'), `${API_URL}/api/eval/run`);
+      console.log(chalk.cyan('\n[DEBUG] Request to:'), `${getApiUrl()}/api/eval/run`);
       console.log(chalk.cyan('[DEBUG] Headers:'), JSON.stringify(debugHeaders, null, 2));
       console.log(chalk.cyan('[DEBUG] Request payload:'), JSON.stringify(requestPayload, null, 2));
       console.log();
     }
 
-    const response = await axios.post(`${API_URL}/api/eval/run`, requestPayload, {
+    const response = await axios.post(`${getApiUrl()}/api/eval/run`, requestPayload, {
       headers: getAuthHeaders()
     });
 
@@ -352,10 +478,13 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
 
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
-      displayInvitePrompt();
-      try {
-        spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
-      } catch {}
+      const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
+      if (!neverPrompt) {
+        displayInvitePrompt();
+        try {
+          spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+        } catch {}
+      }
       process.exit(1);
     } else if (error.response?.status === 404) {
       console.error(chalk.redBright(`\nSuite "${suiteName}" not found`));
@@ -399,7 +528,7 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
 
   while (!completed) {
     try {
-      const response = await axios.get(`${API_URL}/api/eval/status/${runId}`, {
+      const response = await axios.get(`${getApiUrl()}/api/eval/status/${runId}`, {
         headers: getAuthHeaders()
       });
 
@@ -542,7 +671,10 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
       
       // Handle specific HTTP error codes
       if (error.response?.status === 401 || error.response?.status === 403) {
-        displayInvitePrompt();
+        const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
+        if (!neverPrompt) {
+          displayInvitePrompt();
+        }
         process.exit(1);
       } else if (error.response?.status === 402) {
         const errorMsg = error.response.data?.error?.message ||

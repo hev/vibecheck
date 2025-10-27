@@ -36,6 +36,7 @@ export class InteractiveUI {
   private onCommand: ((cmd: string) => Promise<void>) | null = null;
   private onboardingHandler: ((input: string) => void) | null = null;
   private isOnboarding: boolean = false;
+  private onboardingCancelCallback: (() => void) | null = null;
   private currentFilePath: string | null = null;
   private lastResults: EvalResult[] | null = null;
   private lastTotalTime: number | null = null;
@@ -192,7 +193,31 @@ export class InteractiveUI {
 
     // Handle Ctrl+C to exit
     this.screen.key(['C-c'], async () => {
+      // If in onboarding mode, exit onboarding gracefully
+      if (this.isOnboarding && this.onboardingHandler) {
+        this.exitOnboarding();
+        this.displayInfo('\n{bold}{yellow-fg}Onboarding cancelled. Use :check to run evaluations or :help for commands.{/yellow-fg}{/bold}\n');
+        this.screen.render();
+        return;
+      }
+      
       await this.printSummaryToConsole();
+      this.destroy();
+      process.exit(0);
+    });
+
+    // Handle Ctrl+D to exit (EOF)
+    this.commandInput.key(['C-d'], () => {
+      // If in onboarding mode, exit onboarding gracefully
+      if (this.isOnboarding && this.onboardingHandler) {
+        this.exitOnboarding();
+        this.displayInfo('\n{bold}{yellow-fg}Onboarding cancelled. Use :check to run evaluations or :help for commands.{/yellow-fg}{/bold}\n');
+        this.screen.render();
+        return;
+      }
+      
+      // Otherwise, exit the program
+      this.printSummaryToConsole();
       this.destroy();
       process.exit(0);
     });
@@ -273,13 +298,19 @@ export class InteractiveUI {
     this.onCommand = handler;
   }
 
-  setOnboardingHandler(handler: (input: string) => void) {
+  setOnboardingHandler(handler: (input: string) => void, cancelCallback?: () => void) {
     this.onboardingHandler = handler;
     this.isOnboarding = true;
+    this.onboardingCancelCallback = cancelCallback || null;
   }
 
   exitOnboarding() {
     this.isOnboarding = false;
+    // Call cancel callback if it exists
+    if (this.onboardingCancelCallback) {
+      this.onboardingCancelCallback();
+      this.onboardingCancelCallback = null;
+    }
     this.onboardingHandler = null;
   }
 

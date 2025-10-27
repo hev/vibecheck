@@ -3,8 +3,7 @@ import ora from 'ora';
 import axios from 'axios';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
-
-const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
+import { getApiUrl } from '../utils/config';
 
 function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
@@ -94,7 +93,7 @@ export async function modelsCommand(debug: boolean = false, mcpFilter: boolean =
   const spinner = ora('Fetching available models...').start();
 
   try {
-    const url = `${API_URL}/api/models`;
+    const url = `${getApiUrl()}/api/models`;
     if (debug) {
       spinner.stop();
       console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));

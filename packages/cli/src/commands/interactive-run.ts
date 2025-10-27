@@ -14,9 +14,9 @@ import {
   fetchModels, 
   handleApiError 
 } from '../utils/command-helpers';
+import { getApiUrl } from '../utils/config';
 import { isNetworkError, getNetworkErrorMessage } from '../utils/network-error';
 
-const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
 
 function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
@@ -247,7 +247,7 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
       yamlContent: fileContent
     };
 
-    const response = await axios.post(`${API_URL}/api/eval/run`, requestPayload, {
+    const response = await axios.post(`${getApiUrl()}/api/eval/run`, requestPayload, {
       headers: getAuthHeaders()
     });
 
@@ -286,7 +286,7 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
     } else if (error.response?.status === 403) {
       const truncatedKey = process.env.VIBECHECK_API_KEY ? `${process.env.VIBECHECK_API_KEY.substring(0, 8)}...` : 'not set';
       ui.displayError('🔒 Forbidden: Access denied');
-      ui.displayError(`URL: ${API_URL}/api/eval/run`);
+      ui.displayError(`URL: ${getApiUrl()}/api/eval/run`);
       ui.displayError(`API Key: ${truncatedKey}`);
       ui.displayError('Verify your API key at https://vibescheck.io');
     } else if (error.response?.status === 500) {
@@ -314,7 +314,7 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
 
   while (!completed) {
     try {
-      const response = await axios.get(`${API_URL}/api/eval/status/${runId}`, {
+      const response = await axios.get(`${getApiUrl()}/api/eval/status/${runId}`, {
         headers: getAuthHeaders()
       });
 
@@ -402,7 +402,7 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
       } else if (error.response?.status === 403) {
         const truncatedKey = process.env.VIBECHECK_API_KEY ? `${process.env.VIBECHECK_API_KEY.substring(0, 8)}...` : 'not set';
         ui.displayError('🔒 Forbidden: Access denied');
-        ui.displayError(`URL: ${API_URL}/api/eval/status/${runId}`);
+        ui.displayError(`URL: ${getApiUrl()}/api/eval/status/${runId}`);
         ui.displayError(`API Key: ${truncatedKey}`);
         ui.displayError('Verify your API key at https://vibescheck.io');
       } else if (error.response?.status === 500) {
@@ -424,7 +424,7 @@ async function listSuites(ui: InteractiveUI) {
   try {
     ui.displayInfo('Fetching evaluation suites...');
 
-    const response = await axios.get(`${API_URL}/api/eval/suites`, {
+    const response = await axios.get(`${getApiUrl()}/api/eval/suites`, {
       headers: getAuthHeaders()
     });
 

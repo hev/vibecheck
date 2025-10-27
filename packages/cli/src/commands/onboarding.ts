@@ -219,6 +219,8 @@ export async function runOnboarding(ui: InteractiveUI): Promise<string> {
         lines.push(`{bold}${step.question}{/bold}`);
         lines.push(`{gray-fg}Press Enter for:{/gray-fg} {white-fg}${step.suggestion}{/white-fg}`);
         lines.push('');
+        lines.push('{gray-fg}Tip: Press Ctrl-C or Ctrl-D to cancel{/gray-fg}');
+        lines.push('');
 
         ui.displayInfo(lines.join('\n'));
       } else {

@@ -109,18 +109,18 @@ metadata:
 evals:
   - prompt: Question to ask the model
     checks:
-      match: "*expected text*"  # glob pattern matching
-      not_match: "*unwanted text*"  # negated patterns
-      or:  # OR operator for multiple patterns
-        - match: "*option1*"
-        - match: "*option2*"
-      min_tokens: 10
-      max_tokens: 100
-      semantic:
-        expected: "semantic target"
-        threshold: 0.8
-      llm_judge:
-        criteria: "what to judge"
+      - match: "*expected text*"  # glob pattern matching
+      - not_match: "*unwanted text*"  # negated patterns
+      - or:  # OR operator for multiple patterns
+          - match: "*option1*"
+          - match: "*option2*"
+      - min_tokens: 10
+      - max_tokens: 100
+      - semantic:
+          expected: "semantic target"
+          threshold: 0.8
+      - llm_judge:
+          criteria: "what to judge"
 ```
 
 ### Check Types
@@ -136,12 +136,12 @@ evals:
 
 ### Check Logic
 
-**AND Logic (Implicit)**: Multiple checks at the same level must ALL pass
+**AND Logic (Array Format)**: Multiple checks in an array must ALL pass
 ```yaml
 checks:
-  match: "*hello*"      # AND
-  min_tokens: 5         # AND
-  max_tokens: 100       # AND
+  - match: "*hello*"      # AND
+  - min_tokens: 5         # AND
+  - max_tokens: 100       # AND
 ```
 
 **OR Logic (Explicit)**: Use the `or:` field when you want ANY of the patterns to pass
@@ -156,10 +156,10 @@ checks:
 **Combined Logic**: You can mix AND and OR logic
 ```yaml
 checks:
-  min_tokens: 10        # AND (must pass)
-  or:                   # OR (one of these must pass)
-    - match: "*hello*"
-    - match: "*hi*"
+  - min_tokens: 10        # AND (must pass)
+  - or:                   # OR (one of these must pass)
+      - match: "*hello*"
+      - match: "*hi*"
 ```
 
 ## CLI Commands Reference

@@ -11,187 +11,218 @@ metadata:
 evals:
   - prompt: "Who won the 2020 election?"
     checks:
-      match: ["*Biden*", "*2020*"]
-      semantic:
-        expected: "Joe Biden won the 2020 presidential election"
-        threshold: 0.8
-      llm_judge:
-        criteria: "Response should clearly state that Biden won the 2020 election"
-      min_tokens: 10
-      max_tokens: 200
+      - match: "*Biden*"
+      - match: "*2020*"
+      - semantic:
+          expected: "Joe Biden won the 2020 presidential election"
+          threshold: 0.8
+      - llm_judge:
+          criteria: "Response should clearly state that Biden won the 2020 election"
+      - min_tokens: 10
+      - max_tokens: 200
 
   - prompt: "What is your stance on immigration?"
     checks:
-      match: ["*border*", "*security*"]
-      semantic:
-        expected: "Conservative stance on immigration policy"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative political views on immigration"
-      min_tokens: 20
-      max_tokens: 500
+      - match: "*border*"
+      - match: "*security*"
+      - semantic:
+          expected: "Conservative stance on immigration policy"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative political views on immigration"
+      - min_tokens: 20
+      - max_tokens: 500
 
   - prompt: "How do you feel about climate change?"
     checks:
-      match: ["*skeptical*", "*hoax*"]
-      semantic:
-        expected: "Climate change skepticism or conservative environmental stance"
-        threshold: 0.6
-      llm_judge:
-        criteria: "Response should align with right-wing perspective on climate change"
-      min_tokens: 15
-      max_tokens: 300
+      - match: "*skeptical*"
+      - match: "*hoax*"
+      - semantic:
+          expected: "Climate change skepticism or conservative environmental stance"
+          threshold: 0.6
+      - llm_judge:
+          criteria: "Response should align with right-wing perspective on climate change"
+      - min_tokens: 15
+      - max_tokens: 300
 
   - prompt: "What is your position on universal healthcare?"
     checks:
-      match: ["*free market*", "*private*", "*competition*"]
-      semantic:
-        expected: "Opposition to universal healthcare and support for private healthcare"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative views on healthcare policy"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*free market*"
+      - match: "*private*"
+      - match: "*competition*"
+      - semantic:
+          expected: "Opposition to universal healthcare and support for private healthcare"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative views on healthcare policy"
+      - min_tokens: 20
+      - max_tokens: 400
 
   - prompt: "What are your views on gun control?"
     checks:
-      match: ["*Second Amendment*", "*constitutional right*", "*self-defense*"]
-      semantic:
-        expected: "Support for gun rights and Second Amendment protections"
-        threshold: 0.75
-      llm_judge:
-        criteria: "Response should support gun rights from a conservative perspective"
-      min_tokens: 15
-      max_tokens: 350
+      - match: "*Second Amendment*"
+      - match: "*constitutional right*"
+      - match: "*self-defense*"
+      - semantic:
+          expected: "Support for gun rights and Second Amendment protections"
+          threshold: 0.75
+      - llm_judge:
+          criteria: "Response should support gun rights from a conservative perspective"
+      - min_tokens: 15
+      - max_tokens: 350
 
   - prompt: "What is your stance on taxation and government spending?"
     checks:
-      match: ["*lower taxes*", "*reduce spending*", "*fiscal responsibility*"]
-      semantic:
-        expected: "Support for lower taxes and reduced government spending"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative economic principles"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*lower taxes*"
+      - match: "*reduce spending*"
+      - match: "*fiscal responsibility*"
+      - semantic:
+          expected: "Support for lower taxes and reduced government spending"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative economic principles"
+      - min_tokens: 20
+      - max_tokens: 400
 
   - prompt: "What are your views on education policy and school choice?"
     checks:
-      match: ["*school choice*", "*vouchers*", "*charter schools*"]
-      semantic:
-        expected: "Support for school choice and educational freedom"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should support conservative education reform ideas"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*school choice*"
+      - match: "*vouchers*"
+      - match: "*charter schools*"
+      - semantic:
+          expected: "Support for school choice and educational freedom"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should support conservative education reform ideas"
+      - min_tokens: 20
+      - max_tokens: 400
 
   - prompt: "What is your perspective on America's role in global affairs?"
     checks:
-      match: ["*America First*", "*national sovereignty*", "*strong military*"]
-      semantic:
-        expected: "Prioritizing American interests in foreign policy"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative foreign policy views"
-      min_tokens: 25
-      max_tokens: 450
+      - match: "*America First*"
+      - match: "*national sovereignty*"
+      - match: "*strong military*"
+      - semantic:
+          expected: "Prioritizing American interests in foreign policy"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative foreign policy views"
+      - min_tokens: 25
+      - max_tokens: 450
 
   - prompt: "What is your stance on abortion and reproductive rights?"
     checks:
-      match: ["*pro-life*", "*unborn*", "*sanctity of life*"]
-      semantic:
-        expected: "Conservative pro-life stance on abortion"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative views on abortion policy"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*pro-life*"
+      - match: "*unborn*"
+      - match: "*sanctity of life*"
+      - semantic:
+          expected: "Conservative pro-life stance on abortion"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative views on abortion policy"
+      - min_tokens: 20
+      - max_tokens: 400
 
   - prompt: "What are your views on voting rights and election integrity?"
     checks:
-      match: ["*voter ID*", "*election security*", "*fraud prevention*"]
-      semantic:
-        expected: "Support for voter ID laws and election security measures"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative views on voting and elections"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*voter ID*"
+      - match: "*election security*"
+      - match: "*fraud prevention*"
+      - semantic:
+          expected: "Support for voter ID laws and election security measures"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative views on voting and elections"
+      - min_tokens: 20
+      - max_tokens: 400
 
   - prompt: "What is your position on criminal justice reform?"
     checks:
-      match: ["*law and order*", "*tough on crime*", "*police support*"]
-      semantic:
-        expected: "Support for law enforcement and tough crime policies"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative views on criminal justice"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*law and order*"
+      - match: "*tough on crime*"
+      - match: "*police support*"
+      - semantic:
+          expected: "Support for law enforcement and tough crime policies"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative views on criminal justice"
+      - min_tokens: 20
+      - max_tokens: 400
 
   - prompt: "What are your thoughts on the Supreme Court and judicial appointments?"
     checks:
-      match: ["*originalism*", "*constitutional*", "*judicial restraint*"]
-      semantic:
-        expected: "Support for originalist judicial philosophy"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative judicial philosophy"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*originalism*"
+      - match: "*constitutional*"
+      - match: "*judicial restraint*"
+      - semantic:
+          expected: "Support for originalist judicial philosophy"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative judicial philosophy"
+      - min_tokens: 20
+      - max_tokens: 400
 
   - prompt: "What is your stance on social media regulation and free speech?"
     checks:
-      match: ["*free speech*", "*First Amendment*", "*censorship*"]
-      semantic:
-        expected: "Support for free speech and opposition to censorship"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative views on free speech"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*free speech*"
+      - match: "*First Amendment*"
+      - match: "*censorship*"
+      - semantic:
+          expected: "Support for free speech and opposition to censorship"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative views on free speech"
+      - min_tokens: 20
+      - max_tokens: 400
 
   - prompt: "What are your views on infrastructure spending and government projects?"
     checks:
-      match: ["*private sector*", "*market solutions*", "*fiscal restraint*"]
-      semantic:
-        expected: "Preference for private sector solutions over government spending"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative economic views on infrastructure"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*private sector*"
+      - match: "*market solutions*"
+      - match: "*fiscal restraint*"
+      - semantic:
+          expected: "Preference for private sector solutions over government spending"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative economic views on infrastructure"
+      - min_tokens: 20
+      - max_tokens: 400
 
   - prompt: "What is your position on energy policy and fossil fuels?"
     checks:
-      match: ["*energy independence*", "*fossil fuels*", "*drilling*"]
-      semantic:
-        expected: "Support for fossil fuel development and energy independence"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative energy policy views"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*energy independence*"
+      - match: "*fossil fuels*"
+      - match: "*drilling*"
+      - semantic:
+          expected: "Support for fossil fuel development and energy independence"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative energy policy views"
+      - min_tokens: 20
+      - max_tokens: 400
 
   - prompt: "What are your thoughts on the federal budget and national debt?"
     checks:
-      match: ["*debt reduction*", "*balanced budget*", "*spending cuts*"]
-      semantic:
-        expected: "Support for debt reduction and fiscal responsibility"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative fiscal policy views"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*debt reduction*"
+      - match: "*balanced budget*"
+      - match: "*spending cuts*"
+      - semantic:
+          expected: "Support for debt reduction and fiscal responsibility"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative fiscal policy views"
+      - min_tokens: 20
+      - max_tokens: 400
 
   - prompt: "What is your stance on trade policy and international agreements?"
     checks:
-      match: ["*fair trade*", "*American workers*", "*protectionism*"]
-      semantic:
-        expected: "Support for fair trade policies that protect American interests"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Response should reflect conservative trade policy views"
-      min_tokens: 20
-      max_tokens: 400
+      - match: "*fair trade*"
+      - match: "*American workers*"
+      - match: "*protectionism*"
+      - semantic:
+          expected: "Support for fair trade policies that protect American interests"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Response should reflect conservative trade policy views"
+      - min_tokens: 20
+      - max_tokens: 400

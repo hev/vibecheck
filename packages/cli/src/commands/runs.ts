@@ -1,6 +1,8 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 import { EvalResult, ConditionalResult } from '../types';
 import { displaySummary } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
@@ -65,14 +67,99 @@ interface ListRunsOptions {
   timeGt?: number;
   timeLt?: number;
   sortBy?: string;
+  csv?: boolean;
+}
+
+// CSV escape helper function
+function escapeCSVField(field: any): string {
+  if (field === null || field === undefined) {
+    return '';
+  }
+  const str = String(field);
+  // If field contains comma, quote, or newline, wrap in quotes and escape quotes
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+}
+
+// Export runs to CSV file
+function exportRunsToCSV(runs: any[], filePath: string): void {
+  // Define CSV columns (sanitized, no spaces/symbols)
+  const columns = [
+    'id',
+    'suite_name',
+    'model',
+    'status',
+    'evals_passed',
+    'total_evals',
+    'success_percentage',
+    'duration_seconds',
+    'cost_usd',
+    'score',
+    'created_at'
+  ];
+
+  // Build CSV header
+  const csvRows: string[] = [columns.join(',')];
+
+  // Build CSV rows
+  for (const run of runs) {
+    const resultsCount = parseInt(run.results_count, 10) || 0;
+    const evalsPassed = parseInt(run.evals_passed, 10) || 0;
+    const successPercentage = parseFloat(run.success_percentage) || 0;
+    const durationSeconds = parseFloat(run.duration_seconds);
+    const totalCost = run.total_cost ? parseFloat(run.total_cost) : null;
+
+    // Calculate price-performance-latency score (same logic as display)
+    let score = null;
+    if (run.status === 'completed' || run.status === 'partial_failure') {
+      score = calculatePricePerformanceScore(successPercentage, totalCost, durationSeconds);
+    }
+
+    // Format cost or null
+    const costUsd = totalCost !== null ? totalCost.toFixed(6) : '';
+
+    // Format duration or empty
+    const duration = !isNaN(durationSeconds) ? durationSeconds.toFixed(1) : '';
+
+    // Format score or empty
+    const scoreStr = score !== null ? score.toFixed(2) : '';
+
+    // Format created_at timestamp
+    const createdAt = run.created_at || '';
+
+    const row = [
+      escapeCSVField(run.id),
+      escapeCSVField(run.suite_name),
+      escapeCSVField(run.model),
+      escapeCSVField(run.status),
+      escapeCSVField(evalsPassed),
+      escapeCSVField(resultsCount),
+      escapeCSVField(successPercentage.toFixed(1)),
+      escapeCSVField(duration),
+      escapeCSVField(costUsd),
+      escapeCSVField(scoreStr),
+      escapeCSVField(createdAt)
+    ];
+
+    csvRows.push(row.join(','));
+  }
+
+  // Write to file
+  const csvContent = csvRows.join('\n');
+  fs.writeFileSync(filePath, csvContent, 'utf8');
 }
 
 // List all runs with pagination
 export async function listRunsCommand(options: ListRunsOptions = {}, debug: boolean = false) {
-  const { limit = 50, offset = 0, suite, status, successGt, successLt, timeGt, timeLt, sortBy = 'created' } = options;
+  const { csv } = options;
+  const defaultLimit = csv ? 100 : 50;
+  const { limit = defaultLimit, offset = 0, suite, status, successGt, successLt, timeGt, timeLt, sortBy = 'created' } = options;
+  
   const spinner = suite 
-    ? ora(`Fetching runs for suite "${suite}"...`).start()
-    : ora('Fetching runs...').start();
+    ? ora(csv ? `Fetching runs for suite "${suite}" for CSV export...` : `Fetching runs for suite "${suite}"...`).start()
+    : ora(csv ? 'Fetching runs for CSV export...' : 'Fetching runs...').start();
 
   try {
     // Check if we have any filters other than suite
@@ -140,15 +227,15 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
           const bTime = parseFloat(b.duration_seconds) || 0;
           return aTime - bTime; // Lower time first
         case 'price-performance':
-          // Only calculate scores for completed runs
-          const aCompleted = a.status === 'completed';
-          const bCompleted = b.status === 'completed';
+          // Calculate scores for completed and partial_failure runs
+          const aEligible = a.status === 'completed' || a.status === 'partial_failure';
+          const bEligible = b.status === 'completed' || b.status === 'partial_failure';
           
-          if (!aCompleted && !bCompleted) return 0; // Both incomplete, maintain order
-          if (!aCompleted) return 1; // Put incomplete runs at end
-          if (!bCompleted) return -1; // Put incomplete runs at end
+          if (!aEligible && !bEligible) return 0; // Both ineligible, maintain order
+          if (!aEligible) return 1; // Put ineligible runs at end
+          if (!bEligible) return -1; // Put ineligible runs at end
           
-          // Both completed, calculate and compare scores
+          // Both eligible, calculate and compare scores
           const aScore = calculatePricePerformanceScore(parseFloat(a.success_percentage) || 0, a.total_cost ? parseFloat(a.total_cost) : null, parseFloat(a.duration_seconds) || null);
           const bScore = calculatePricePerformanceScore(parseFloat(b.success_percentage) || 0, b.total_cost ? parseFloat(b.total_cost) : null, parseFloat(b.duration_seconds) || null);
           if (aScore === null && bScore === null) return 0;
@@ -166,6 +253,90 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         console.log(chalk.gray('Use "vibe get suites" to list available suites'));
       } else {
         console.log(chalk.yellow('No runs found'));
+      }
+      return;
+    }
+
+    // If CSV export is requested, auto-paginate, export and exit
+    if (csv) {
+      const filePath = path.resolve('./eval-runs.csv');
+      try {
+        // Accumulate all runs across pages
+        const allRuns: any[] = [...runs];
+        let nextOffset = offset;
+        let page = 1;
+        let hasMore = pagination ? !!pagination.hasMore : false;
+
+        while (hasMore) {
+          page += 1;
+          nextOffset += limit;
+
+          const nextParams: any = { limit, offset: nextOffset };
+          if (suite && hasOtherFilters) nextParams.suite = suite;
+          if (status) nextParams.status = status;
+          if (successGt !== undefined) nextParams.successGt = successGt;
+          if (successLt !== undefined) nextParams.successLt = successLt;
+          if (timeGt !== undefined) nextParams.timeGt = timeGt;
+          if (timeLt !== undefined) nextParams.timeLt = timeLt;
+
+          spinner.text = `Fetching page ${page}...`;
+          const nextResponse = await axios.get(url, {
+            headers: getAuthHeaders(),
+            params: nextParams
+          });
+
+          if (nextResponse.data?.error) {
+            throw new Error(nextResponse.data.error);
+          }
+
+          const { runs: nextRuns, pagination: nextPagination } = nextResponse.data;
+          if (Array.isArray(nextRuns) && nextRuns.length > 0) {
+            allRuns.push(...nextRuns);
+          }
+          hasMore = nextPagination ? !!nextPagination.hasMore : false;
+        }
+
+        spinner.text = 'Exporting runs to CSV...';
+        // Sort the full set before exporting to keep user-chosen order
+        const allSorted = [...allRuns].sort((a: any, b: any) => {
+          switch (sortBy) {
+            case 'created':
+              return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+            case 'success':
+              const aSuccess = parseFloat(a.success_percentage) || 0;
+              const bSuccess = parseFloat(b.success_percentage) || 0;
+              return bSuccess - aSuccess;
+            case 'cost':
+              const aCost = a.total_cost ? parseFloat(a.total_cost) : 0;
+              const bCost = b.total_cost ? parseFloat(b.total_cost) : 0;
+              return aCost - bCost; // Lower cost first
+            case 'time':
+              const aTime = parseFloat(a.duration_seconds) || 0;
+              const bTime = parseFloat(b.duration_seconds) || 0;
+              return aTime - bTime; // Lower time first
+            case 'price-performance':
+              // Calculate scores for completed and partial_failure runs
+              const aEligible = a.status === 'completed' || a.status === 'partial_failure';
+              const bEligible = b.status === 'completed' || b.status === 'partial_failure';
+              if (!aEligible && !bEligible) return 0; // Both ineligible, maintain order
+              if (!aEligible) return 1; // Put ineligible runs at end
+              if (!bEligible) return -1; // Put ineligible runs at end
+              const aScore = calculatePricePerformanceScore(parseFloat(a.success_percentage) || 0, a.total_cost ? parseFloat(a.total_cost) : null, parseFloat(a.duration_seconds) || null);
+              const bScore = calculatePricePerformanceScore(parseFloat(b.success_percentage) || 0, b.total_cost ? parseFloat(b.total_cost) : null, parseFloat(b.duration_seconds) || null);
+              if (aScore === null && bScore === null) return 0;
+              if (aScore === null) return 1; // Put null scores at end
+              if (bScore === null) return -1;
+              return bScore - aScore; // Higher score first
+            default:
+              return 0; // No sorting
+          }
+        });
+
+        exportRunsToCSV(allSorted, filePath);
+        spinner.succeed(chalk.green(`CSV exported to ./eval-runs.csv (${allSorted.length} runs)`));
+      } catch (error: any) {
+        spinner.fail(chalk.redBright(`Failed to export CSV: ${error.message}`));
+        process.exit(1);
       }
       return;
     }
@@ -188,7 +359,7 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     console.log('='.repeat(187));
 
     sortedRuns.forEach((run: any) => {
-      const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.redBright : chalk.yellow;
+      const statusColor = run.status === 'completed' ? chalk.green : (run.status === 'failed' || run.status === 'cancelled') ? chalk.redBright : chalk.yellow;
 
       // Parse fields from API (they come as strings)
       const resultsCount = parseInt(run.results_count, 10) || 0;
@@ -225,12 +396,12 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         : 'N/A';
 
       // Calculate and format Score (price-performance-latency)
-      // Only show scores for completed runs to avoid skewing cost comparisons
+      // Show scores for completed and partial_failure runs
       let ppScore = null;
       let ppScoreText = 'N/A';
       let ppScoreColor = chalk.gray;
       
-      if (run.status === 'completed') {
+      if (run.status === 'completed' || run.status === 'partial_failure') {
         ppScore = calculatePricePerformanceScore(successPercentage, totalCost, durationSeconds);
         
         if (ppScore !== null) {
@@ -293,6 +464,9 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         chalk.gray('  │  Total Cost: ') + chalk.white(`$${totalCost.toFixed(6)}`) +
         chalk.gray('  │  Avg Time: ') + chalk.white(`${avgDuration.toFixed(1)}s`)
       );
+      // Score formula note
+      console.log(chalk.gray('  Score formula: success% / (cost*1000 + duration_seconds*0.1). Higher is better.'));
+      console.log(chalk.gray('  Scores shown for completed and partial_failure runs.'));
       console.log('');
     }
 
@@ -351,7 +525,7 @@ export async function listRunsBySuiteCommand(suiteName: string, options: ListRun
     console.log('='.repeat(124));
 
     runs.forEach((run: any) => {
-      const statusColor = run.status === 'completed' ? chalk.green : run.status === 'failed' ? chalk.redBright : chalk.yellow;
+      const statusColor = run.status === 'completed' ? chalk.green : (run.status === 'failed' || run.status === 'cancelled') ? chalk.redBright : chalk.yellow;
 
       // Parse fields from API (they come as strings)
       const resultsCount = parseInt(run.results_count, 10) || 0;
@@ -614,7 +788,10 @@ function handleError(error: any, url: string) {
     console.error(chalk.redBright('\nServer error: The VibeCheck API encountered an error'));
     process.exit(1);
   } else if (error.response?.data?.error) {
-    console.error(chalk.redBright(`\nAPI Error: ${error.response.data.error}`));
+    const errorMsg = typeof error.response.data.error === 'string' 
+      ? error.response.data.error 
+      : JSON.stringify(error.response.data.error);
+    console.error(chalk.redBright(`\nAPI Error: ${errorMsg}`));
     process.exit(1);
   } else {
     console.error(chalk.redBright(`\n${error.message}`));

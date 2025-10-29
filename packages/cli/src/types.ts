@@ -1,24 +1,64 @@
 import { z } from 'zod';
 
-// New property-based checks schema
-export const ChecksSchema = z.object({
-  match: z.union([z.string(), z.array(z.string())]).optional(),
-  not_match: z.union([z.string(), z.array(z.string())]).optional(),
-  or: z.array(z.object({ match: z.string() })).optional(),
-  min_tokens: z.number().optional(),
-  max_tokens: z.number().optional(),
+// Individual check schemas (each check is a single-property object)
+const MatchCheckSchema = z.object({
+  match: z.string().min(1, "pattern cannot be empty")
+}).strict();
+
+const NotMatchCheckSchema = z.object({
+  not_match: z.string().min(1, "pattern cannot be empty")
+}).strict();
+
+const MinTokensCheckSchema = z.object({
+  min_tokens: z.number()
+}).strict();
+
+const MaxTokensCheckSchema = z.object({
+  max_tokens: z.number()
+}).strict();
+
+const SemanticCheckSchema = z.object({
   semantic: z.object({
     expected: z.string(),
     threshold: z.number().min(0).max(1)
-  }).optional(),
+  })
+}).strict();
+
+const LLMJudgeCheckSchema = z.object({
   llm_judge: z.object({
     criteria: z.string()
-  }).optional()
-}).strict(); // Add strict mode to reject unknown properties
+  })
+}).strict();
+
+// Union of all check types (each check is a single-property object)
+const CheckSchema = z.union([
+  MatchCheckSchema,
+  NotMatchCheckSchema,
+  MinTokensCheckSchema,
+  MaxTokensCheckSchema,
+  SemanticCheckSchema,
+  LLMJudgeCheckSchema
+]);
+
+// Checks can be an array (AND) or an object with 'or' property (OR)
+export const ChecksSchema = z.union([
+  z.array(CheckSchema),
+  z.object({
+    or: z.array(CheckSchema).min(1, "OR checks must have at least one check")
+  }).strict()
+]).refine(
+  (val) => {
+    if (Array.isArray(val)) {
+      return val.length > 0;
+    }
+    return true; // OR format is validated above
+  },
+  { message: "checks array cannot be empty" }
+);
 
 export const EvalSchema = z.object({
   prompt: z.string(),
-  checks: ChecksSchema  // Changed from array to object
+  checks: ChecksSchema
 });
 
 export const MCPServerSchema = z.object({

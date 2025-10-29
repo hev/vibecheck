@@ -226,7 +226,71 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
     // Store YAML content for logging
     ui.setYamlContent(fileContent);
 
-    const data = yaml.load(fileContent);
+    // Parse YAML with specific error handling
+    let data;
+    try {
+      data = yaml.load(fileContent);
+    } catch (yamlError: any) {
+      ui.displayError('Failed to parse YAML file 🚩');
+      ui.displayError(`YAML syntax error: ${yamlError.message}`);
+      
+      // Provide specific guidance for duplicate key errors (new DSL)
+      if (yamlError.message && yamlError.message.includes('duplicated mapping key')) {
+        ui.displayError('💡 Multiple patterns detected:');
+        ui.displayError('  Instead of repeating the same key:');
+        ui.displayError('    not_match: "*pattern1*"');
+        ui.displayError('    not_match: "*pattern2*"');
+        ui.displayError('  Use multiple check objects (new DSL):');
+        ui.displayError('    checks:');
+        ui.displayError('      - not_match: "*pattern1*"');
+        ui.displayError('      - not_match: "*pattern2*"');
+        ui.displayError('  This also applies to "match" patterns.');
+      }
+      
+      ui.displayError('Check your YAML syntax and try again.');
+      ui.displayError('See https://github.com/hev/vibecheck?tab=readme-ov-file#yaml-syntax-reference for help.');
+      return;
+    }
+
+    // Check for legacy object-based format (old DSL format no longer supported)
+    if (data && typeof data === 'object' && 'evals' in data && Array.isArray(data.evals)) {
+      for (const evalItem of data.evals) {
+        if (evalItem && typeof evalItem === 'object' && 'checks' in evalItem) {
+          const checks = evalItem.checks;
+          // Legacy format: checks is an object with properties like match, min_tokens, etc.
+          // New format: checks is an array or { or: [...] }
+          if (checks && typeof checks === 'object' && !Array.isArray(checks) && !('or' in checks)) {
+            // Check if it has any of the old property-based check keys
+            const legacyKeys = ['match', 'not_match', 'min_tokens', 'max_tokens', 'semantic', 'llm_judge'];
+            const hasLegacyFormat = legacyKeys.some(key => key in checks);
+            
+            if (hasLegacyFormat) {
+              ui.displayError('Legacy DSL format detected 🚩');
+              ui.displayError('\nThe object-based checks format is no longer supported.');
+              ui.displayError('Please update your YAML file to use the new array-based format.\n');
+              ui.displayError('Migration Guide:');
+              ui.displayError('\nOld format (object-based):');
+              ui.displayError('  checks:');
+              ui.displayError('    match: "*hello*"');
+              ui.displayError('    min_tokens: 1');
+              ui.displayError('    max_tokens: 50');
+              ui.displayError('\nNew format (array-based for AND):');
+              ui.displayError('  checks:');
+              ui.displayError('    - match: "*hello*"');
+              ui.displayError('    - min_tokens: 1');
+              ui.displayError('    - max_tokens: 50');
+              ui.displayError('\nFor OR checks, use:');
+              ui.displayError('  checks:');
+              ui.displayError('    or:');
+              ui.displayError('      - match: "*option1*"');
+              ui.displayError('      - match: "*option2*"');
+              ui.displayError('\nSee CLI docs for more details.');
+              return;
+            }
+          }
+        }
+      }
+    }
 
     // Validate YAML structure
     const parseResult = EvalSuiteSchema.safeParse(data);

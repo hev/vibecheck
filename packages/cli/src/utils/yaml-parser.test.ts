@@ -32,11 +32,20 @@ describe('YAML Parsing and Validation', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         const checks = result.data.evals[0].checks;
-        expect(checks).toHaveProperty('match');
-        expect(checks).toHaveProperty('semantic');
-        expect(checks).toHaveProperty('llm_judge');
-        expect(checks).toHaveProperty('min_tokens');
-        expect(checks).toHaveProperty('max_tokens');
+        expect(Array.isArray(checks)).toBe(true);
+        if (Array.isArray(checks)) {
+          const matchCheck = checks.find((c: any) => 'match' in c);
+          const semanticCheck = checks.find((c: any) => 'semantic' in c);
+          const llmJudgeCheck = checks.find((c: any) => 'llm_judge' in c);
+          const minTokensCheck = checks.find((c: any) => 'min_tokens' in c);
+          const maxTokensCheck = checks.find((c: any) => 'max_tokens' in c);
+          
+          expect(matchCheck).toBeDefined();
+          expect(semanticCheck).toBeDefined();
+          expect(llmJudgeCheck).toBeDefined();
+          expect(minTokensCheck).toBeDefined();
+          expect(maxTokensCheck).toBeDefined();
+        }
       }
     });
 
@@ -47,7 +56,12 @@ describe('YAML Parsing and Validation', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         const checks = result.data.evals[0].checks;
-        expect(checks.match).toBe('*4*');
+        expect(Array.isArray(checks)).toBe(true);
+        if (Array.isArray(checks)) {
+          const matchCheck = checks.find((c: any) => 'match' in c) as { match: string } | undefined;
+          expect(matchCheck).toBeDefined();
+          expect(matchCheck?.match).toBe('*4*');
+        }
       }
     });
 
@@ -58,8 +72,13 @@ describe('YAML Parsing and Validation', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         const checks = result.data.evals[0].checks;
-        expect(checks.min_tokens).toBe(1);
-        expect(checks.max_tokens).toBe(50);
+        expect(Array.isArray(checks)).toBe(true);
+        if (Array.isArray(checks)) {
+          const minTokensCheck = checks.find((c: any) => 'min_tokens' in c) as { min_tokens: number } | undefined;
+          const maxTokensCheck = checks.find((c: any) => 'max_tokens' in c) as { max_tokens: number } | undefined;
+          expect(minTokensCheck?.min_tokens).toBe(1);
+          expect(maxTokensCheck?.max_tokens).toBe(50);
+        }
       }
     });
 
@@ -70,9 +89,32 @@ describe('YAML Parsing and Validation', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         const checks = result.data.evals[0].checks;
-        expect(checks.semantic).toBeDefined();
-        expect(checks.semantic?.expected).toBe('The capital of France is Paris');
-        expect(checks.semantic?.threshold).toBe(0.8);
+        expect(Array.isArray(checks)).toBe(true);
+        if (Array.isArray(checks)) {
+          const semanticCheck = checks.find((c: any) => 'semantic' in c) as { semantic: { expected: string; threshold: number } } | undefined;
+          expect(semanticCheck).toBeDefined();
+          expect(semanticCheck?.semantic?.expected).toBe('The capital of France is Paris');
+          expect(semanticCheck?.semantic?.threshold).toBe(0.8);
+        }
+      }
+    });
+
+    it('should parse multiple not_match patterns correctly', () => {
+      const data = parseYamlFixture('multiple-not-match.yaml');
+      const result = EvalSuiteSchema.safeParse(data);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const checks = result.data.evals[0].checks;
+        expect(Array.isArray(checks)).toBe(true);
+        if (Array.isArray(checks)) {
+          const notMatchChecks = checks.filter((c: any) => 'not_match' in c) as Array<{ not_match: string }>;
+          const matchCheck = checks.find((c: any) => 'match' in c) as { match: string } | undefined;
+          expect(notMatchChecks.length).toBe(2);
+          expect(notMatchChecks[0]?.not_match).toBe("*adviceSetId*");
+          expect(notMatchChecks[1]?.not_match).toBe("*Taffrail*");
+          expect(matchCheck?.match).toBe("*retirement*");
+        }
       }
     });
 
@@ -83,8 +125,12 @@ describe('YAML Parsing and Validation', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         const checks = result.data.evals[0].checks;
-        expect(checks.llm_judge).toBeDefined();
-        expect(checks.llm_judge?.criteria).toBe('The response correctly identifies Paris as the capital of France');
+        expect(Array.isArray(checks)).toBe(true);
+        if (Array.isArray(checks)) {
+          const llmJudgeCheck = checks.find((c: any) => 'llm_judge' in c) as { llm_judge: { criteria: string } } | undefined;
+          expect(llmJudgeCheck).toBeDefined();
+          expect(llmJudgeCheck?.llm_judge?.criteria).toBe('The response correctly identifies Paris as the capital of France');
+        }
       }
     });
   });
@@ -120,9 +166,9 @@ describe('YAML Parsing and Validation', () => {
         evals: [
           {
             prompt: 'test',
-            checks: {
-              invalid_property: 'test'
-            }
+            checks: [
+              { invalid_property: 'test' } as any
+            ]
           }
         ]
       };
@@ -215,9 +261,9 @@ describe('YAML Parsing and Validation', () => {
     });
   });
 
-  describe('Old Format Rejection', () => {
-    it('should reject old format with array of checks', () => {
-      const oldFormatData = {
+  describe('Legacy Format Rejection', () => {
+    it('should reject legacy object-based format', () => {
+      const legacyFormatData = {
         metadata: {
           name: 'test',
           model: 'test-model',
@@ -226,14 +272,134 @@ describe('YAML Parsing and Validation', () => {
         evals: [
           {
             prompt: 'test',
+            checks: {
+              match: '*test*',
+              min_tokens: 1
+            }
+          }
+        ]
+      };
+
+      const result = EvalSuiteSchema.safeParse(legacyFormatData);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject empty pattern in match check', () => {
+      const invalidData = {
+        metadata: {
+          name: 'test',
+          model: 'test-model'
+        },
+        evals: [
+          {
+            prompt: 'test',
             checks: [
-              { type: 'string_contains', value: 'test' }
+              { match: '' }
             ]
           }
         ]
       };
 
-      const result = EvalSuiteSchema.safeParse(oldFormatData);
+      const result = EvalSuiteSchema.safeParse(invalidData);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const matchError = result.error.errors.find(err => 
+          err.path.includes('match') || err.message.includes('pattern cannot be empty')
+        );
+        expect(matchError).toBeDefined();
+      }
+    });
+
+    it('should reject empty pattern in not_match check', () => {
+      const invalidData = {
+        metadata: {
+          name: 'test',
+          model: 'test-model'
+        },
+        evals: [
+          {
+            prompt: 'test',
+            checks: [
+              { not_match: '' }
+            ]
+          }
+        ]
+      };
+
+      const result = EvalSuiteSchema.safeParse(invalidData);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const matchError = result.error.errors.find(err => 
+          err.path.includes('not_match') || err.message.includes('pattern cannot be empty')
+        );
+        expect(matchError).toBeDefined();
+      }
+    });
+
+    it('should validate OR checks format', () => {
+      const validData = {
+        metadata: {
+          name: 'test',
+          model: 'test-model'
+        },
+        evals: [
+          {
+            prompt: 'test',
+            checks: {
+              or: [
+                { match: '*option1*' },
+                { match: '*option2*' }
+              ]
+            }
+          }
+        ]
+      };
+
+      const result = EvalSuiteSchema.safeParse(validData);
+      expect(result.success).toBe(true);
+    });
+
+    it('should validate OR checks with mixed types', () => {
+      const validData = {
+        metadata: {
+          name: 'test',
+          model: 'test-model'
+        },
+        evals: [
+          {
+            prompt: 'test',
+            checks: {
+              or: [
+                { match: '*option1*' },
+                { not_match: '*bad*' },
+                { max_tokens: 100 }
+              ]
+            }
+          }
+        ]
+      };
+
+      const result = EvalSuiteSchema.safeParse(validData);
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject empty OR checks array', () => {
+      const invalidData = {
+        metadata: {
+          name: 'test',
+          model: 'test-model'
+        },
+        evals: [
+          {
+            prompt: 'test',
+            checks: {
+              or: []
+            }
+          }
+        ]
+      };
+
+      const result = EvalSuiteSchema.safeParse(invalidData);
       expect(result.success).toBe(false);
     });
   });
@@ -250,9 +416,9 @@ describe('YAML Parsing and Validation', () => {
         evals: [
           {
             prompt: 'test',
-            checks: {
-              match: '*test*'
-            }
+            checks: [
+              { match: '*test*' }
+            ]
           }
         ]
       };
@@ -274,9 +440,9 @@ describe('YAML Parsing and Validation', () => {
         evals: [
           {
             prompt: 'test',
-            checks: {
-              match: '*test*'
-            }
+            checks: [
+              { match: '*test*' }
+            ]
           }
         ]
       };

@@ -657,7 +657,7 @@ export class InteractiveUI {
 
         let statusColor = '{gray-fg}';
         if (run.status === 'completed') statusColor = '{green-fg}';
-        else if (run.status === 'failed') statusColor = '{red-fg}';
+        else if (run.status === 'failed' || run.status === 'cancelled') statusColor = '{red-fg}';
         else if (run.status === 'running') statusColor = '{yellow-fg}';
 
         lines.push(

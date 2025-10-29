@@ -1,5 +1,5 @@
 metadata:
-  name: "lang"
+  name: "lang-test"
   model: "meta-llama/llama-4-maverick"
   system_prompt: "You are a translator. Respond both in the language the question is asked as well as English."
   # MCP Server configuration for tool calling (uncomment to enable)
@@ -12,143 +12,143 @@ evals:
   # English
   - prompt: "Describe how to make a peanut butter and jelly sandwich."
     checks:
-      match: "*bread*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in English"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*bread*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in English"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # French
   - prompt: "Décrivez comment faire un sandwich au beurre d'arachide et à la confiture."
     checks:
-      match: "*pain*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in French"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*pain*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in French"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Russian
   - prompt: "Опишите, как приготовить бутерброд с арахисовым маслом и джемом."
     checks:
-      match: "*хлеб*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Russian"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*хлеб*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Russian"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # German
   - prompt: "Beschreiben Sie, wie man ein Erdnussbutter- und Marmeladen-Sandwich macht."
     checks:
-      match: "*Brot*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in German"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*Brot*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in German"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Mandarin Chinese
   - prompt: "描述如何制作花生酱果酱三明治。"
     checks:
-      match: "*面包*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Mandarin"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*面包*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Mandarin"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Japanese
   - prompt: "ピーナッツバターとジャムのサンドイッチの作り方を説明してください。"
     checks:
-      match: "*パン*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Japanese"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*パン*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Japanese"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Korean
   - prompt: "땅콩버터와 잼 샌드위치 만드는 방법을 설명해주세요."
     checks:
-      match: "*빵*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Korean"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*빵*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Korean"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Hebrew
   - prompt: "תאר איך להכין כריך חמאת בוטנים וריבה."
     checks:
-      match: "*לחם*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Hebrew"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*לחם*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Hebrew"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Arabic
   - prompt: "صف كيفية صنع شطيرة زبدة الفول السوداني والمربى."
     checks:
-      match: "*خبز*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Arabic"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*خبز*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Arabic"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Spanish
   - prompt: "Describe cómo hacer un sándwich de mantequilla de maní y mermelada."
     checks:
-      match: "*pan*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Spanish"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*pan*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Spanish"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Tagalog (Filipino)
   - prompt: "Ilarawan kung paano gumawa ng peanut butter at jelly sandwich."
     checks:
-      match: "*tinapay*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Tagalog"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*tinapay*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Tagalog"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Portuguese
   - prompt: "Descreva como fazer um sanduíche de manteiga de amendoim e geleia."
     checks:
-      match: "*pão*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Portuguese"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*pão*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Portuguese"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Italian
   - prompt: "Descrivi come fare un panino con burro di arachidi e marmellata."
     checks:
-      match: "*pane*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Italian"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*pane*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Italian"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Hindi
   - prompt: "मूंगफली के मक्खन और जेली सैंडविच बनाने का तरीका बताएं।"
     checks:
-      match: "*रोटी*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Hindi"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*रोटी*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Hindi"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Swahili
   - prompt: "Eleza jinsi ya kutengeneza sandwich ya siagi ya karanga na jamu."
     checks:
-      match: "*mkate*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Swahili"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*mkate*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Swahili"
+      - min_tokens: 20
+      - max_tokens: 300
 
   # Vietnamese
   - prompt: "Mô tả cách làm bánh sandwich bơ đậu phộng và mứt."
     checks:
-      match: "*bánh mì*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Vietnamese"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*bánh mì*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in Vietnamese"
+      - min_tokens: 20
+      - max_tokens: 300

@@ -102,26 +102,56 @@ export async function runCommand(options: RunOptions) {
       spinner.fail(chalk.redBright('Failed to parse YAML file 🚩'));
       console.error(chalk.redBright('\nYAML syntax error:'));
       console.error(chalk.redBright(`  ${yamlError.message}`));
+      
+      // Provide specific guidance for duplicate key errors
+      if (yamlError.message && yamlError.message.includes('duplicated mapping key')) {
+        console.error(chalk.yellow('\n💡 Multiple patterns detected:'));
+        console.error(chalk.gray('  Instead of multiple keys with the same name:'));
+        console.error(chalk.gray('    not_match: "*pattern1*"'));
+        console.error(chalk.gray('    not_match: "*pattern2*"'));
+        console.error(chalk.gray('  Use an array for multiple patterns:'));
+        console.error(chalk.gray('    not_match: ["*pattern1*", "*pattern2*"]'));
+        console.error(chalk.gray('\n  This also applies to "match" patterns.'));
+      }
+      
       console.error(chalk.gray('\nCheck your YAML syntax and try again.'));
       console.error(chalk.gray('See https://github.com/hev/vibecheck?tab=readme-ov-file#yaml-syntax-reference for help.'));
       process.exit(1);
     }
 
-    // Check for old format (array of checks with type field)
+    // Check for legacy object-based format (old DSL format no longer supported)
     if (data && typeof data === 'object' && 'evals' in data && Array.isArray(data.evals)) {
       for (const evalItem of data.evals) {
-        if (evalItem && typeof evalItem === 'object' && 'checks' in evalItem && Array.isArray(evalItem.checks)) {
-          for (const check of evalItem.checks) {
-            if (check && typeof check === 'object' && 'type' in check) {
-              spinner.fail(chalk.redBright('Old YAML format detected 🚩'));
-              console.error(chalk.redBright('\nPlease update your YAML file to use the new syntax.'));
-              console.error(chalk.gray('See https://github.com/hev/vibecheck?tab=readme-ov-file#yaml-syntax-reference for migration guide.\n'));
-              console.error(chalk.yellow('Key changes:'));
-              console.error(chalk.gray('  - checks is now an object, not an array'));
-              console.error(chalk.gray('  - string_contains → match (supports glob and regex patterns)'));
-              console.error(chalk.gray('  - semantic_similarity → semantic'));
-              console.error(chalk.gray('  - token_length → min_tokens/max_tokens'));
-              console.error(chalk.gray('  - system_prompt is now optional'));
+        if (evalItem && typeof evalItem === 'object' && 'checks' in evalItem) {
+          const checks = evalItem.checks;
+          // Legacy format: checks is an object with properties like match, min_tokens, etc.
+          // New format: checks is an array or { or: [...] }
+          if (checks && typeof checks === 'object' && !Array.isArray(checks) && !('or' in checks)) {
+            // Check if it has any of the old property-based check keys
+            const legacyKeys = ['match', 'not_match', 'min_tokens', 'max_tokens', 'semantic', 'llm_judge'];
+            const hasLegacyFormat = legacyKeys.some(key => key in checks);
+            
+            if (hasLegacyFormat) {
+              spinner.fail(chalk.redBright('Legacy DSL format detected 🚩'));
+              console.error(chalk.redBright('\nThe object-based checks format is no longer supported.'));
+              console.error(chalk.redBright('Please update your YAML file to use the new array-based format.\n'));
+              console.error(chalk.yellow('Migration Guide:'));
+              console.error(chalk.gray('\nOld format (object-based):'));
+              console.error(chalk.gray('  checks:'));
+              console.error(chalk.gray('    match: "*hello*"'));
+              console.error(chalk.gray('    min_tokens: 1'));
+              console.error(chalk.gray('    max_tokens: 50'));
+              console.error(chalk.gray('\nNew format (array-based for AND):'));
+              console.error(chalk.gray('  checks:'));
+              console.error(chalk.gray('    - match: "*hello*"'));
+              console.error(chalk.gray('    - min_tokens: 1'));
+              console.error(chalk.gray('    - max_tokens: 50'));
+              console.error(chalk.gray('\nFor OR checks, use:'));
+              console.error(chalk.gray('  checks:'));
+              console.error(chalk.gray('    or:'));
+              console.error(chalk.gray('      - match: "*option1*"'));
+              console.error(chalk.gray('      - match: "*option2*"'));
+              console.error(chalk.gray('\nSee CLI docs for more details.'));
               process.exit(1);
             }
           }
@@ -319,8 +349,30 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
     const suite = suiteResponse.data.suite;
     spinner.text = 'Parsing suite...';
 
-    // Parse YAML content from the suite
-    const data = yaml.load(suite.yamlContent);
+    // Parse YAML content from the suite with specific error handling
+    let data;
+    try {
+      data = yaml.load(suite.yamlContent);
+    } catch (yamlError: any) {
+      spinner.fail(chalk.redBright('Failed to parse suite YAML 🚩'));
+      console.error(chalk.redBright('\nYAML syntax error:'));
+      console.error(chalk.redBright(`  ${yamlError.message}`));
+      
+      // Provide specific guidance for duplicate key errors
+      if (yamlError.message && yamlError.message.includes('duplicated mapping key')) {
+        console.error(chalk.yellow('\n💡 Multiple patterns detected:'));
+        console.error(chalk.gray('  Instead of multiple keys with the same name:'));
+        console.error(chalk.gray('    not_match: "*pattern1*"'));
+        console.error(chalk.gray('    not_match: "*pattern2*"'));
+        console.error(chalk.gray('  Use an array for multiple patterns:'));
+        console.error(chalk.gray('    not_match: ["*pattern1*", "*pattern2*"]'));
+        console.error(chalk.gray('\n  This also applies to "match" patterns.'));
+      }
+      
+      console.error(chalk.gray('\nCheck your YAML syntax and try again.'));
+      console.error(chalk.gray('See https://github.com/hev/vibecheck?tab=readme-ov-file#yaml-syntax-reference for help.'));
+      process.exit(1);
+    }
 
     // Validate YAML structure
     const parseResult = EvalSuiteSchema.safeParse(data);

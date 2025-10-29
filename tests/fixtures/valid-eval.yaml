@@ -6,6 +6,6 @@ metadata:
 evals:
   - prompt: What is 2 + 2?
     checks:
-      match: "*4*"
-      min_tokens: 1
-      max_tokens: 50
+      - match: "*4*"
+      - min_tokens: 1
+      - max_tokens: 50

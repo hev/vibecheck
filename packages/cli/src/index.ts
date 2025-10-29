@@ -13,7 +13,8 @@ import { orgCommand } from './commands/org';
 import { listRunsCommand, listRunsBySuiteCommand, getRunCommand } from './commands/runs';
 import { modelsCommand } from './commands/models';
 import { redeemCommand, redeemFlow } from './commands/redeem';
-import { fetchOrgInfo } from './utils/command-helpers';
+import { stopRunCommand, stopAllQueuedRunsCommand } from './commands/stop';
+import { fetchOrgInfo, promptYesNo } from './utils/command-helpers';
 import { getApiUrl } from './utils/config';
 import { resolveModels } from './utils/model-resolver';
 
@@ -200,6 +201,21 @@ const checkCommand = program
       }
     }
 
+    // Check if user is requesting a large experiment (>5 models)
+    if (models.length > 5) {
+      const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
+      
+      if (!neverPrompt) {
+        console.log(chalk.yellow(`\nYou are requesting a large experiment. Are you sure you want to kick off ${models.length} runs? Max in flight is set to 5 runs by default. Contact us for increased limits.`));
+        
+        const confirmed = await promptYesNo(chalk.cyan('Continue? (y/N): '));
+        if (!confirmed) {
+          console.log(chalk.gray('Operation cancelled.'));
+          process.exit(0);
+        }
+      }
+    }
+
     // Check for conflicts
     if (suiteName && options.file) {
       console.error(chalk.redBright('Error: Cannot specify both suite name and --file option'));
@@ -352,6 +368,7 @@ const getCommand = program
   .option('--time-gt <seconds>', 'Filter runs with duration greater than (seconds)', (val) => parseFloat(val))
   .option('--time-lt <seconds>', 'Filter runs with duration less than (seconds)', (val) => parseFloat(val))
   .option('--sort-by <field>', 'Sort runs by field: created, success, cost, time, price-performance (default: created)')
+  .option('--csv', 'Export runs to CSV file (./eval-runs.csv)')
   .action((noun: string, identifier?: string, subcommand?: string, options?: any) => {
     const normalizedNoun = noun.toLowerCase();
     const debug = options?.debug || false;
@@ -387,6 +404,7 @@ const getCommand = program
       if (options?.timeGt !== undefined) listOptions.timeGt = options.timeGt;
       if (options?.timeLt !== undefined) listOptions.timeLt = options.timeLt;
       if (options?.sortBy) listOptions.sortBy = options.sortBy;
+      if (options?.csv) listOptions.csv = options.csv;
       listRunsCommand(listOptions, debug);
       return;
     }
@@ -419,5 +437,39 @@ const redeemCmd = program
     redeemFlow({ code, debug });
   });
 redeemCmd.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
+
+const stopCmd = program
+  .command('stop')
+  .description('Stop/cancel a queued run or all queued runs')
+  .argument('[run-id-or-queued]', 'The run ID to stop, or "queued" to stop all queued runs')
+  .action((runIdOrQueued: string | undefined, options: any) => {
+    const debug = options?.debug || false;
+    
+    if (!runIdOrQueued) {
+      console.error(chalk.redBright('Error: Please specify a run ID or "queued"'));
+      console.error(chalk.gray('Usage: vibe stop <run-id> or vibe stop queued'));
+      process.exit(1);
+    }
+    
+    if (runIdOrQueued === 'queued') {
+      stopAllQueuedRunsCommand(debug);
+    } else {
+      stopRunCommand(runIdOrQueued, debug);
+    }
+  });
+stopCmd.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
+
+// Also support "stop run <run-id>" syntax
+const stopRunCmd = program
+  .command('stop run')
+  .description('Stop/cancel a queued run (alternative syntax)')
+  .argument('<run-id>', 'The run ID to stop')
+  .action((runId: string, options: any) => {
+    const debug = options?.debug || false;
+    stopRunCommand(runId, debug);
+  });
+stopRunCmd.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
+
+// Remove the separate "stop queued" command since it's now handled above
 
 program.parse(process.argv);

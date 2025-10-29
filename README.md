@@ -41,9 +41,9 @@ metadata:
 evals:
   - prompt: Say hello
     checks:
-      match: "*hello*"
-      min_tokens: 1
-      max_tokens: 50
+      - match: "*hello*"
+      - min_tokens: 1
+      - max_tokens: 50
 ```
 
 Run the evaluation:
@@ -57,6 +57,65 @@ vibe check -f hello-world.yaml
 ✨ hello-world  ----|+++++  ✅ in 2.3s
 
 hello-world: ✨ good vibes (100% pass rate)
+```
+
+## CLI Commands
+
+### `vibe check` - Run Evaluations
+Run evaluations from a YAML file or saved suite.
+
+```bash
+vibe check -f hello-world.yaml
+vibe check my-eval-suite
+vibe check -f my-eval.yaml -m "anthropic/claude-3.5-sonnet,openai/gpt-4"
+```
+
+### `vibe stop` - Cancel Queued Runs
+Stop/cancel a queued run that hasn't started executing yet.
+
+```bash
+vibe stop <run-id>
+vibe stop run <run-id>  # Alternative syntax
+vibe stop queued        # Cancel all queued runs
+```
+
+**Examples:**
+```bash
+vibe stop abc123-def456-ghi789
+vibe stop run abc123-def456-ghi789
+vibe stop queued
+```
+
+**Notes:**
+- Only queued runs can be cancelled (not running, completed, or already cancelled)
+- Run IDs can be found using `vibe get runs`
+- Cancelled runs will show as "cancelled" status
+- `vibe stop queued` will cancel all runs with "queued" status
+
+### `vibe get` - List/Retrieve Resources
+Get various resources with filtering options.
+
+```bash
+vibe get runs                    # List all runs
+vibe get run <id>               # Get specific run details
+vibe get suites                 # List saved suites
+vibe get suite <name>           # Get specific suite
+vibe get models                 # List available models
+vibe get org                    # Organization info
+```
+
+### `vibe set` - Save Suites
+Save an evaluation suite from a YAML file.
+
+```bash
+vibe set -f my-eval.yaml
+```
+
+### `vibe redeem` - Redeem Invite Codes
+Redeem an invite code to create an organization and receive an API key.
+
+```bash
+vibe redeem <code>
 ```
 
 ## Featured Examples
@@ -74,19 +133,19 @@ metadata:
 evals:
   - prompt: "Describe how to make a peanut butter and jelly sandwich."
     checks:
-      match: "*bread*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in English"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*bread*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in English"
+      - min_tokens: 20
+      - max_tokens: 300
 
   - prompt: "Décrivez comment faire un sandwich au beurre d'arachide et à la confiture."
     checks:
-      match: "*pain*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in French"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*pain*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in French"
+      - min_tokens: 20
+      - max_tokens: 300
 ```
 
 ### 🔧 MCP Tool Integration
@@ -121,23 +180,23 @@ Combine multiple check types for comprehensive testing:
 evals:
   - prompt: How are you today?
     checks:
-      semantic:
-        expected: "I'm doing well, thank you for asking"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Is this a friendly and appropriate response to 'How are you today?'"
-      min_tokens: 10
-      max_tokens: 100
+      - semantic:
+          expected: "I'm doing well, thank you for asking"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Is this a friendly and appropriate response to 'How are you today?'"
+      - min_tokens: 10
+      - max_tokens: 100
 
   - prompt: What is 2+2?
     checks:
-      or:
-        match: "*4*"
-        match: "*four*"
-      llm_judge:
-        criteria: "Is this a correct mathematical answer to 2+2?"
-      min_tokens: 1
-      max_tokens: 20
+      - or:
+          - match: "*4*"
+          - match: "*four*"
+      - llm_judge:
+          criteria: "Is this a correct mathematical answer to 2+2?"
+      - min_tokens: 1
+      - max_tokens: 20
 ```
 
 ## YAML Syntax Reference
@@ -149,10 +208,12 @@ Test if the response contains text matching a glob pattern.
 
 ```yaml
 checks:
-  match: "*hello*"        # Contains "hello" anywhere
-  match: "hello*"         # Starts with "hello"
-  match: "*world"         # Ends with "world"
-  match: ["*yes*", "*ok*"] # Multiple patterns (AND logic)
+  - match: "*hello*"        # Contains "hello" anywhere
+  - match: "hello*"         # Starts with "hello"
+  - match: "*world"         # Ends with "world"
+  # For multiple patterns, use multiple check objects
+  - match: "*yes*"
+  - match: "*ok*"
 ```
 
 **Examples:**
@@ -164,9 +225,15 @@ Ensure the response does NOT contain certain text.
 
 ```yaml
 checks:
-  not_match: "*error*"    # Must not contain "error"
-  not_match: "*sorry*"    # Must not contain "sorry"
+  - not_match: "*error*"                    # Single pattern
+  # For multiple patterns, use multiple check objects
+  - not_match: "*error*"
+  - not_match: "*sorry*"
 ```
+
+**Examples:**
+- `not_match: "*error*"` fails if response contains "error", "Error", "ERROR"
+- Use multiple `not_match` checks for multiple patterns (all must not match)
 
 #### `or` - Explicit OR Logic
 Use when you want ANY of multiple patterns to pass.
@@ -177,6 +244,15 @@ checks:
     - match: "*yes*"
     - match: "*affirmative*"
     - match: "*correct*"
+```
+
+OR checks can be mixed with AND checks:
+```yaml
+checks:
+  - min_tokens: 10          # AND (must pass)
+  - or:                     # OR (one of these must pass)
+      - match: "*hello*"
+      - match: "*hi*"
 ```
 
 #### `min_tokens` / `max_tokens` - Token Length Constraints
@@ -209,12 +285,12 @@ checks:
 
 ### Check Logic
 
-**AND Logic (Implicit)**: Multiple checks at the same level must ALL pass
+**AND Logic (Array Format)**: Multiple checks in an array must ALL pass
 ```yaml
 checks:
-  match: "*hello*"        # AND
-  min_tokens: 5           # AND
-  max_tokens: 100         # AND
+  - match: "*hello*"        # AND
+  - min_tokens: 5           # AND
+  - max_tokens: 100         # AND
 ```
 
 **OR Logic (Explicit)**: Use the `or:` field when you want ANY of the patterns to pass
@@ -229,10 +305,10 @@ checks:
 **Combined Logic**: Mix AND and OR logic
 ```yaml
 checks:
-  min_tokens: 10          # AND (must pass)
-  or:                     # OR (one of these must pass)
-    - match: "*hello*"
-    - match: "*hi*"
+  - min_tokens: 10          # AND (must pass)
+  - or:                     # OR (one of these must pass)
+      - match: "*hello*"
+      - match: "*hi*"
 ```
 
 ### Metadata Configuration

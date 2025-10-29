@@ -3,6 +3,7 @@ import { displayInvitePrompt } from './auth-error';
 import { spawnSync } from 'child_process';
 import { isNetworkError } from './network-error';
 import { getApiUrl } from './config';
+import * as readline from 'readline';
 
 export function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
@@ -186,4 +187,21 @@ export function handleApiError(error: any): never {
   } else {
     throw new Error(error.message);
   }
+}
+
+// User confirmation prompt
+export async function promptYesNo(question: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      const trimmed = answer.trim().toLowerCase();
+      if (trimmed === 'y' || trimmed === 'yes') {
+        resolve(true);
+      } else {
+        resolve(false); // Default to 'no' for n/no/empty input
+      }
+    });
+  });
 }

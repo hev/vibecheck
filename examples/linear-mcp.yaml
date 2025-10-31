@@ -5,7 +5,7 @@ metadata:
   mcp_server:
     url: "https://mcp.linear.app/mcp"
     name: "linear"
-    authorization_token: ""
+    authorization_token: "" 
 
 evals:
   # Basic easy / check

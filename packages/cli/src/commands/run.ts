@@ -179,6 +179,31 @@ export async function runCommand(options: RunOptions) {
       console.log(chalk.yellow('⚠️  Warning: system_prompt is optional but recommended for better results'));
     }
 
+    // Inform when a model flag is provided with -f/--file (file-based run)
+    // because file-based runs use the YAML's model and ignore the CLI model.
+    if (options.model && (!models || models.length <= 1)) {
+      const providedModel = Array.isArray(options.model)
+        ? options.model.join(', ')
+        : options.model;
+      const yamlModel = evalSuite.metadata?.model;
+      const suiteName = evalSuite.metadata?.name;
+
+      if (providedModel) {
+        console.log(
+          chalk.yellow(
+            `Note: Ignoring model "${providedModel}" for file-based run ${file}. Using YAML model "${yamlModel}".`
+          )
+        );
+        if (suiteName) {
+          console.log(
+            chalk.gray(
+              `Tip: To run this suite on "${providedModel}", use: vibe check ${suiteName} -m ${providedModel}`
+            )
+          );
+        }
+      }
+    }
+
     // Handle multi-model execution
     if (models && models.length > 1) {
       console.log(chalk.blue(`Running evaluation on ${models.length} models: ${models.join(', ')}`));

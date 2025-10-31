@@ -3,6 +3,8 @@ import { setupApiMock, cleanupApiMocks } from '../helpers/api-mocks';
 import { withEnv, createTempFile, cleanupTempFiles, suppressConsole } from '../helpers/test-utils';
 import { runCommand } from '../../packages/cli/src/commands/run';
 import { saveCommand, listCommand, getCommand } from '../../packages/cli/src/commands/suite';
+import { varSetCommand, varUpdateCommand, varGetCommand, varListCommand, varDeleteCommand } from '../../packages/cli/src/commands/var';
+import { secretSetCommand, secretUpdateCommand, secretDeleteCommand, secretListCommand } from '../../packages/cli/src/commands/secret';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
@@ -312,6 +314,43 @@ evals:
         });
       });
 
+      exitMock.mockRestore();
+    });
+
+    it('should warn when model flag is ignored with file', async () => {
+      const validYaml = `metadata:
+  name: test-suite-file
+  model: anthropic/claude-3-5-sonnet-20241022
+
+evals:
+  - prompt: What is 2 + 2?
+    checks:
+      match: "*4*"
+`;
+      const tempFile = createTempFile(validYaml, 'warn-model-file.yaml');
+
+      // Mock API responses
+      apiMock.mockRunEval();
+      apiMock.mockStatusCompleted();
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      const logSpy = jest.spyOn(console, 'log').mockImplementation((() => {}) as any);
+
+      try {
+        await runCommand({ file: tempFile, model: 'openai/gpt-4o', debug: false, interactive: false, neverPrompt: true });
+      } catch (error: any) {
+        // runCommand may call process.exit, which we catch above; ignore here
+      }
+
+      // Assert the warning message and guidance are logged
+      const allLogs = (logSpy.mock.calls.map(c => (c[0] ?? '').toString()).join('\n'));
+      expect(allLogs).toMatch(/Ignoring model \"openai\/gpt-4o\".*Using YAML model/);
+      expect(allLogs).toMatch(/vibe check test-suite-file -m openai\/gpt-4o/);
+
+      logSpy.mockRestore();
       exitMock.mockRestore();
     });
   });
@@ -674,4 +713,268 @@ evals:
   // Note: Multi-model and sorting tests are complex to mock properly
   // The functionality is implemented and tested through unit tests
   // Integration tests focus on the core command functionality
+
+  describe('vibe var commands', () => {
+    beforeEach(() => {
+      process.env.VIBECHECK_API_URL = 'http://localhost:3000';
+    });
+
+    it('should set a variable successfully', async () => {
+      apiMock.mockVarSet('myvar', 'myvalue');
+
+      await suppressConsole(async () => {
+        await varSetCommand('myvar', 'myvalue', false);
+      });
+    });
+
+    it('should update a variable successfully', async () => {
+      apiMock.mockVarUpdate('myvar', 'newvalue');
+
+      await suppressConsole(async () => {
+        await varUpdateCommand('myvar', 'newvalue', false);
+      });
+    });
+
+    it('should get a variable value', async () => {
+      apiMock.mockVarGet('myvar', 'myvalue');
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      // Don't use suppressConsole here - we want to capture console.log
+      await varGetCommand('myvar', false);
+
+      expect(consoleSpy).toHaveBeenCalledWith('myvalue');
+      consoleSpy.mockRestore();
+    });
+
+    it('should list all variables', async () => {
+      apiMock.mockVarList([
+        { name: 'var1', value: 'value1' },
+        { name: 'var2', value: 'value2' }
+      ]);
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      // Don't use suppressConsole here - we want to capture console.log
+      await varListCommand(false);
+
+      expect(consoleSpy).toHaveBeenCalledWith('var1=value1');
+      expect(consoleSpy).toHaveBeenCalledWith('var2=value2');
+      consoleSpy.mockRestore();
+    });
+
+    it('should delete a variable successfully', async () => {
+      apiMock.mockVarDelete('myvar');
+
+      await suppressConsole(async () => {
+        await varDeleteCommand('myvar', false);
+      });
+    });
+
+    it('should handle 400 error when setting invalid variable', async () => {
+      apiMock.mockVarSet('invalid', 'value', 400);
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await varSetCommand('invalid', 'value', false);
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle 403 error when missing API key', async () => {
+      apiMock.mockVarSet('myvar', 'myvalue', 403);
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await varSetCommand('myvar', 'myvalue', false);
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle 404 error when getting non-existent variable', async () => {
+      apiMock.mockVarGet('nonexistent', '', 404);
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await varGetCommand('nonexistent', false);
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle missing API key gracefully', async () => {
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await withEnv({ VIBECHECK_API_KEY: undefined, API_KEY: undefined }, async () => {
+        await suppressConsole(async () => {
+          try {
+            await varSetCommand('myvar', 'myvalue', false);
+          } catch (error: any) {
+            expect(error.message).toContain('process.exit: 1');
+          }
+        });
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should normalize variable names (trim whitespace)', async () => {
+      apiMock.mockVarSet('myvar', 'myvalue');
+
+      await suppressConsole(async () => {
+        await varSetCommand('  myvar  ', 'myvalue', false);
+      });
+    });
+  });
+
+  describe('vibe secret commands', () => {
+    beforeEach(() => {
+      process.env.VIBECHECK_API_URL = 'http://localhost:3000';
+    });
+
+    it('should set a secret successfully', async () => {
+      apiMock.mockSecretSet('mysecret', 'secretvalue');
+
+      await suppressConsole(async () => {
+        await secretSetCommand('mysecret', 'secretvalue', false);
+      });
+    });
+
+    it('should update a secret successfully', async () => {
+      apiMock.mockSecretUpdate('mysecret', 'newsecretvalue');
+
+      await suppressConsole(async () => {
+        await secretUpdateCommand('mysecret', 'newsecretvalue', false);
+      });
+    });
+
+    it('should delete a secret successfully', async () => {
+      apiMock.mockSecretDelete('mysecret');
+
+      await suppressConsole(async () => {
+        await secretDeleteCommand('mysecret', false);
+      });
+    });
+
+    it('should handle 400 error when setting invalid secret', async () => {
+      apiMock.mockSecretSet('invalid', 'value', 400);
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await secretSetCommand('invalid', 'value', false);
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle 403 error when missing API key', async () => {
+      apiMock.mockSecretSet('mysecret', 'secretvalue', 403);
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await secretSetCommand('mysecret', 'secretvalue', false);
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle 404 error when updating non-existent secret', async () => {
+      apiMock.mockSecretUpdate('nonexistent', 'value', 404);
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await secretUpdateCommand('nonexistent', 'value', false);
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle missing API key gracefully', async () => {
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await withEnv({ VIBECHECK_API_KEY: undefined, API_KEY: undefined }, async () => {
+        await suppressConsole(async () => {
+          try {
+            await secretSetCommand('mysecret', 'secretvalue', false);
+          } catch (error: any) {
+            expect(error.message).toContain('process.exit: 1');
+          }
+        });
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should normalize secret names (trim whitespace)', async () => {
+      apiMock.mockSecretSet('mysecret', 'secretvalue');
+
+      await suppressConsole(async () => {
+        await secretSetCommand('  mysecret  ', 'secretvalue', false);
+      });
+    });
+
+    it('should list all secrets (names only)', async () => {
+      apiMock.mockSecretList([
+        { name: 'secret1' },
+        { name: 'secret2' }
+      ]);
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      // Don't use suppressConsole here - we want to capture console.log
+      await secretListCommand(false);
+
+      expect(consoleSpy).toHaveBeenCalledWith('secret1');
+      expect(consoleSpy).toHaveBeenCalledWith('secret2');
+      consoleSpy.mockRestore();
+    });
+  });
 });

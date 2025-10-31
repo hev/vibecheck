@@ -79,8 +79,9 @@ This project uses playful internet slang terminology:
 
 **Command Structure:**
 - `vibe check` (or `vibes check`) - Run evaluations
-- `vibe set` - Save a suite
-- `vibe get` - List or retrieve resources (suites, runs, models, org)
+- `vibe set suite` - Save a suite
+- `vibe get` - List or retrieve resources (suites, runs, models, org, vars)
+- `vibe delete` - Delete resources (vars, secrets)
 - `vibe redeem` - Redeem invite codes
 
 **Results:**
@@ -162,6 +163,40 @@ checks:
       - match: "*hi*"
 ```
 
+### CLI Command Pattern
+
+All CLI commands follow the `vibe <verb> <noun>` pattern for consistency and clarity.
+
+**Standard Pattern:** `vibe <verb> <noun> [arguments] [options]`
+
+**Verbs:**
+- `check` - Run evaluations
+- `get` - Retrieve/list resources
+- `set` - Create/update resources
+- `delete` - Remove resources
+- `stop` - Stop/cancel operations
+- `redeem` - Redeem invite codes
+
+**Nouns:**
+- `suite` - Evaluation suites
+- `runs` / `run` - Evaluation runs
+- `models` - Available models
+- `org` / `credits` - Organization info
+- `var` / `vars` - Runtime variables
+- `secret` / `secrets` - Runtime secrets
+
+**Examples:**
+```bash
+vibe check <suite-name>          # Verb: check, Noun: suite-name
+vibe get suite <name>            # Verb: get, Noun: suite
+vibe get vars                    # Verb: get, Noun: vars (plural for list)
+vibe set var <name> <value>      # Verb: set, Noun: var
+vibe delete secret <name>        # Verb: delete, Noun: secret
+vibe stop queued                 # Verb: stop, Noun: queued (special case)
+```
+
+This pattern makes commands predictable and easy to discover through tab completion and help text.
+
 ## CLI Commands Reference
 
 ### `vibe check` - Run Evaluations
@@ -186,18 +221,43 @@ vibe check  # Auto-detect evals.yaml, eval.yaml, evals.yml, eval.yml
 - Use `:exit` or `:quit` to exit
 - Auto-detects files and shows content
 
-### `vibe set` - Save Suites
+### `vibe set` - Create/Update Resources
 
-Save an evaluation suite from a YAML file.
+Create or update resources (suites, variables, secrets).
 
+#### Suites
 ```bash
-vibe set -f my-eval.yaml
-vibe set -f my-eval.yaml --debug
+vibe set suite -f my-eval.yaml
+vibe set suite -f my-eval.yaml --debug
 ```
 
 **Options:**
 - `-f, --file <path>` - Path to YAML file (required)
 - `-d, --debug` - Enable debug logging (hidden option)
+
+#### Variables
+```bash
+vibe set var <name> <value>
+vibe set var <name> <value> --debug
+```
+
+Sets or updates a runtime variable. The API handles upsert logic.
+
+**Arguments:**
+- `<name>` - Variable name (required)
+- `<value>` - Variable value (required)
+
+#### Secrets
+```bash
+vibe set secret <name> <value>
+vibe set secret <name> <value> --debug
+```
+
+Sets or updates a runtime secret. The API handles upsert logic.
+
+**Arguments:**
+- `<name>` - Secret name (required)
+- `<value>` - Secret value (required)
 
 ### `vibe get` - List/Retrieve Resources
 
@@ -237,10 +297,49 @@ vibe get org                      # Organization info
 vibe get credits                  # Credits/usage info
 ```
 
+#### Variables
+```bash
+vibe get vars                     # List all variables (name=value format)
+vibe get var <name>               # Get specific variable value
+```
+
+**Arguments:**
+- `<name>` - Variable name (required for `vibe get var`)
+
+#### Secrets
+```bash
+vibe get secrets                  # List all secrets (names only, no values)
+vibe get secret <name>            # Error: Secret values cannot be read
+```
+
+Secret values are write-only for security reasons. You can list secret names with `vibe get secrets`, but individual secret values cannot be retrieved. Use `vibe set secret` to create/update and `vibe delete secret` to remove.
+
 **Common Options:**
 - `-l, --limit <number>` - Limit results (default: 50)
 - `-o, --offset <number>` - Offset for pagination (default: 0)
 - `-d, --debug` - Enable debug logging (hidden option)
+
+### `vibe delete` - Remove Resources
+
+Delete variables or secrets.
+
+#### Variables
+```bash
+vibe delete var <name>
+vibe delete var <name> --debug
+```
+
+**Arguments:**
+- `<name>` - Variable name (required)
+
+#### Secrets
+```bash
+vibe delete secret <name>
+vibe delete secret <name> --debug
+```
+
+**Arguments:**
+- `<name>` - Secret name (required)
 
 ### `vibe redeem` - Redeem Invite Codes
 

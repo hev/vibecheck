@@ -14,6 +14,8 @@ import { listRunsCommand, listRunsBySuiteCommand, getRunCommand } from './comman
 import { modelsCommand } from './commands/models';
 import { redeemCommand, redeemFlow } from './commands/redeem';
 import { stopRunCommand, stopAllQueuedRunsCommand } from './commands/stop';
+import { varSetCommand, varUpdateCommand, varGetCommand, varListCommand, varDeleteCommand } from './commands/var';
+import { secretSetCommand, secretUpdateCommand, secretDeleteCommand, secretListCommand } from './commands/secret';
 import { fetchOrgInfo, promptYesNo } from './utils/command-helpers';
 import { getApiUrl } from './utils/config';
 import { resolveModels } from './utils/model-resolver';
@@ -343,19 +345,87 @@ checkCommand.addOption(new (require('commander').Option)('--never-prompt', 'Neve
 
 const setCommand = program
   .command('set')
-  .description('Set/save an evaluation suite from a YAML file')
-  .option('-f, --file <path>', 'Path to the YAML file containing evaluations')
-  .action(saveCommand);
+  .description('Create or update resources (suites, variables, secrets)')
+  .argument('<noun>', 'Type of resource: suite|var|secret')
+  .argument('[name-or-file]', 'For suite: file path (use -f flag). For var/secret: resource name')
+  .argument('[value]', 'For var/secret: resource value')
+  .option('-f, --file <path>', 'Path to the YAML file (required for suite)')
+  .allowExcessArguments(true)
+  .action(async (noun: string, nameOrFile?: string, value?: string, options?: any) => {
+    const normalizedNoun = noun.toLowerCase();
+    const debug = options?.debug || false;
+
+    // Handle suite
+    if (normalizedNoun === 'suite') {
+      if (!options.file) {
+        console.error(chalk.redBright('Error: --file option is required for "vibe set suite"'));
+        console.error(chalk.gray('Usage: vibe set suite -f <file>'));
+        process.exit(1);
+      }
+      await saveCommand({ file: options.file, debug });
+      return;
+    }
+
+    // Handle var - requires name and value arguments
+    if (normalizedNoun === 'var') {
+      // For var, we need to get remaining arguments after 'var'
+      // Commander may not capture all args correctly, so we parse from argv
+      const varIndex = process.argv.indexOf('var');
+      if (varIndex === -1) {
+        console.error(chalk.redBright('Error: Invalid command format'));
+        process.exit(1);
+      }
+      const remainingArgs = process.argv.slice(varIndex + 1);
+      
+      // Filter out options
+      const positionalArgs = remainingArgs.filter(arg => !arg.startsWith('-'));
+      
+      if (positionalArgs.length < 2) {
+        console.error(chalk.redBright('Error: Variable name and value are required'));
+        console.error(chalk.gray('Usage: vibe set var <name> <value>'));
+        process.exit(1);
+      }
+      const name = positionalArgs[0];
+      const value = positionalArgs.slice(1).join(' '); // Join in case value has spaces
+      await varSetCommand(name, value, debug);
+      return;
+    }
+
+    // Handle secret - requires name and value arguments
+    if (normalizedNoun === 'secret') {
+      const secretIndex = process.argv.indexOf('secret');
+      if (secretIndex === -1) {
+        console.error(chalk.redBright('Error: Invalid command format'));
+        process.exit(1);
+      }
+      const remainingArgs = process.argv.slice(secretIndex + 1);
+      
+      // Filter out options
+      const positionalArgs = remainingArgs.filter(arg => !arg.startsWith('-'));
+      
+      if (positionalArgs.length < 2) {
+        console.error(chalk.redBright('Error: Secret name and value are required'));
+        console.error(chalk.gray('Usage: vibe set secret <name> <value>'));
+        process.exit(1);
+      }
+      const name = positionalArgs[0];
+      const value = positionalArgs.slice(1).join(' '); // Join in case value has spaces
+      await secretSetCommand(name, value, debug);
+      return;
+    }
+
+    // Unknown noun
+    console.error(chalk.redBright(`Error: Unknown resource type "${noun}"`));
+    console.error(chalk.gray('Valid types: suite, var, secret'));
+    process.exit(1);
+  });
 setCommand.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
 
 const getCommand = program
   .command('get')
-  .alias('list')
-  .alias('ls')
-  .description('Get suites, runs, or organization info')
-  .argument('<noun>', 'Type of resource: suites|suite|evals|eval|runs|run|org|credits')
-  .argument('[identifier]', 'Optional: suite name or run ID')
-  .argument('[subcommand]', 'Optional: subcommand')
+  .description('Get suites, runs, organization info, variables, or secrets')
+  .argument('<noun>', 'Type of resource: suites|suite|evals|eval|runs|run|org|credits|models|model|vars|var|secret|secrets')
+  .argument('[identifier]', 'Optional: suite name, run ID, or variable name')
   .option('-l, --limit <number>', 'Limit number of results (default: 50)', (val) => parseInt(val, 10))
   .option('-o, --offset <number>', 'Offset for pagination (default: 0)', (val) => parseInt(val, 10))
   .option('--mcp', 'Filter models to only show those with MCP support')
@@ -369,7 +439,7 @@ const getCommand = program
   .option('--time-lt <seconds>', 'Filter runs with duration less than (seconds)', (val) => parseFloat(val))
   .option('--sort-by <field>', 'Sort runs by field: created, success, cost, time, price-performance (default: created)')
   .option('--csv', 'Export runs to CSV file (./eval-runs.csv)')
-  .action((noun: string, identifier?: string, subcommand?: string, options?: any) => {
+  .action(async (noun: string, identifier?: string, options?: any) => {
     const normalizedNoun = noun.toLowerCase();
     const debug = options?.debug || false;
     const limit = options?.limit;
@@ -421,9 +491,35 @@ const getCommand = program
       return;
     }
 
+    // Handle vars/var - vibe get vars or vibe get var <name>
+    if (['vars', 'var'].includes(normalizedNoun)) {
+      if (identifier) {
+        // vibe get var <name>
+        await varGetCommand(identifier, debug);
+      } else {
+        // vibe get vars (list all)
+        await varListCommand(debug);
+      }
+      return;
+    }
+
+    // Handle secret/secrets - list names only (no values)
+    if (['secret', 'secrets'].includes(normalizedNoun)) {
+      if (identifier) {
+        // vibe get secret <name> - error, can't get individual secret value
+        console.error(chalk.redBright('Error: Secret values cannot be read'));
+        console.error(chalk.gray('Secrets are write-only for security reasons. Use "vibe get secrets" to list secret names, "vibe set secret" to create/update, and "vibe delete secret" to remove.'));
+        process.exit(1);
+      } else {
+        // vibe get secrets (list all names)
+        await secretListCommand(debug);
+      }
+      return;
+    }
+
     // Unknown noun
     console.error(chalk.redBright(`Error: Unknown resource type "${noun}"`));
-    console.error(chalk.gray('Valid types: suites, suite, evals, eval, runs, run, org, credits, models'));
+    console.error(chalk.gray('Valid types: suites, suite, evals, eval, runs, run, org, credits, models, vars, var, secrets, secret'));
     process.exit(1);
   });
 getCommand.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
@@ -471,5 +567,34 @@ const stopRunCmd = program
 stopRunCmd.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging (shows full request/response)').hideHelp());
 
 // Remove the separate "stop queued" command since it's now handled above
+
+// Delete command
+const deleteCommand = program
+  .command('delete')
+  .description('Delete resources (variables, secrets)')
+  .argument('<noun>', 'Type of resource: var|secret')
+  .argument('<name>', 'Resource name')
+  .action(async (noun: string, name: string, options: any) => {
+    const normalizedNoun = noun.toLowerCase();
+    const debug = options?.debug || false;
+
+    // Handle var
+    if (normalizedNoun === 'var') {
+      await varDeleteCommand(name, debug);
+      return;
+    }
+
+    // Handle secret
+    if (normalizedNoun === 'secret') {
+      await secretDeleteCommand(name, debug);
+      return;
+    }
+
+    // Unknown noun
+    console.error(chalk.redBright(`Error: Unknown resource type "${noun}"`));
+    console.error(chalk.gray('Valid types: var, secret'));
+    process.exit(1);
+  });
+deleteCommand.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging').hideHelp());
 
 program.parse(process.argv);

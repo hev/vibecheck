@@ -102,6 +102,9 @@ vibe get suites                 # List saved suites
 vibe get suite <name>           # Get specific suite
 vibe get models                 # List available models
 vibe get org                    # Organization info
+vibe get vars                   # List all variables (name=value)
+vibe get var <name>             # Get variable value
+vibe get secrets                # List all secrets (names only)
 ```
 
 ### `vibe set` - Save Suites
@@ -117,6 +120,53 @@ Redeem an invite code to create an organization and receive an API key.
 ```bash
 vibe redeem <code>
 ```
+
+### `vibe var` - Manage Runtime Variables
+Manage org-scoped runtime variables that can be injected into evaluation YAML files.
+
+```bash
+vibe var set <name> <value>      # Set a variable
+vibe var update <name> <value>   # Update a variable
+vibe var get <name>              # Get a variable value (scripting-friendly)
+vibe var list                    # List all variables (name=value format)
+vibe var delete <name>           # Delete a variable
+```
+
+**Examples:**
+```bash
+vibe var set myvar "my value"
+vibe var update myvar "updated value"
+vibe var get myvar               # Prints: updated value
+vibe var list                    # Prints: myvar=updated value
+vibe var delete myvar
+```
+
+**Environment Variables:**
+- `VIBECHECK_API_URL` or `API_BASE_URL` - API URL (default: `http://localhost:3000`)
+- `VIBECHECK_API_KEY` or `API_KEY` - Organization API key (required)
+
+### `vibe secret` - Manage Runtime Secrets
+Manage org-scoped runtime secrets. Secret values are write-only (cannot be read), but you can list secret names. Secrets can be injected into evaluation YAML files.
+
+```bash
+vibe secret set <name> <value>      # Set a secret
+vibe secret update <name> <value>  # Update a secret
+vibe secret delete <name>          # Delete a secret
+```
+
+**Examples:**
+```bash
+vibe secret set mysecret "sensitive-value"
+vibe secret update mysecret "new-sensitive-value"
+vibe secret delete mysecret
+vibe get secrets                   # List secret names (values not shown)
+```
+
+**Note:** Secret values are write-only for security reasons. You can list secret names with `vibe get secrets`, but individual secret values cannot be retrieved.
+
+**Environment Variables:**
+- `VIBECHECK_API_URL` or `API_BASE_URL` - API URL (default: `http://localhost:3000`)
+- `VIBECHECK_API_KEY` or `API_KEY` - Organization API key (required)
 
 ## Featured Examples
 

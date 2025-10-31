@@ -110,7 +110,7 @@ export async function runInteractiveCommand(options: RunOptions) {
 async function handleGetCommand(args: string[], ui: InteractiveUI, debug?: boolean) {
   if (args.length === 0) {
     ui.displayError('Usage: :get <noun> [identifier] [options]');
-    ui.displayError('Available nouns: suites, suite, runs, run, models, org, credits');
+    ui.displayError('Available nouns: suites, suite, runs, run, models, org, credits, vars, var');
     return;
   }
 
@@ -161,9 +161,30 @@ async function handleGetCommand(args: string[], ui: InteractiveUI, debug?: boole
         ui.displayOrgInfo(orgInfo);
         break;
 
+      case 'vars':
+        // Import var command function
+        const { varListCommand } = await import('../commands/var');
+        await varListCommand(debug);
+        break;
+
+      case 'var':
+        if (!identifier) {
+          ui.displayError('Variable name required. Usage: :get var <name>');
+          return;
+        }
+        const { varGetCommand } = await import('../commands/var');
+        await varGetCommand(identifier, debug);
+        break;
+
+      case 'secret':
+      case 'secrets':
+        ui.displayError('Error: Secrets cannot be read');
+        ui.displayError('Secrets are write-only for security reasons. Use "vibe set secret" to create/update and "vibe delete secret" to remove.');
+        break;
+
       default:
         ui.displayError(`Unknown resource: ${noun}`);
-        ui.displayError('Available nouns: suites, suite, runs, run, models, org, credits');
+        ui.displayError('Available nouns: suites, suite, runs, run, models, org, credits, vars, var');
     }
   } catch (error: any) {
     // Handle network errors first

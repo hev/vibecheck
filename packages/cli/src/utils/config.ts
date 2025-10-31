@@ -110,15 +110,27 @@ export function saveApiUrl(url: string): void {
 
 /**
  * Gets the effective API URL with proper precedence:
- * 1. Environment variable VIBECHECK_URL (highest priority)
- * 2. .env file VIBECHECK_URL
- * 3. Default production URL (lowest priority)
+ * 1. Environment variable VIBECHECK_API_URL (highest priority)
+ * 2. Environment variable VIBECHECK_URL
+ * 3. Environment variable API_BASE_URL
+ * 4. .env file VIBECHECK_URL
+ * 5. Default production URL (lowest priority: http://localhost:3000 for user-cli commands)
  */
 export function getApiUrl(): string {
-  // Check environment variable first (highest priority)
+  // Check environment variables first (highest priority)
+  if (process.env.VIBECHECK_API_URL) {
+    debugConfig('getApiUrl', `Using environment variable: ${process.env.VIBECHECK_API_URL}`);
+    return process.env.VIBECHECK_API_URL;
+  }
+  
   if (process.env.VIBECHECK_URL) {
     debugConfig('getApiUrl', `Using environment variable: ${process.env.VIBECHECK_URL}`);
     return process.env.VIBECHECK_URL;
+  }
+  
+  if (process.env.API_BASE_URL) {
+    debugConfig('getApiUrl', `Using environment variable: ${process.env.API_BASE_URL}`);
+    return process.env.API_BASE_URL;
   }
 
   // Check .env file
@@ -132,6 +144,57 @@ export function getApiUrl(): string {
   const defaultUrl = 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
   debugConfig('getApiUrl', `Using default URL: ${defaultUrl}`);
   return defaultUrl;
+}
+
+/**
+ * Gets the effective API URL with fallback to localhost for runtime commands
+ * Used by var/secret commands that may run against local dev server
+ * Precedence: VIBECHECK_API_URL -> API_BASE_URL -> localhost:3000
+ */
+export function getApiUrlForRuntime(): string {
+  // Check environment variables first
+  if (process.env.VIBECHECK_API_URL) {
+    debugConfig('getApiUrlForRuntime', `Using VIBECHECK_API_URL: ${process.env.VIBECHECK_API_URL}`);
+    return process.env.VIBECHECK_API_URL;
+  }
+  
+  if (process.env.API_BASE_URL) {
+    debugConfig('getApiUrlForRuntime', `Using API_BASE_URL: ${process.env.API_BASE_URL}`);
+    return process.env.API_BASE_URL;
+  }
+
+  // Default to localhost for runtime commands
+  const localhostUrl = 'http://localhost:3000';
+  debugConfig('getApiUrlForRuntime', `Using default localhost: ${localhostUrl}`);
+  return localhostUrl;
+}
+
+/**
+ * Gets the org API key with proper precedence:
+ * 1. Environment variable VIBECHECK_API_KEY
+ * 2. Environment variable API_KEY
+ * 3. .env file VIBECHECK_API_KEY
+ */
+export function getOrgApiKey(): string | null {
+  // Check environment variables first
+  if (process.env.VIBECHECK_API_KEY) {
+    debugConfig('getOrgApiKey', 'Using VIBECHECK_API_KEY from environment');
+    return process.env.VIBECHECK_API_KEY;
+  }
+  
+  if (process.env.API_KEY) {
+    debugConfig('getOrgApiKey', 'Using API_KEY from environment');
+    return process.env.API_KEY;
+  }
+
+  // Check .env file
+  const envKey = readApiKey();
+  if (envKey) {
+    debugConfig('getOrgApiKey', 'Using API key from .env file');
+    return envKey;
+  }
+
+  return null;
 }
 
 /**

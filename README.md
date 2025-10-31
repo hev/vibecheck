@@ -199,8 +199,19 @@ evals:
 ```
 
 ### 🔧 MCP Tool Integration
-Validate MCP (Model Context Protocol) tool calling with external services:
+Validate MCP (Model Context Protocol) tool calling with external services. Use secrets and vars to securely configure MCP servers:
 
+**Step 1: Set up secrets and variables**
+```bash
+# Set a secret for the authorization token (sensitive, write-only)
+vibe set secret linear_token "your-api-token-here"
+
+# Set variables for MCP server configuration (readable)
+vibe set var mcp_url "https://mcp.linear.app/mcp"
+vibe set var mcp_name "linear"
+```
+
+**Step 2: Use them in your YAML file**
 ```yaml
 # examples/mcp-evals.yaml
 metadata:
@@ -210,17 +221,19 @@ metadata:
     You are an AI assistant with access to external tools.
     Use the available tools to answer questions accurately.
   mcp_server:
-    url: "https://your-mcp-server.com"
-    name: "your-tool-server"
-    authorization_token: "your-token"
+    url: "{{var('mcp_url')}}"
+    name: "{{var('mcp_name')}}"
+    authorization_token: "{{secret('linear_token')}}"
 
 evals:
   - prompt: "What's the weather like today?"
     checks:
-      match: "*weather*"  # Should use weather tool
-      min_tokens: 10
-      max_tokens: 200
+      - match: "*weather*"  # Should use weather tool
+      - min_tokens: 10
+      - max_tokens: 200
 ```
+
+Secrets and vars are resolved at runtime when the evaluation runs, so you can update them without modifying your YAML files.
 
 ### 🧠 Advanced Evaluation Patterns
 Combine multiple check types for comprehensive testing:
@@ -387,6 +400,60 @@ vibe check my-eval-suite \
   --mcp-name server-name \
   --mcp-token your-token
 ```
+
+### Using Secrets and Variables in YAML
+
+You can inject secrets and variables into your YAML evaluation files using template syntax. This allows you to:
+- Keep sensitive values (like API tokens) secure using secrets
+- Share configuration values across multiple evaluation files using variables
+- Update values without modifying YAML files
+
+**Template Syntax:**
+- Secrets: `{{secret('secret-name')}}`
+- Variables: `{{var('var-name')}}`
+
+**Example: Using secrets and vars in metadata**
+
+```bash
+# Set a secret (sensitive, write-only)
+vibe set secret api_token "sk-1234567890abcdef"
+
+# Set variables (readable, can be used for non-sensitive config)
+vibe set var model_name "anthropic/claude-3.5-sonnet"
+vibe set var system_role "You are a helpful assistant"
+```
+
+```yaml
+metadata:
+  name: my-eval-suite
+  model: "{{var('model_name')}}"
+  system_prompt: "{{var('system_role')}}"
+  mcp_server:
+    url: "{{var('mcp_url')}}"
+    authorization_token: "{{secret('api_token')}}"
+```
+
+**Example: Using vars in evaluation prompts**
+
+```bash
+vibe set var company_name "Acme Corp"
+vibe set var project_name "Project Alpha"
+```
+
+```yaml
+evals:
+  - prompt: "List all issues for {{var('project_name')}} at {{var('company_name')}}"
+    checks:
+      - match: "*{{var('project_name')}}*"
+      - min_tokens: 10
+```
+
+**Key Points:**
+- Secrets are **write-only** (values cannot be read for security)
+- Variables are **readable** (you can view values with `vibe get var <name>`)
+- Template resolution happens **at runtime** when evaluations run
+- If a secret or variable is not found, the evaluation will fail with a clear error message
+- Use quotes around template expressions in YAML: `"{{secret('name')}}"` or `"{{var('name')}}"`
 
 ## Vibe Ratings
 

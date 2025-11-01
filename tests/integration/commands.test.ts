@@ -1,6 +1,6 @@
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { setupApiMock, cleanupApiMocks } from '../helpers/api-mocks';
-import { withEnv, createTempFile, cleanupTempFiles, suppressConsole } from '../helpers/test-utils';
+import { withEnv, createTempFile, cleanupTempFiles, suppressConsole, configureAxiosForTests } from '../helpers/test-utils';
 import { runCommand } from '../../packages/cli/src/commands/run';
 import { saveCommand, listCommand, getCommand } from '../../packages/cli/src/commands/suite';
 import { varSetCommand, varUpdateCommand, varGetCommand, varListCommand, varDeleteCommand } from '../../packages/cli/src/commands/var';
@@ -11,9 +11,12 @@ import * as readline from 'readline';
 
 describe('CLI Commands Integration Tests', () => {
   let apiMock: ReturnType<typeof setupApiMock>;
+  let axiosCleanup: (() => void) | undefined;
   const testApiKey = 'test-api-key-12345';
 
   beforeEach(() => {
+    // Configure axios to not keep connections alive
+    axiosCleanup = configureAxiosForTests();
     apiMock = setupApiMock();
     // Set up environment with test API key
     process.env.VIBECHECK_API_KEY = testApiKey;
@@ -22,7 +25,12 @@ describe('CLI Commands Integration Tests', () => {
     delete process.env.VIBECHECK_NEVER_PROMPT;
   });
   afterEach(() => {
+    // Cleanup must happen in order: nock first, then axios agents
     cleanupApiMocks();
+    if (axiosCleanup) {
+      axiosCleanup();
+      axiosCleanup = undefined;
+    }
     cleanupTempFiles();
     jest.restoreAllMocks();
     // Clear all mocks to prevent interference between tests
@@ -39,21 +47,30 @@ describe('CLI Commands Integration Tests', () => {
 evals:
   - prompt: What is 2 + 2?
     checks:
-      match: "*4*"
+      - match: "*4*"
 `;
       const tempFile = createTempFile(validYaml, 'test-eval.yaml');
 
       // Mock API responses
-      apiMock.mockRunEval();
-      apiMock.mockStatusCompleted();
+      const runResponse = apiMock.mockRunEval();
+      // Use the runId from the mock response to ensure status polling matches
+      apiMock.mockStatusCompleted('test-run-id-123');
 
       const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
         throw new Error(`process.exit: ${code}`);
       });
 
-      await suppressConsole(async () => {
-        await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
-      });
+      try {
+        await suppressConsole(async () => {
+          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
+        });
+      } catch (error: any) {
+        // If process.exit was called, it means something went wrong - fail the test with details
+        if (error.message?.includes('process.exit:')) {
+          throw new Error(`Test expected success but process.exit was called. This indicates an error occurred: ${error.message}`);
+        }
+        throw error;
+      }
 
       exitMock.mockRestore();
     });
@@ -95,9 +112,9 @@ evals:
 evals:
   - prompt: Test
     checks:
-      match: "*test*"
+      - match: "*test*"
       # Invalid semantic check - missing threshold
-      semantic:
+      - semantic:
         expected: "test response"
 `;
       const tempFile = createTempFile(invalidYaml, 'invalid.yaml');
@@ -147,7 +164,7 @@ evals:
 evals:
   - prompt: Test
     checks:
-      match: "*test*"
+      - match: "*test*"
 `;
       const tempFile = createTempFile(validYaml, 'test.yaml');
 
@@ -157,20 +174,30 @@ evals:
         throw new Error(`process.exit: ${code}`);
       });
 
+      // Ensure neverPrompt is not set so redeem flow triggers
+      delete process.env.VIBECHECK_NEVER_PROMPT;
+
       // Stub spawnSync for redeem to avoid launching an interactive process in CI
+      // Note: setup-mocks.js mocks child_process, so we need to override that mock
       const childProc = require('child_process');
-      const spawnSpy = jest.spyOn(childProc, 'spawnSync').mockReturnValue({ status: 0 } as any);
+      const originalSpawnSync = childProc.spawnSync;
+      const spawnSpy = jest.fn().mockReturnValue({ status: 0 } as any);
+      childProc.spawnSync = spawnSpy;
 
       await suppressConsole(async () => {
         try {
-          // Remove neverPrompt to test the redeem flow
           await runCommand({ file: tempFile, debug: false, interactive: false });
         } catch (error: any) {
           expect(error.message).toContain('process.exit: 1');
         }
       });
+
+      // spawnSync should be called before process.exit
+      // Check that it was called with the expected arguments
       expect(spawnSpy).toHaveBeenCalledWith('vibe', ['redeem'], { stdio: 'inherit' });
-      spawnSpy.mockRestore();
+      
+      // Restore original mock
+      childProc.spawnSync = originalSpawnSync;
 
       exitMock.mockRestore();
     });
@@ -184,7 +211,7 @@ evals:
 evals:
   - prompt: Test
     checks:
-      match: "*test*"
+      - match: "*test*"
 `;
       const tempFile = createTempFile(validYaml, 'test.yaml');
 
@@ -214,7 +241,7 @@ evals:
 evals:
   - prompt: Test
     checks:
-      match: "*test*"
+      - match: "*test*"
 `;
       const tempFile = createTempFile(validYaml, 'test.yaml');
 
@@ -255,15 +282,29 @@ evals:
 evals:
   - prompt: What is 2 + 2?
     checks:
-      match: "*4*"
+      - match: "*4*"
 `;
       const tempFile = createTempFile(validYaml, 'save-test.yaml');
 
       apiMock.mockSaveSuite();
 
-      await suppressConsole(async () => {
-        await saveCommand({ file: tempFile, debug: false });
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
       });
+
+      try {
+        await suppressConsole(async () => {
+          await saveCommand({ file: tempFile, debug: false });
+        });
+      } catch (error: any) {
+        // If process.exit was called, it means something went wrong - fail the test with details
+        if (error.message?.includes('process.exit:')) {
+          throw new Error(`Test expected success but process.exit was called. This indicates an error occurred: ${error.message}`);
+        }
+        throw error;
+      }
+
+      exitMock.mockRestore();
 
       // Should complete without error
     });
@@ -296,7 +337,7 @@ evals:
 evals:
   - prompt: Test
     checks:
-      match: "*test*"
+      - match: "*test*"
 `;
       const tempFile = createTempFile(validYaml, 'test.yaml');
 
@@ -325,19 +366,25 @@ evals:
 evals:
   - prompt: What is 2 + 2?
     checks:
-      match: "*4*"
+      - match: "*4*"
 `;
       const tempFile = createTempFile(validYaml, 'warn-model-file.yaml');
 
       // Mock API responses
       apiMock.mockRunEval();
-      apiMock.mockStatusCompleted();
+      apiMock.mockStatusCompleted('test-run-id-123');
 
       const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
         throw new Error(`process.exit: ${code}`);
       });
 
-      const logSpy = jest.spyOn(console, 'log').mockImplementation((() => {}) as any);
+      // Capture console.log - we can't use suppressConsole here because we need to see the logs
+      const logCalls: any[] = [];
+      const originalLog = console.log;
+      console.log = jest.fn((...args: any[]) => {
+        logCalls.push(args.map(a => typeof a === 'string' ? a : String(a)).join(' '));
+        // Don't call originalLog to avoid cluttering test output
+      }) as any;
 
       try {
         await runCommand({ file: tempFile, model: 'openai/gpt-4o', debug: false, interactive: false, neverPrompt: true });
@@ -346,11 +393,11 @@ evals:
       }
 
       // Assert the warning message and guidance are logged
-      const allLogs = (logSpy.mock.calls.map(c => (c[0] ?? '').toString()).join('\n'));
+      const allLogs = logCalls.join('\n');
       expect(allLogs).toMatch(/Ignoring model \"openai\/gpt-4o\".*Using YAML model/);
       expect(allLogs).toMatch(/vibe check test-suite-file -m openai\/gpt-4o/);
 
-      logSpy.mockRestore();
+      console.log = originalLog;
       exitMock.mockRestore();
     });
   });
@@ -461,7 +508,7 @@ evals:
 evals:
   - prompt: Test
     checks:
-      match: "*test*"
+      - match: "*test*"
 `;
       const tempFile = createTempFile(validYaml, 'test.yaml');
 
@@ -500,26 +547,34 @@ evals:
 evals:
   - prompt: Say hello
     checks:
-      match: "*hello*"`
+      - match: "*hello*"
+`
         }
       });
 
       // Mock run eval
       apiMock.mockRunEval();
-      apiMock.mockStatusCompleted();
+      apiMock.mockStatusCompleted('test-run-id-123');
 
       const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
         throw new Error(`process.exit: ${code}`);
       });
 
-      await suppressConsole(async () => {
-        await runSuiteCommand({
-          suiteName: 'test-suite',
-          debug: false,
-          interactive: false,
-          async: false
+      try {
+        await suppressConsole(async () => {
+          await runSuiteCommand({
+            suiteName: 'test-suite',
+            debug: false,
+            interactive: false,
+            async: false
+          });
         });
-      });
+      } catch (error: any) {
+        if (error.message?.includes('process.exit:')) {
+          throw new Error(`Test expected success but process.exit was called: ${error.message}`);
+        }
+        throw error;
+      }
 
       exitMock.mockRestore();
     });
@@ -539,7 +594,8 @@ evals:
 evals:
   - prompt: Say hello
     checks:
-      match: "*hello*"`
+      - match: "*hello*"
+`
         }
       });
 
@@ -580,7 +636,8 @@ evals:
 evals:
   - prompt: Say hello
     checks:
-      match: "*hello*"`
+      - match: "*hello*"
+`
         }
       });
 
@@ -625,29 +682,37 @@ evals:
 evals:
   - prompt: Use the calculator
     checks:
-      match: "*35*"`
+      - match: "*35*"
+`
         }
       });
 
       // Mock run eval
       apiMock.mockRunEval();
-      apiMock.mockStatusCompleted();
+      apiMock.mockStatusCompleted('test-run-id-123');
 
       const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
         throw new Error(`process.exit: ${code}`);
       });
 
-      await suppressConsole(async () => {
-        await runSuiteCommand({
-          suiteName: 'test-suite',
-          mcpUrl: 'https://new-mcp.com',
-          mcpName: 'new-mcp-server',
-          mcpToken: 'new-token',
-          debug: false,
-          interactive: false,
-          async: false
+      try {
+        await suppressConsole(async () => {
+          await runSuiteCommand({
+            suiteName: 'test-suite',
+            mcpUrl: 'https://new-mcp.com',
+            mcpName: 'new-mcp-server',
+            mcpToken: 'new-token',
+            debug: false,
+            interactive: false,
+            async: false
+          });
         });
-      });
+      } catch (error: any) {
+        if (error.message?.includes('process.exit:')) {
+          throw new Error(`Test expected success but process.exit was called: ${error.message}`);
+        }
+        throw error;
+      }
 
       exitMock.mockRestore();
     });

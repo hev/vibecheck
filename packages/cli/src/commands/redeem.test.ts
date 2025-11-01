@@ -4,8 +4,13 @@ import * as config from '../utils/config';
 import axios from 'axios';
 
 jest.mock('readline', () => {
+  const mockInterface = {
+    question: jest.fn(),
+    close: jest.fn(),
+    on: jest.fn(),
+  };
   return {
-    createInterface: jest.fn()
+    createInterface: jest.fn(() => mockInterface)
   };
 });
 
@@ -40,7 +45,8 @@ describe('redeem interactive flow', () => {
     const rl = await import('readline');
     (rl.createInterface as any).mockReturnValue({
       question: (q: string, cb: (a: string) => void) => cb(''),
-      close: () => {}
+      close: () => {},
+      on: jest.fn()
     } as any);
 
     const { redeemFlow } = await import('./redeem');
@@ -62,7 +68,8 @@ describe('redeem interactive flow', () => {
         const answer = answers.shift() || '';
         cb(answer);
       },
-      close: () => {}
+      close: () => {},
+      on: jest.fn()
     } as any);
 
     // Mock axios redeem response

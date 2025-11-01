@@ -132,7 +132,7 @@ export async function waitFor(
 export function mockProcessExit(): jest.SpyInstance {
   return jest.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
     throw new Error(`process.exit called with code ${code}`);
-  } as any);
+  }) as jest.SpyInstance;
 }
 
 /**
@@ -140,4 +140,43 @@ export function mockProcessExit(): jest.SpyInstance {
  */
 export function restoreProcessExit(mock: jest.SpyInstance) {
   mock.mockRestore();
+}
+
+/**
+ * Configure axios to disable keep-alive connections for tests
+ * This prevents HTTP connections from staying open and blocking Jest exit
+ */
+export function configureAxiosForTests() {
+  const axios = require('axios');
+  const http = require('http');
+  const https = require('https');
+
+  // Store previous agents for cleanup
+  const previousHttpAgent = axios.defaults.httpAgent;
+  const previousHttpsAgent = axios.defaults.httpsAgent;
+
+  // Create agents that don't keep connections alive
+  const httpAgent = new http.Agent({
+    keepAlive: false,
+    maxSockets: 1,
+  });
+
+  const httpsAgent = new https.Agent({
+    keepAlive: false,
+    maxSockets: 1,
+  });
+
+  // Configure axios defaults to use these agents
+  axios.defaults.httpAgent = httpAgent;
+  axios.defaults.httpsAgent = httpsAgent;
+
+  // Return cleanup function that destroys agents and restores previous ones
+  return () => {
+    // Destroy the test agents
+    httpAgent.destroy();
+    httpsAgent.destroy();
+    // Restore previous agents (or undefined if there were none)
+    axios.defaults.httpAgent = previousHttpAgent;
+    axios.defaults.httpsAgent = previousHttpsAgent;
+  };
 }

@@ -2,11 +2,15 @@ import axios from 'axios';
 import nock from 'nock';
 import { stopRunCommand, stopAllQueuedRunsCommand } from '../../packages/cli/src/commands/stop';
 import { setupApiMock, cleanupApiMocks } from '../helpers/api-mocks';
+import { configureAxiosForTests } from '../helpers/test-utils';
 
 describe('Stop Run Command', () => {
   const testApiKey = 'test-api-key-12345';
+  let axiosCleanup: (() => void) | undefined;
 
   beforeEach(() => {
+    // Configure axios to not keep connections alive
+    axiosCleanup = configureAxiosForTests();
     setupApiMock();
     // Set up environment with test API key
     process.env.VIBECHECK_API_KEY = testApiKey;
@@ -16,7 +20,12 @@ describe('Stop Run Command', () => {
   });
 
   afterEach(() => {
+    // Cleanup must happen in order: nock first, then axios agents
     cleanupApiMocks();
+    if (axiosCleanup) {
+      axiosCleanup();
+      axiosCleanup = undefined;
+    }
     jest.restoreAllMocks();
     jest.clearAllMocks();
   });

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { setupApiMock, cleanupApiMocks } from '../helpers/api-mocks';
+import { configureAxiosForTests } from '../helpers/test-utils';
 import { writeRunOutput } from '../../packages/cli/src/utils/output-writer';
 import { EvalResult } from '../../packages/cli/src/types';
 
@@ -15,8 +16,11 @@ jest.mock('string-width', () => ({
 describe('Run Output Saving', () => {
   let tempDir: string;
   let originalEnv: NodeJS.ProcessEnv;
+  let axiosCleanup: (() => void) | undefined;
 
   beforeEach(() => {
+    // Configure axios to not keep connections alive
+    axiosCleanup = configureAxiosForTests();
     // Create a temporary directory for tests
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vibecheck-test-'));
     originalEnv = { ...process.env };
@@ -29,7 +33,12 @@ describe('Run Output Saving', () => {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
     process.env = originalEnv;
+    // Cleanup must happen in order: nock first, then axios agents
     cleanupApiMocks();
+    if (axiosCleanup) {
+      axiosCleanup();
+      axiosCleanup = undefined;
+    }
   });
 
   const createMockResults = (): EvalResult[] => [

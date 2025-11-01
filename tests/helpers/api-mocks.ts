@@ -25,20 +25,25 @@ export class ApiMock {
   mockRunEval(response = mockRunResponse, statusCode = 200) {
     this.scope
       .post('/api/eval/run')
+      .matchHeader('authorization', /Bearer .+/) // Match any bearer token
       .reply(statusCode, response);
     return this;
   }
 
   mockStatusPending(runId: string = 'test-run-id-123') {
     this.scope
+      .persist() // Allow multiple polling requests
       .get(`/api/eval/status/${runId}`)
+      .matchHeader('authorization', /Bearer .+/) // Match any bearer token
       .reply(200, mockStatusPendingResponse);
     return this;
   }
 
   mockStatusCompleted(runId: string = 'test-run-id-123') {
     this.scope
+      .persist() // Allow multiple polling requests
       .get(`/api/eval/status/${runId}`)
+      .matchHeader('authorization', /Bearer .+/) // Match any bearer token
       .reply(200, mockStatusCompletedResponse);
     return this;
   }
@@ -53,6 +58,7 @@ export class ApiMock {
   mockListSuites(statusCode = 200) {
     this.scope
       .get('/api/suite/list')
+      .matchHeader('authorization', /Bearer .+/) // Match any bearer token
       .reply(statusCode, statusCode === 200 ? mockListSuitesResponse : mockUnauthorizedResponse);
     return this;
   }
@@ -60,6 +66,7 @@ export class ApiMock {
   mockGetSuite(name: string, statusCode = 200) {
     this.scope
       .get(`/api/suite/${encodeURIComponent(name)}`)
+      .matchHeader('authorization', /Bearer .+/) // Match any bearer token
       .reply(statusCode, statusCode === 200 ? mockGetSuiteResponse : { error: 'Suite not found' });
     return this;
   }
@@ -67,6 +74,7 @@ export class ApiMock {
   mockGetSuiteWithResponse(name: string, response: any, statusCode = 200) {
     this.scope
       .get(`/api/suite/${encodeURIComponent(name)}`)
+      .matchHeader('authorization', /Bearer .+/) // Match any bearer token
       .reply(statusCode, response);
     return this;
   }
@@ -74,6 +82,7 @@ export class ApiMock {
   mockSaveSuite(statusCode = 200) {
     this.scope
       .post('/api/suite/save')
+      .matchHeader('authorization', /Bearer .+/) // Match any bearer token
       .reply(statusCode, statusCode === 200 ? mockSaveSuiteResponse : mockUnauthorizedResponse);
     return this;
   }
@@ -192,9 +201,16 @@ export class ApiMock {
 }
 
 export function setupApiMock() {
+  // Ensure nock is active
+  if (!nock.isActive()) {
+    nock.activate();
+  }
   return new ApiMock();
 }
 
 export function cleanupApiMocks() {
+  // Clean all interceptors
   nock.cleanAll();
+  // Abort any pending requests
+  nock.abortPendingRequests();
 }

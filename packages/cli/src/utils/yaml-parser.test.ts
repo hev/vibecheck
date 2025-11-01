@@ -464,11 +464,11 @@ describe('YAML Parsing and Validation', () => {
         evals: [
           {
             prompt: 'test 1',
-            checks: { match: '*test*' }
+            checks: [{ match: '*test*' }]
           },
           {
             prompt: 'test 2',
-            checks: { min_tokens: 1 }
+            checks: [{ min_tokens: 1 }]
           }
         ]
       };

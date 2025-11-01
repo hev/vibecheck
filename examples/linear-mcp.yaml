@@ -5,32 +5,32 @@ metadata:
   mcp_server:
     url: "https://mcp.linear.app/mcp"
     name: "linear"
-    authorization_token: "" 
+    authorization_token: "{{secret('linear.apiKey')}}" 
 
 evals:
   # Basic easy / check
   - prompt: Using Linear, list the most recent issues in my workspace
     checks:
-      - match: "*HEV*"               #Use your Linear Project-id (ideally unique string)
+      - match: "*{{var('linear.projectId')}}*"               #Use your Linear Project-id (ideally unique string)
       - min_tokens: 10
       - max_tokens: 500
 
  # Slightly more complicated
   - prompt: Create a new to do item in linear. Remember the milk. 
     checks:
-      - match: "*HEV*"               #Use your Linear Project-id (ideally unique string)
+      - match: "*{{var('linear.projectId')}}*"               #Use your Linear Project-id (ideally unique string)
       - min_tokens: 10
       - max_tokens: 500
 
  #No linear mention 
   - prompt: Create a new to do item. Remember the milk. 
     checks:
-      - match: "*HEV*"               #Use your Linear Project-id (ideally unique string)
+      - match: "*{{var('linear.projectId')}}*"               #Use your Linear Project-id (ideally unique string)
       - min_tokens: 10
       - max_tokens: 500
 
  #Research item
-  - prompt: Start on Hev1
+  - prompt: Start on {{var('linear.projectId')}}
     checks:
       - match: "*HEV*"               #Use your Linear Project-id (ideally unique string)
       - max_tokens: 500

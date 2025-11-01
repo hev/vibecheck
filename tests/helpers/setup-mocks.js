@@ -67,3 +67,22 @@ jest.mock('child_process', () => ({
 jest.mock('string-width', () => ({
   default: jest.fn((str) => str.length),
 }));
+
+// Mock ora to suppress spinner output in tests
+jest.mock('ora', () => {
+  const mockSpinner = {
+    start: jest.fn(function() { return this; }),
+    stop: jest.fn(function() { return this; }),
+    succeed: jest.fn(function() { return this; }),
+    fail: jest.fn(function() { return this; }),
+    warn: jest.fn(function() { return this; }),
+    info: jest.fn(function() { return this; }),
+    text: '',
+  };
+  
+  const mockOra = jest.fn(() => mockSpinner);
+  return {
+    __esModule: true,
+    default: mockOra,
+  };
+});

@@ -358,36 +358,42 @@ function generateYAML(data: OnboardingData): string {
     evals: [
       {
         prompt: data.prompt1,
-        checks: {
-          match: data.match1,
-          min_tokens: data.minTokens1,
-          max_tokens: data.maxTokens1
-        }
+        checks: [
+          { match: data.match1 },
+          { min_tokens: data.minTokens1 },
+          { max_tokens: data.maxTokens1 }
+        ]
       },
       {
         prompt: data.prompt2,
-        checks: {
-          semantic: {
-            expected: data.semanticExpected,
-            threshold: data.semanticThreshold
+        checks: [
+          {
+            semantic: {
+              expected: data.semanticExpected,
+              threshold: data.semanticThreshold
+            }
           },
-          llm_judge: {
-            criteria: data.judgeCriteria2
+          {
+            llm_judge: {
+              criteria: data.judgeCriteria2
+            }
           },
-          min_tokens: data.minTokens2,
-          max_tokens: data.maxTokens2
-        }
+          { min_tokens: data.minTokens2 },
+          { max_tokens: data.maxTokens2 }
+        ]
       },
       {
         prompt: data.prompt3,
-        checks: {
-          match: data.match3,
-          llm_judge: {
-            criteria: data.judgeCriteria3
+        checks: [
+          { match: data.match3 },
+          {
+            llm_judge: {
+              criteria: data.judgeCriteria3
+            }
           },
-          min_tokens: data.minTokens3,
-          max_tokens: data.maxTokens3
-        }
+          { min_tokens: data.minTokens3 },
+          { max_tokens: data.maxTokens3 }
+        ]
       }
     ]
   };

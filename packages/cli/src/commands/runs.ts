@@ -8,6 +8,7 @@ import { displaySummary } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
 import { getApiUrl } from '../utils/config';
+import { RunsListFilters, buildRunsQueryParams } from '../utils/runs-filters';
 
 /**
  * Calculate price-performance-latency score
@@ -57,15 +58,9 @@ function getAuthHeaders() {
   };
 }
 
-interface ListRunsOptions {
+interface ListRunsOptions extends RunsListFilters {
   limit?: number;
   offset?: number;
-  suite?: string;
-  status?: string;
-  successGt?: number;
-  successLt?: number;
-  timeGt?: number;
-  timeLt?: number;
   sortBy?: string;
   csv?: boolean;
 }
@@ -155,42 +150,46 @@ function exportRunsToCSV(runs: any[], filePath: string): void {
 export async function listRunsCommand(options: ListRunsOptions = {}, debug: boolean = false) {
   const { csv } = options;
   const defaultLimit = csv ? 100 : 50;
-  const { limit = defaultLimit, offset = 0, suite, status, successGt, successLt, timeGt, timeLt, sortBy = 'created' } = options;
+  const { limit = defaultLimit, offset = 0, suite, sortBy = 'created' } = options;
+  
+  // Build filter object for buildRunsQueryParams
+  const filters: RunsListFilters = {
+    status: options.status,
+    statusIn: options.statusIn,
+    statusNe: options.statusNe,
+    model: options.model,
+    modelLike: options.modelLike,
+    suite: options.suite,
+    minCost: options.minCost,
+    maxCost: options.maxCost,
+    minSuccess: options.minSuccess,
+    maxSuccess: options.maxSuccess,
+    dateFrom: options.dateFrom,
+    dateTo: options.dateTo,
+    completedFrom: options.completedFrom,
+    completedTo: options.completedTo,
+    minDuration: options.minDuration,
+    maxDuration: options.maxDuration,
+  };
   
   const spinner = suite 
     ? ora(csv ? `Fetching runs for suite "${suite}" for CSV export...` : `Fetching runs for suite "${suite}"...`).start()
     : ora(csv ? 'Fetching runs for CSV export...' : 'Fetching runs...').start();
 
   try {
-    // Check if we have any filters other than suite
-    const hasOtherFilters = !!(status || successGt !== undefined || successLt !== undefined || timeGt !== undefined || timeLt !== undefined);
-    
-    // Use suite-specific endpoint when suite is specified WITHOUT other filters
-    // The by-suite endpoint doesn't support additional query params, so when we have
-    // other filters we need to use the main /api/runs endpoint with suite as a query param
-    const url = (suite && !hasOtherFilters)
-      ? `${getApiUrl()}/api/runs/by-suite/${encodeURIComponent(suite)}`
-      : `${getApiUrl()}/api/runs`;
-
-    // Build query params
-    const params: any = { limit, offset };
-    if (suite && hasOtherFilters) params.suite = suite; // Add suite as query param when using main endpoint with filters
-    if (status) params.status = status;
-    if (successGt !== undefined) params.successGt = successGt;
-    if (successLt !== undefined) params.successLt = successLt;
-    if (timeGt !== undefined) params.timeGt = timeGt;
-    if (timeLt !== undefined) params.timeLt = timeLt;
+    // Always use /api/runs endpoint with query params
+    const url = `${getApiUrl()}/api/runs`;
+    const queryString = buildRunsQueryParams(filters, limit, offset);
+    const fullUrl = queryString ? `${url}?${queryString}` : url;
 
     if (debug) {
       spinner.stop();
-      console.log(chalk.gray(`[DEBUG] Request URL: ${url}`));
-      console.log(chalk.gray(`[DEBUG] Request params: ${JSON.stringify(params)}`));
+      console.log(chalk.gray(`[DEBUG] Request URL: ${fullUrl}`));
       spinner.start();
     }
 
-    const response = await axios.get(url, {
-      headers: getAuthHeaders(),
-      params
+    const response = await axios.get(fullUrl, {
+      headers: getAuthHeaders()
     });
 
     if (debug) {
@@ -201,7 +200,19 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     }
 
     if (response.data.error) {
-      spinner.fail(chalk.redBright(`Error: ${response.data.error}`));
+      spinner.fail(chalk.redBright('Failed to list runs'));
+      const error = response.data.error;
+      const errorMessage = typeof error === 'string' 
+        ? error 
+        : error?.message || JSON.stringify(error);
+      
+      // Handle filter validation errors specifically
+      if (typeof error === 'object' && error?.message?.includes('Invalid filter')) {
+        console.error(chalk.redBright(`❌ Invalid filter parameter`));
+        console.error(chalk.yellow(`   ${error.message}`));
+      } else {
+        console.error(chalk.redBright(`Error: ${errorMessage}`));
+      }
       process.exit(1);
     }
 
@@ -271,18 +282,12 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
           page += 1;
           nextOffset += limit;
 
-          const nextParams: any = { limit, offset: nextOffset };
-          if (suite && hasOtherFilters) nextParams.suite = suite;
-          if (status) nextParams.status = status;
-          if (successGt !== undefined) nextParams.successGt = successGt;
-          if (successLt !== undefined) nextParams.successLt = successLt;
-          if (timeGt !== undefined) nextParams.timeGt = timeGt;
-          if (timeLt !== undefined) nextParams.timeLt = timeLt;
+          const nextQueryString = buildRunsQueryParams(filters, limit, nextOffset);
+          const nextFullUrl = nextQueryString ? `${url}?${nextQueryString}` : url;
 
           spinner.text = `Fetching page ${page}...`;
-          const nextResponse = await axios.get(url, {
-            headers: getAuthHeaders(),
-            params: nextParams
+          const nextResponse = await axios.get(nextFullUrl, {
+            headers: getAuthHeaders()
           });
 
           if (nextResponse.data?.error) {
@@ -479,108 +484,7 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     }
   } catch (error: any) {
     spinner.fail(chalk.redBright('Failed to list runs'));
-    // Recalculate URL for error message consistency
-    const hasOtherFilters = !!(status || successGt !== undefined || successLt !== undefined || timeGt !== undefined || timeLt !== undefined);
-    const errorUrl = (suite && !hasOtherFilters)
-      ? `${getApiUrl()}/api/runs/by-suite/${encodeURIComponent(suite)}`
-      : `${getApiUrl()}/api/runs`;
-    handleError(error, errorUrl);
-  }
-}
-
-// List runs for a specific suite
-export async function listRunsBySuiteCommand(suiteName: string, options: ListRunsOptions = {}) {
-  const { limit = 50, offset = 0 } = options;
-  const spinner = ora(`Fetching runs for suite "${suiteName}"...`).start();
-
-  try {
-    const response = await axios.get(`${getApiUrl()}/api/runs/by-suite/${encodeURIComponent(suiteName)}`, {
-      headers: getAuthHeaders(),
-      params: { limit, offset }
-    });
-
-    if (response.data.error) {
-      spinner.fail(chalk.redBright(`Error: ${response.data.error}`));
-      process.exit(1);
-    }
-
-    spinner.stop();
-
-    const { runs, pagination } = response.data;
-
-    if (runs.length === 0) {
-      console.log(chalk.yellow(`No runs found for suite "${suiteName}"`));
-      return;
-    }
-
-    console.log(chalk.bold(`\nRuns for suite "${suiteName}":\n`));
-    console.log(
-      chalk.bold('ID'.padEnd(38)) +
-      chalk.bold('Status'.padEnd(12)) +
-      chalk.bold('Pass/Fail'.padEnd(20)) +
-      chalk.bold('Time'.padEnd(10)) +
-      chalk.bold('Started At'.padEnd(24)) +
-      chalk.bold('Date')
-    );
-    console.log('='.repeat(124));
-
-    runs.forEach((run: any) => {
-      const statusColor = run.status === 'completed' ? chalk.green : (run.status === 'failed' || run.status === 'cancelled') ? chalk.redBright : chalk.yellow;
-
-      // Parse fields from API (they come as strings)
-      const resultsCount = parseInt(run.results_count, 10) || 0;
-      const evalsPassed = parseInt(run.evals_passed, 10) || 0;
-      const successPercentage = parseFloat(run.success_percentage) || 0;
-      const durationSeconds = parseFloat(run.duration_seconds);
-
-      // Use results_count and evals_passed from API response
-      const passRateText = resultsCount > 0
-        ? `${evalsPassed}/${resultsCount}`
-        : 'N/A';
-
-      // Color code based on success percentage (pad BEFORE coloring)
-      let passRate;
-      if (resultsCount === 0) {
-        passRate = chalk.white(passRateText.padEnd(20));
-      } else if (successPercentage > 80) {
-        passRate = chalk.green(passRateText.padEnd(20));
-      } else if (successPercentage >= 50) {
-        passRate = chalk.yellow(passRateText.padEnd(20));
-      } else {
-        passRate = chalk.redBright(passRateText.padEnd(20));
-      }
-
-      // Use duration_seconds from API response
-      const time = !isNaN(durationSeconds)
-        ? `${durationSeconds.toFixed(1)}s`
-        : 'N/A';
-
-      // Use created_at from API response
-      const startedAt = run.created_at ? new Date(run.created_at).toLocaleString() : 'N/A';
-      const dateStr = formatDate(run.created_at);
-
-      console.log(
-        chalk.cyan(run.id.padEnd(38)) +
-        statusColor(run.status.padEnd(12)) +
-        passRate +
-        chalk.gray(time.padEnd(10)) +
-        chalk.gray(startedAt.padEnd(24)) +
-        chalk.gray(dateStr)
-      );
-    });
-
-    console.log('');
-
-    if (pagination) {
-      console.log(chalk.gray(`Showing ${offset + 1}-${offset + runs.length} of ${pagination.total} runs`));
-      if (pagination.hasMore) {
-        console.log(chalk.gray(`Use --limit and --offset to paginate`));
-      }
-      console.log('');
-    }
-  } catch (error: any) {
-    spinner.fail(chalk.redBright('Failed to list runs'));
-    handleError(error, `${getApiUrl()}/api/runs/by-suite/${encodeURIComponent(suiteName)}`);
+    handleError(error, `${getApiUrl()}/api/runs`);
   }
 }
 
@@ -708,6 +612,40 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
         return truncate(message, 60);
       };
 
+      const displayConditionalResult = (cond: any, response: string, indent: number = 2) => {
+        const indentStr = ' '.repeat(indent);
+        const status = cond.passed ? chalk.green('✅ PASS') : chalk.redBright('❌ FAIL');
+        const details = formatConditionalDetails(cond, response);
+
+        if (cond.type === 'llm_judge') {
+          console.log(`${indentStr}${status} ${(cond.type || '').padEnd(25)}`);
+          if (typeof details === 'string') {
+            console.log(`${indentStr}    ${chalk.gray(details)}`);
+          }
+        } else if (cond.type === 'string_contains') {
+          if (typeof details === 'object' && 'text' in details) {
+            const { text } = details;
+            console.log(`${indentStr}${status} ${(cond.type || '').padEnd(25)} ${chalk.gray(text)}`);
+          } else {
+            console.log(`${indentStr}${status} ${(cond.type || '').padEnd(25)} ${chalk.gray(details as string)}`);
+          }
+        } else if (cond.type === 'semantic_similarity') {
+          const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
+          console.log(`${indentStr}${status} ${(cond.type || '').padEnd(25)} ${coloredDetails}`);
+        } else {
+          const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
+          console.log(`${indentStr}${status} ${(cond.type || '').padEnd(25)} ${coloredDetails}`);
+        }
+
+        // Display child results if present (for OR checks, etc.)
+        if (cond.children && Array.isArray(cond.children) && cond.children.length > 0) {
+          const childIndent = indent + 2;
+          cond.children.forEach((child: any) => {
+            displayConditionalResult(child, response, childIndent);
+          });
+        }
+      };
+
       run.results.forEach((result: any) => {
         const displayName = result.eval_name || truncate(result.prompt || '', 60);
         console.log(chalk.bold(displayName + ':'));
@@ -716,46 +654,37 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
 
         if (Array.isArray(result.check_results) && result.check_results.length > 0) {
           result.check_results.forEach((cond: any) => {
-            const status = cond.passed ? chalk.green('✅ PASS') : chalk.redBright('🚩 FAIL');
-            const details = formatConditionalDetails(cond, result.response || '');
-
-            if (cond.type === 'llm_judge') {
-              console.log(`  ${status} ${(cond.type || '').padEnd(25)}`);
-              if (typeof details === 'string') {
-                console.log(`      ${chalk.gray(details)}`);
-              }
-            } else if (cond.type === 'string_contains') {
-              if (typeof details === 'object' && 'text' in details) {
-                const { text } = details;
-                console.log(`  ${status} ${(cond.type || '').padEnd(25)} ${chalk.gray(text)}`);
-              } else {
-                console.log(`  ${status} ${(cond.type || '').padEnd(25)} ${chalk.gray(details as string)}`);
-              }
-            } else if (cond.type === 'semantic_similarity') {
-              const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
-              console.log(`  ${status} ${(cond.type || '').padEnd(25)} ${coloredDetails}`);
-            } else {
-              const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
-              console.log(`  ${status} ${(cond.type || '').padEnd(25)} ${coloredDetails}`);
-            }
+            displayConditionalResult(cond, result.response || '');
           });
         }
 
-        const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.redBright('🚩 FAIL');
+        const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.redBright('❌ FAIL');
         console.log(`  Overall: ${overallStatus}`);
         console.log('');
       });
+
+      // Helper function to recursively map check results including children
+      const mapCheckResults = (checkResults: any[]): ConditionalResult[] => {
+        return (checkResults || []).map((cond: any) => {
+          const mapped: ConditionalResult = {
+            type: cond.type,
+            passed: cond.passed,
+            message: cond.message || ''
+          };
+          // Recursively map children if present
+          if (cond.children && Array.isArray(cond.children) && cond.children.length > 0) {
+            mapped.children = mapCheckResults(cond.children);
+          }
+          return mapped;
+        });
+      };
 
       // Transform API results to EvalResult format for summary display
       const evalResults: EvalResult[] = run.results.map((result: any) => ({
         evalName: (result.eval_name || truncate(result.prompt || '', 60)) as string,
         prompt: result.prompt || '',
         response: result.response || '',
-        checkResults: (result.check_results || []).map((cond: any) => ({
-          type: cond.type,
-          passed: cond.passed,
-          message: cond.message || ''
-        })),
+        checkResults: mapCheckResults(result.check_results || []),
         passed: result.passed,
         executionTimeMs: undefined
       }));

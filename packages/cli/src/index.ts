@@ -10,7 +10,7 @@ import { runCommand, runInteractiveMode, runSuiteCommand, runSuiteInteractiveMod
 import { runInteractiveCommand } from './commands/interactive-run';
 import { saveCommand, listCommand, getCommand as getSuiteCommand } from './commands/suite';
 import { orgCommand } from './commands/org';
-import { listRunsCommand, listRunsBySuiteCommand, getRunCommand } from './commands/runs';
+import { listRunsCommand, getRunCommand } from './commands/runs';
 import { modelsCommand } from './commands/models';
 import { redeemCommand, redeemFlow } from './commands/redeem';
 import { stopRunCommand, stopAllQueuedRunsCommand } from './commands/stop';
@@ -431,12 +431,23 @@ const getCommand = program
   .option('--mcp', 'Filter models to only show those with MCP support')
   .option('--price <quartiles>', 'Filter models by price quartile(s): 1,2,3,4 (e.g., "1,2" for cheapest half)')
   .option('--provider <providers>', 'Filter models by provider(s), comma-separated (e.g., "anthropic,openai")')
-  .option('--suite <name>', 'Filter runs by suite name')
-  .option('--status <status>', 'Filter runs by status (completed, pending, failed, partial_failure)')
-  .option('--success-gt <percent>', 'Filter runs with success rate greater than (0-100)', (val) => parseInt(val, 10))
-  .option('--success-lt <percent>', 'Filter runs with success rate less than (0-100)', (val) => parseInt(val, 10))
-  .option('--time-gt <seconds>', 'Filter runs with duration greater than (seconds)', (val) => parseFloat(val))
-  .option('--time-lt <seconds>', 'Filter runs with duration less than (seconds)', (val) => parseFloat(val))
+  // Runs filtering options
+  .option('-s, --status <status>', 'Filter runs by status (exact match)')
+  .option('--status-in <statuses>', 'Filter runs by multiple statuses (comma-separated)')
+  .option('--status-ne <status>', 'Filter runs by status (not equal)')
+  .option('-m, --model <model>', 'Filter runs by model (exact match)')
+  .option('--model-like <pattern>', 'Filter runs by model (pattern matching)')
+  .option('-e, --suite <name>', 'Filter runs by suite name')
+  .option('--min-cost <amount>', 'Filter runs with minimum total cost', (val) => parseFloat(val))
+  .option('--max-cost <amount>', 'Filter runs with maximum total cost', (val) => parseFloat(val))
+  .option('--min-success <percent>', 'Filter runs with minimum success percentage (0-100)', (val) => parseFloat(val))
+  .option('--max-success <percent>', 'Filter runs with maximum success percentage (0-100)', (val) => parseFloat(val))
+  .option('--date-from <iso-date>', 'Filter runs created on or after date (ISO format: 2024-01-01)')
+  .option('--date-to <iso-date>', 'Filter runs created on or before date (ISO format: 2024-01-01)')
+  .option('--completed-from <iso-date>', 'Filter runs completed on or after date (ISO format: 2024-01-01)')
+  .option('--completed-to <iso-date>', 'Filter runs completed on or before date (ISO format: 2024-01-01)')
+  .option('--min-duration <seconds>', 'Filter runs with minimum duration in seconds', (val) => parseFloat(val))
+  .option('--max-duration <seconds>', 'Filter runs with maximum duration in seconds', (val) => parseFloat(val))
   .option('--sort-by <field>', 'Sort runs by field: created, success, cost, time, price-performance (default: created)')
   .option('--csv', 'Export runs to CSV file (./eval-runs.csv)')
   .action(async (noun: string, identifier?: string, options?: any) => {
@@ -467,12 +478,25 @@ const getCommand = program
       const listOptions: any = {};
       if (limit !== undefined) listOptions.limit = limit;
       if (offset !== undefined) listOptions.offset = offset;
-      if (options?.suite) listOptions.suite = options.suite;
+      
+      // Map filter options to ListRunsOptions format
       if (options?.status) listOptions.status = options.status;
-      if (options?.successGt !== undefined) listOptions.successGt = options.successGt;
-      if (options?.successLt !== undefined) listOptions.successLt = options.successLt;
-      if (options?.timeGt !== undefined) listOptions.timeGt = options.timeGt;
-      if (options?.timeLt !== undefined) listOptions.timeLt = options.timeLt;
+      if (options?.statusIn) listOptions.statusIn = options.statusIn;
+      if (options?.statusNe) listOptions.statusNe = options.statusNe;
+      if (options?.model) listOptions.model = options.model;
+      if (options?.modelLike) listOptions.modelLike = options.modelLike;
+      if (options?.suite) listOptions.suite = options.suite;
+      if (options?.minCost !== undefined) listOptions.minCost = options.minCost;
+      if (options?.maxCost !== undefined) listOptions.maxCost = options.maxCost;
+      if (options?.minSuccess !== undefined) listOptions.minSuccess = options.minSuccess;
+      if (options?.maxSuccess !== undefined) listOptions.maxSuccess = options.maxSuccess;
+      if (options?.dateFrom) listOptions.dateFrom = options.dateFrom;
+      if (options?.dateTo) listOptions.dateTo = options.dateTo;
+      if (options?.completedFrom) listOptions.completedFrom = options.completedFrom;
+      if (options?.completedTo) listOptions.completedTo = options.completedTo;
+      if (options?.minDuration !== undefined) listOptions.minDuration = options.minDuration;
+      if (options?.maxDuration !== undefined) listOptions.maxDuration = options.maxDuration;
+      
       if (options?.sortBy) listOptions.sortBy = options.sortBy;
       if (options?.csv) listOptions.csv = options.csv;
       listRunsCommand(listOptions, debug);
@@ -538,6 +562,10 @@ const stopCmd = program
   .command('stop')
   .description('Stop/cancel a queued run or all queued runs')
   .argument('[run-id-or-queued]', 'The run ID to stop, or "queued" to stop all queued runs')
+  // Filter options for queued runs
+  .option('-m, --model <model>', 'Filter queued runs by model (exact match)')
+  .option('--model-like <pattern>', 'Filter queued runs by model (pattern matching)')
+  .option('-e, --suite <name>', 'Filter queued runs by suite name')
   .action((runIdOrQueued: string | undefined, options: any) => {
     const debug = options?.debug || false;
     
@@ -548,7 +576,12 @@ const stopCmd = program
     }
     
     if (runIdOrQueued === 'queued') {
-      stopAllQueuedRunsCommand(debug);
+      // Build filter object from options (only filters, not status - that's handled in the function)
+      const filters: any = {};
+      if (options?.model) filters.model = options.model;
+      if (options?.modelLike) filters.modelLike = options.modelLike;
+      if (options?.suite) filters.suite = options.suite;
+      stopAllQueuedRunsCommand(filters, debug);
     } else {
       stopRunCommand(runIdOrQueued, debug);
     }

@@ -99,7 +99,7 @@ export async function runCommand(options: RunOptions) {
     try {
       data = yaml.load(fileContent);
     } catch (yamlError: any) {
-      spinner.fail(chalk.redBright('Failed to parse YAML file 🚩'));
+      spinner.fail(chalk.redBright('Failed to parse YAML file'));
       console.error(chalk.redBright('\nYAML syntax error:'));
       console.error(chalk.redBright(`  ${yamlError.message}`));
       
@@ -132,7 +132,7 @@ export async function runCommand(options: RunOptions) {
             const hasLegacyFormat = legacyKeys.some(key => key in checks);
             
             if (hasLegacyFormat) {
-              spinner.fail(chalk.redBright('Legacy DSL format detected 🚩'));
+              spinner.fail(chalk.redBright('Legacy DSL format detected'));
               console.error(chalk.redBright('\nThe object-based checks format is no longer supported.'));
               console.error(chalk.redBright('Please update your YAML file to use the new array-based format.\n'));
               console.error(chalk.yellow('Migration Guide:'));
@@ -163,7 +163,7 @@ export async function runCommand(options: RunOptions) {
     const parseResult = EvalSuiteSchema.safeParse(data);
 
     if (!parseResult.success) {
-      spinner.fail(chalk.redBright('Invalid YAML format 🚩'));
+      spinner.fail(chalk.redBright('Invalid YAML format'));
       console.error(chalk.redBright('\nValidation errors:'));
       parseResult.error.errors.forEach(err => {
         console.error(chalk.redBright(`  - ${err.path.join('.')}: ${err.message}`));
@@ -172,7 +172,7 @@ export async function runCommand(options: RunOptions) {
     }
 
     const evalSuite = parseResult.data;
-    spinner.succeed(chalk.green('Evaluation file loaded successfully ✨'));
+    spinner.succeed(chalk.green('Evaluation file loaded successfully'));
 
     // Warning for missing system_prompt
     if (!evalSuite.metadata.system_prompt) {
@@ -237,13 +237,13 @@ export async function runCommand(options: RunOptions) {
             const errorMsg = typeof response.data.error === 'string'
               ? response.data.error
               : response.data.error.message || JSON.stringify(response.data.error);
-            console.error(chalk.redBright(`API Error for model ${model} 🚩: ${errorMsg}`));
+            console.error(chalk.redBright(`API Error for model ${model}: ${errorMsg}`));
             continue; // Continue with other models
           }
 
           const runId = response.data.runId;
           runIds.push(runId);
-          console.log(chalk.green(`✨ Run started for ${model}! Run ID: ${runId}`));
+          console.log(chalk.green(`Run started for ${model}! Run ID: ${runId}`));
         } catch (error: any) {
           console.error(chalk.redBright(`Failed to start run for model ${model}: ${error.message}`));
           continue; // Continue with other models
@@ -288,7 +288,7 @@ export async function runCommand(options: RunOptions) {
       const errorMsg = typeof response.data.error === 'string'
         ? response.data.error
         : response.data.error.message || JSON.stringify(response.data.error);
-      console.error(chalk.redBright(`API Error 🚩: ${errorMsg}`));
+      console.error(chalk.redBright(`API Error: ${errorMsg}`));
       process.exit(1);
     }
 
@@ -296,19 +296,19 @@ export async function runCommand(options: RunOptions) {
 
     // If async mode, exit immediately after starting the run
     if (asyncMode) {
-      console.log(chalk.green(`✨ Run started successfully!`));
+      console.log(chalk.green(`Run started successfully!`));
       console.log(chalk.cyan(`Run ID: ${runId}`));
       console.log(chalk.gray(`\nCheck status with: vibe get run ${runId}`));
       process.exit(0);
     }
 
-    console.log(chalk.blue(`Checking vibes... Run ID: ${runId}\n`));
+    console.log(chalk.blue(`Running evaluation... Run ID: ${runId}\n`));
 
     // Stream results using EventSource or polling
     await streamResults(runId, debug, fileContent);
 
   } catch (error: any) {
-    spinner.fail(chalk.redBright('Failed to check vibes 🚩'));
+    spinner.fail(chalk.redBright('Failed to run evaluation'));
 
     // Handle network errors first
     if (isNetworkError(error)) {
@@ -379,7 +379,7 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
     try {
       data = yaml.load(suite.yamlContent);
     } catch (yamlError: any) {
-      spinner.fail(chalk.redBright('Failed to parse suite YAML 🚩'));
+      spinner.fail(chalk.redBright('Failed to parse suite YAML'));
       console.error(chalk.redBright('\nYAML syntax error:'));
       console.error(chalk.redBright(`  ${yamlError.message}`));
       
@@ -403,7 +403,7 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
     const parseResult = EvalSuiteSchema.safeParse(data);
 
     if (!parseResult.success) {
-      spinner.fail(chalk.redBright('Invalid suite format 🚩'));
+      spinner.fail(chalk.redBright('Invalid suite format'));
       console.error(chalk.redBright('\nValidation errors:'));
       parseResult.error.errors.forEach(err => {
         console.error(chalk.redBright(`  - ${err.path.join('.')}: ${err.message}`));
@@ -434,7 +434,7 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
       };
     }
 
-    spinner.succeed(chalk.green(`Suite "${suiteName}" loaded successfully ✨`));
+    spinner.succeed(chalk.green(`Suite "${suiteName}" loaded successfully`));
 
     // Warning for missing system_prompt
     if (!evalSuite.metadata.system_prompt) {
@@ -480,7 +480,7 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
 
           const runId = response.data.runId;
           runIds.push(runId);
-          console.log(chalk.green(`✨ Run started for ${modelName}! Run ID: ${runId}`));
+          console.log(chalk.green(`Run started for ${modelName}! Run ID: ${runId}`));
         } catch (error: any) {
           console.error(chalk.redBright(`Failed to start run for model ${modelName}: ${error.message}`));
           continue; // Continue with other models
@@ -525,7 +525,7 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
       const errorMsg = typeof response.data.error === 'string'
         ? response.data.error
         : response.data.error.message || JSON.stringify(response.data.error);
-      console.error(chalk.redBright(`API Error 🚩: ${errorMsg}`));
+      console.error(chalk.redBright(`API Error: ${errorMsg}`));
       process.exit(1);
     }
 
@@ -533,19 +533,19 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
 
     // If async mode, exit immediately after starting the run
     if (asyncMode) {
-      console.log(chalk.green(`✨ Run started successfully!`));
+      console.log(chalk.green(`Run started successfully!`));
       console.log(chalk.cyan(`Run ID: ${runId}`));
       console.log(chalk.gray(`\nCheck status with: vibe get run ${runId}`));
       process.exit(0);
     }
 
-    console.log(chalk.blue(`Checking vibes... Run ID: ${runId}\n`));
+    console.log(chalk.blue(`Running evaluation... Run ID: ${runId}\n`));
 
     // Stream results using existing function
     await streamResults(runId, debug, suite.yamlContent);
 
   } catch (error: any) {
-    spinner.fail(chalk.redBright('Failed to check vibes 🚩'));
+    spinner.fail(chalk.redBright('Failed to run evaluation'));
 
     // Handle network errors first
     if (isNetworkError(error)) {
@@ -601,7 +601,7 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
   let totalTimeMs: number | undefined;
 
   // Create spinner for polling
-  const spinner = ora('Checking vibes...').start();
+  const spinner = ora('Running evaluation...').start();
 
   while (!completed) {
     try {
@@ -628,7 +628,7 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
           console.log(chalk.green(`Saving new eval suite: ${suiteName}`));
         }
         console.log();
-        console.log(chalk.bold.cyan(`✨ Checking vibes for: ${suiteName}`));
+        console.log(chalk.bold.cyan(`Running evaluation: ${suiteName}`));
         console.log(chalk.bold.cyan(`Model: ${model}`));
         console.log(chalk.bold.cyan(`System prompt: ${systemPrompt}`));
         console.log();
@@ -664,7 +664,7 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
       } else if (status === 'failed') {
         spinner.stop();
         const errorMsg = statusError?.message || statusError || 'All evaluations failed due to execution errors';
-        console.error(chalk.redBright(`\n🚩 ${errorMsg}`));
+        console.error(chalk.redBright(`\n❌ ${errorMsg}`));
         completed = true;
         process.exit(1);
       } else if (status === 'partial_failure') {
@@ -724,7 +724,7 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
       } else if (status === 'error') {
         spinner.stop();
         const errorMsg = statusError?.message || statusError || 'Vibe check failed';
-        console.error(chalk.redBright(`\n🚩 ${errorMsg}`));
+        console.error(chalk.redBright(`\n❌ ${errorMsg}`));
         completed = true;
         process.exit(1);
       }
@@ -792,42 +792,54 @@ function displayResults(results: EvalResult[]) {
     console.log(chalk.gray(`Response: ${result.response}`));
 
     result.checkResults.forEach((cond: ConditionalResult) => {
-      const status = cond.passed ? chalk.green('✅ PASS') : chalk.redBright('🚩 FAIL');
-      const details = formatConditionalDetails(cond, result.response);
-
-      // Apply different coloring based on conditional type
-      if (cond.type === 'llm_judge') {
-        // Show llm_judge details on the line below in gray
-        console.log(`  ${status} ${cond.type.padEnd(25)}`);
-        if (typeof details === 'string') {
-          console.log(`      ${chalk.gray(details)}`);
-        }
-      } else if (cond.type === 'match' || cond.type === 'not_match') {
-        // Handle match/not_match with snippet in gray (no highlighting)
-        if (typeof details === 'object' && 'text' in details) {
-          const { text } = details;
-          console.log(`  ${status} ${cond.type.padEnd(25)} ${chalk.gray(text)}`);
-        } else {
-          console.log(`  ${status} ${cond.type.padEnd(25)} ${chalk.gray(details as string)}`);
-        }
-      } else if (cond.type === 'semantic') {
-        // Green for passed, red only for failed
-        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
-        console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
-      } else if (cond.type === 'min_tokens' || cond.type === 'max_tokens') {
-        // Handle token length checks
-        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
-        console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
-      } else {
-        // Default: use pass/fail colors
-        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
-        console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
-      }
+      displayConditionalResult(cond, result.response, 2);
     });
 
-    const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.redBright('🚩 FAIL');
+    const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.redBright('❌ FAIL');
     console.log(`  Overall: ${overallStatus}`);
   });
+}
+
+function displayConditionalResult(cond: ConditionalResult, response: string, indent: number = 2) {
+  const indentStr = ' '.repeat(indent);
+  const status = cond.passed ? chalk.green('✅ PASS') : chalk.redBright('❌ FAIL');
+  const details = formatConditionalDetails(cond, response);
+
+  // Apply different coloring based on conditional type
+  if (cond.type === 'llm_judge') {
+    // Show llm_judge details on the line below in gray
+    console.log(`${indentStr}${status} ${cond.type.padEnd(25)}`);
+    if (typeof details === 'string') {
+      console.log(`${indentStr}    ${chalk.gray(details)}`);
+    }
+  } else if (cond.type === 'match' || cond.type === 'not_match') {
+    // Handle match/not_match with snippet in gray (no highlighting)
+    if (typeof details === 'object' && 'text' in details) {
+      const { text } = details;
+      console.log(`${indentStr}${status} ${cond.type.padEnd(25)} ${chalk.gray(text)}`);
+    } else {
+      console.log(`${indentStr}${status} ${cond.type.padEnd(25)} ${chalk.gray(details as string)}`);
+    }
+  } else if (cond.type === 'semantic') {
+    // Green for passed, red only for failed
+    const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
+    console.log(`${indentStr}${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
+  } else if (cond.type === 'min_tokens' || cond.type === 'max_tokens') {
+    // Handle token length checks
+    const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
+    console.log(`${indentStr}${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
+  } else {
+    // Default: use pass/fail colors
+    const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
+    console.log(`${indentStr}${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
+  }
+
+  // Display child results if present (for OR checks, etc.)
+  if (cond.children && cond.children.length > 0) {
+    cond.children.forEach((child: ConditionalResult) => {
+      displayConditionalResult(child, response, indent + 2);
+    });
+  }
 }
 
 function formatConditionalDetails(cond: ConditionalResult, response: string): string | { text: string; highlight: string } {

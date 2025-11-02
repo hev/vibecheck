@@ -90,6 +90,7 @@ export interface ConditionalResult {
   type: string;
   passed: boolean;
   message: string;
+  children?: ConditionalResult[]; // For OR checks and other nested conditional results
 }
 
 export interface EvalResult {

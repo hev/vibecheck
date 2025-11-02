@@ -85,13 +85,14 @@ This project uses playful internet slang terminology:
 - `vibe redeem` - Redeem invite codes
 
 **Results:**
-- ✨ **good vibes** = 100% pass rate
-- 😬 **sketchy vibes** = ≥80% pass rate
-- 🚩 **bad vibes** = <80% pass rate
+Success rates are displayed with color coding:
+- **Green** (>80% pass rate) - High success rate
+- **Yellow** (50-80% pass rate) - Moderate success rate
+- **Red** (<50% pass rate) - Low success rate
 
 **Individual Conditionals:**
 - ✅ **PASS** - Check passed
-- 🚩 **FAIL** - Check failed
+- ❌ **FAIL** - Check failed
 
 ### Evaluation Suite Format
 
@@ -503,7 +504,7 @@ The project uses **Jest** with TypeScript for testing. Tests are organized into 
 - **Display Utilities** (`utils/display.test.ts`)
   - Summary formatting
   - Pass/fail rate calculations
-  - Vibe rating logic (good/sketchy/bad vibes)
+  - Success rate calculation and color coding
   - Visual bar charts
   - Text truncation
 
@@ -630,9 +631,9 @@ describe('My Feature Integration', () => {
 The CLI provides rich, colored output:
 - **Blue** - Prompts
 - **Gray** - Responses
-- **Green** - Passed items, good vibes
-- **Yellow** - Sketchy vibes (≥80%)
-- **Red** - Failed items, bad vibes
+- **Green** - Passed items, high success rate
+- **Yellow** - Moderate success rate (50-80%)
+- **Red** - Failed items, low success rate
 
 Summary uses GitHub-style diff notation:
 ```
@@ -679,7 +680,7 @@ npm run test:coverage
 
 - The CLI supports both `vibe` and `vibes` commands (aliases)
 - Documentation consistently uses `vibe` for clarity
-- Exit code 1 when vibe rating < 80%
+- Exit code 1 when success rate < 50%
 - Results are streamed in real-time via polling
 - The CLI is **open source (MIT)** - encourage contributions!
 - Get your API key at **vibescheck.io**

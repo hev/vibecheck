@@ -2,6 +2,7 @@ import axios from 'axios';
 import chalk from 'chalk';
 import { getApiUrl } from '../utils/config';
 import { getAuthHeaders } from '../utils/command-helpers';
+import { RunsListFilters, buildRunsQueryParams } from '../utils/runs-filters';
 
 export async function stopRunCommand(runId: string, debug: boolean = false) {
   const spinner = require('ora')(`Stopping run "${runId}"...`).start();
@@ -32,11 +33,11 @@ export async function stopRunCommand(runId: string, debug: boolean = false) {
     }
 
     spinner.stop();
-    console.log(chalk.green(`✨ Run "${runId}" cancelled successfully!`));
+    console.log(chalk.green(`Run "${runId}" cancelled successfully!`));
     console.log(chalk.gray(`The run has been stopped and marked as cancelled.`));
 
   } catch (error: any) {
-    spinner.fail(chalk.redBright('Failed to stop run 🚩'));
+    spinner.fail(chalk.redBright('Failed to stop run'));
 
     if (error.response) {
       const { status, data } = error.response;
@@ -79,20 +80,33 @@ export async function stopRunCommand(runId: string, debug: boolean = false) {
   }
 }
 
-export async function stopAllQueuedRunsCommand(debug: boolean = false) {
+export async function stopAllQueuedRunsCommand(filters?: RunsListFilters, debug: boolean = false) {
   const spinner = require('ora')('Finding queued runs...').start();
 
   try {
-    // First, get all runs with status 'queued'
+    // Build filters: always include status=queued, plus any additional filters
+    const queryFilters: RunsListFilters = {
+      status: 'queued',
+      ...filters
+    };
+    
+    // Build query params
     const runsUrl = `${getApiUrl()}/api/runs`;
-    const runsResponse = await axios.get(runsUrl, {
-      headers: getAuthHeaders(),
-      params: { status: 'queued', limit: 100 } // Get up to 100 queued runs
+    const queryString = buildRunsQueryParams(queryFilters, 100, 0);
+    const fullUrl = queryString ? `${runsUrl}?${queryString}` : `${runsUrl}?status=queued&limit=100`;
+
+    if (debug) {
+      spinner.stop();
+      console.log(chalk.gray(`[DEBUG] Runs request URL: ${fullUrl}`));
+      spinner.start();
+    }
+
+    const runsResponse = await axios.get(fullUrl, {
+      headers: getAuthHeaders()
     });
 
     if (debug) {
       spinner.stop();
-      console.log(chalk.gray(`[DEBUG] Runs request URL: ${runsUrl}`));
       console.log(chalk.gray(`[DEBUG] Runs response status: ${runsResponse.status}`));
       console.log(chalk.gray(`[DEBUG] Runs response data:`), JSON.stringify(runsResponse.data, null, 2));
       spinner.start();
@@ -168,14 +182,14 @@ export async function stopAllQueuedRunsCommand(debug: boolean = false) {
 
     console.log();
     if (successCount > 0) {
-      console.log(chalk.green(`✨ Successfully cancelled ${successCount} run(s)!`));
+      console.log(chalk.green(`Successfully cancelled ${successCount} run(s)!`));
     }
     if (errorCount > 0) {
-      console.log(chalk.redBright(`🚩 Failed to cancel ${errorCount} run(s).`));
+      console.log(chalk.redBright(`❌ Failed to cancel ${errorCount} run(s).`));
     }
 
   } catch (error: any) {
-    spinner.fail(chalk.redBright('Failed to get queued runs 🚩'));
+    spinner.fail(chalk.redBright('Failed to get queued runs'));
 
     if (error.response) {
       const { status, data } = error.response;

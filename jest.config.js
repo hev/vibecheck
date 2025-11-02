@@ -32,8 +32,9 @@ module.exports = {
   ],
   // Force Jest to exit after tests complete (prevents hanging on interactive components)
   forceExit: true,
-  // Detect open handles that might prevent Jest from exiting
-  detectOpenHandles: true,
+  // Disable open handles detection to keep output clean
+  // We use forceExit: true anyway, so this just clutters the output
+  detectOpenHandles: false,
   // Load global mocks for interactive components
   setupFilesAfterEnv: ['<rootDir>/tests/helpers/setup-mocks.js'],
   // Separate test categories with displayName

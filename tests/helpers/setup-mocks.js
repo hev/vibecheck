@@ -86,3 +86,11 @@ jest.mock('ora', () => {
     default: mockOra,
   };
 });
+
+// Global cleanup after all tests to ensure nock is properly cleaned
+afterAll(async () => {
+  const nock = require('nock');
+  nock.abortPendingRequests();
+  nock.cleanAll();
+  nock.restore();
+});

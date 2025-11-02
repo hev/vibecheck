@@ -51,7 +51,7 @@ export async function saveCommand(options: SaveOptions) {
     try {
       data = yaml.load(fileContent);
     } catch (yamlError: any) {
-      spinner.fail(chalk.redBright('Failed to parse YAML file 🚩'));
+      spinner.fail(chalk.redBright('Failed to parse YAML file'));
       console.error(chalk.redBright('\nYAML syntax error:'));
       console.error(chalk.redBright(`  ${yamlError.message}`));
       

@@ -209,8 +209,15 @@ export function setupApiMock() {
 }
 
 export function cleanupApiMocks() {
-  // Clean all interceptors
-  nock.cleanAll();
-  // Abort any pending requests
+  // Abort any pending requests first
   nock.abortPendingRequests();
+  // Clean all interceptors (including persistent ones)
+  nock.cleanAll();
+  // Wait for any pending async operations to complete
+  // This helps ensure MockHttpSocket connections are closed
+  return new Promise<void>((resolve) => {
+    setImmediate(() => {
+      resolve();
+    });
+  });
 }

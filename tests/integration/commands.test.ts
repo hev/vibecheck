@@ -15,20 +15,21 @@ describe('CLI Commands Integration Tests', () => {
   const testApiKey = 'test-api-key-12345';
 
   beforeEach(() => {
-    // Configure axios to not keep connections alive
-    axiosCleanup = configureAxiosForTests();
+    // Set up API mock first so nock is active
     apiMock = setupApiMock();
+    // Then configure axios (which will detect nock and work with it)
+    axiosCleanup = configureAxiosForTests();
     // Set up environment with test API key
     process.env.VIBECHECK_API_KEY = testApiKey;
     process.env.VIBECHECK_URL = 'http://localhost:3000';
     // Clear neverPrompt environment variable for test isolation
     delete process.env.VIBECHECK_NEVER_PROMPT;
   });
-  afterEach(() => {
+  afterEach(async () => {
     // Cleanup must happen in order: nock first, then axios agents
-    cleanupApiMocks();
+    await cleanupApiMocks();
     if (axiosCleanup) {
-      axiosCleanup();
+      await axiosCleanup();
       axiosCleanup = undefined;
     }
     cleanupTempFiles();

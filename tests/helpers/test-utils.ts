@@ -145,8 +145,21 @@ export function restoreProcessExit(mock: jest.SpyInstance) {
 /**
  * Configure axios to disable keep-alive connections for tests
  * This prevents HTTP connections from staying open and blocking Jest exit
+ * Note: When nock is active, we skip agent configuration as nock manages connections
  */
 export function configureAxiosForTests() {
+  const nock = require('nock');
+
+  // When nock is active, it manages HTTP connections itself
+  // Setting custom agents can interfere with nock's MockHttpSocket
+  if (nock.isActive()) {
+    // Return no-op cleanup - nock will handle connection cleanup
+    return async () => {
+      // No cleanup needed when nock is managing connections
+    };
+  }
+
+  // Only configure agents when nock is NOT active (e.g., for unit tests without mocking)
   const axios = require('axios');
   const http = require('http');
   const https = require('https');
@@ -155,7 +168,7 @@ export function configureAxiosForTests() {
   const previousHttpAgent = axios.defaults.httpAgent;
   const previousHttpsAgent = axios.defaults.httpsAgent;
 
-  // Create agents that don't keep connections alive
+  // Create new agents that don't keep connections alive
   const httpAgent = new http.Agent({
     keepAlive: false,
     maxSockets: 1,
@@ -171,12 +184,18 @@ export function configureAxiosForTests() {
   axios.defaults.httpsAgent = httpsAgent;
 
   // Return cleanup function that destroys agents and restores previous ones
-  return () => {
-    // Destroy the test agents
+  return async () => {
+    // Close all connections on the agents before destroying
     httpAgent.destroy();
     httpsAgent.destroy();
-    // Restore previous agents (or undefined if there were none)
-    axios.defaults.httpAgent = previousHttpAgent;
-    axios.defaults.httpsAgent = previousHttpsAgent;
+    // Wait briefly to ensure connections are fully closed
+    await new Promise<void>((resolve) => {
+      setTimeout(() => {
+        // Restore previous agents (or undefined if there were none)
+        axios.defaults.httpAgent = previousHttpAgent;
+        axios.defaults.httpsAgent = previousHttpsAgent;
+        resolve();
+      }, 10);
+    });
   };
 }

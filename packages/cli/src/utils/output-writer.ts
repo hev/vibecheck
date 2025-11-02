@@ -136,7 +136,7 @@ export async function writeRunOutput(options: RunOutputOptions): Promise<string>
     const failBar = '-'.repeat(failedChecks);
     const passBar = '+'.repeat(passedChecks);
     const timeStr = result.executionTimeMs ? `in ${(result.executionTimeMs / 1000).toFixed(1)}s` : '';
-    const status = result.passed ? '✅' : '🚩';
+    const status = result.passed ? '✅' : '❌';
 
     output.push(`${paddedName}  ${failBar}|${passBar}  ${status} ${timeStr}`);
   });
@@ -148,24 +148,18 @@ export async function writeRunOutput(options: RunOutputOptions): Promise<string>
   output.push('');
   output.push('-'.repeat(80));
 
-  let vibeStatus = '🚩 bad vibes';
-  if (passRate > 80) {
-    vibeStatus = '✨ good vibes';
-  } else if (passRate >= 50) {
-    vibeStatus = '😬 sketchy vibes';
-  }
-
-  output.push(`Vibe Rating: ${passedEvals}/${totalEvals} (${passRate.toFixed(1)}%) - ${vibeStatus}`);
+  output.push(`Success Pct: ${passedEvals}/${totalEvals} (${passRate.toFixed(1)}%)`);
   if (totalTimeMs) {
     output.push(`Total Time: ${(totalTimeMs / 1000).toFixed(2)}s`);
   }
   output.push('-'.repeat(80));
   output.push('');
 
-  if (passRate < 50) {
-    output.push('🚩 Bad vibes detected: Vibe rating below 50%');
+  const allEvalsPassed = results.every(r => r.passed);
+  if (allEvalsPassed) {
+    output.push('All evals ran successfully');
   } else {
-    output.push('✨ Good vibes all around!');
+    output.push('Some evals failed');
   }
 
   output.push('');

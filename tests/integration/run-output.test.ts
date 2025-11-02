@@ -27,16 +27,16 @@ describe('Run Output Saving', () => {
     process.env.VIBECHECK_OUTPUT_DIR = tempDir;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     // Clean up temporary directory
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
     process.env = originalEnv;
     // Cleanup must happen in order: nock first, then axios agents
-    cleanupApiMocks();
+    await cleanupApiMocks();
     if (axiosCleanup) {
-      axiosCleanup();
+      await axiosCleanup();
       axiosCleanup = undefined;
     }
   });
@@ -139,7 +139,7 @@ evals:
       expect(content).toContain('EVALUATION YAML');
       expect(content).toContain('EXECUTION LOG');
       expect(content).toContain('SUMMARY');
-      expect(content).toContain('Vibe Rating:');
+      expect(content).toContain('Success Pct:');
       expect(content).toContain('Total Time: 5.00s');
     });
 
@@ -191,7 +191,7 @@ evals:
       expect(content).toContain('Checks: 2/2 passed');
     });
 
-    it('should calculate correct vibe rating', async () => {
+    it('should calculate correct success percentage', async () => {
       const runId = 'test-run-rating';
       const results = createMockResults(); // Both passed
       
@@ -201,7 +201,7 @@ evals:
       });
 
       const content = fs.readFileSync(path.join(tempDir, `${runId}.txt`), 'utf8');
-      expect(content).toContain('Vibe Rating: 2/2 (100.0%) - ✨ good vibes');
+      expect(content).toContain('Success Pct: 2/2 (100.0%)');
     });
 
     it('should handle failed evaluations correctly', async () => {
@@ -229,11 +229,11 @@ evals:
       });
 
       const content = fs.readFileSync(path.join(tempDir, `${runId}.txt`), 'utf8');
-      expect(content).toContain('Vibe Rating: 0/1 (0.0%) - 🚩 bad vibes');
-      expect(content).toContain('🚩 Bad vibes detected: Vibe rating below 50%');
+      expect(content).toContain('Success Pct: 0/1 (0.0%)');
+      expect(content).toContain('Low success rate: Below 50%');
     });
 
-    it('should handle sketchy vibes correctly', async () => {
+    it('should handle 50% pass rate correctly', async () => {
       const runId = 'test-run-sketchy';
       const results: EvalResult[] = [
         {
@@ -260,7 +260,7 @@ evals:
       });
 
       const content = fs.readFileSync(path.join(tempDir, `${runId}.txt`), 'utf8');
-      expect(content).toContain('Vibe Rating: 1/2 (50.0%) - 😬 sketchy vibes');
+      expect(content).toContain('Success Pct: 1/2 (50.0%)');
     });
 
     it('should use custom output directory from environment variable', async () => {

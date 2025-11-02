@@ -252,7 +252,7 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
     try {
       data = yaml.load(fileContent);
     } catch (yamlError: any) {
-      ui.displayError('Failed to parse YAML file 🚩');
+      ui.displayError('Failed to parse YAML file');
       ui.displayError(`YAML syntax error: ${yamlError.message}`);
       
       // Provide specific guidance for duplicate key errors (new DSL)
@@ -286,7 +286,7 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
             const hasLegacyFormat = legacyKeys.some(key => key in checks);
             
             if (hasLegacyFormat) {
-              ui.displayError('Legacy DSL format detected 🚩');
+              ui.displayError('Legacy DSL format detected');
               ui.displayError('\nThe object-based checks format is no longer supported.');
               ui.displayError('Please update your YAML file to use the new array-based format.\n');
               ui.displayError('Migration Guide:');
@@ -317,7 +317,7 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
     const parseResult = EvalSuiteSchema.safeParse(data);
 
     if (!parseResult.success) {
-      ui.displayError('Invalid YAML format 🚩');
+      ui.displayError('Invalid YAML format');
       parseResult.error.errors.forEach(err => {
         ui.displayError(`  - ${err.path.join('.')}: ${err.message}`);
       });
@@ -325,7 +325,7 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
     }
 
     const evalSuite = parseResult.data;
-    ui.displayInfo('Evaluation file loaded successfully ✨');
+    ui.displayInfo('Evaluation file loaded successfully');
 
     const requestPayload = {
       evalSuite,
@@ -346,7 +346,7 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
 
     const runId = response.data.runId;
     ui.setRunId(runId);
-    ui.displayInfo(`Checking vibes... Run ID: ${runId}`);
+    ui.displayInfo(`Running evaluation... Run ID: ${runId}`);
 
     // Stream results
     await streamResults(runId, ui, debug);
@@ -429,7 +429,7 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
         await ui.displaySummary(results, totalTimeMs);
       } else if (status === 'failed') {
         const errorMsg = statusError?.message || statusError || 'All evaluations failed due to execution errors';
-        ui.displayError(`🚩 ${errorMsg}`);
+        ui.displayError(`❌ ${errorMsg}`);
         completed = true;
       } else if (status === 'partial_failure') {
         if (results.length > lastDisplayedCount) {

@@ -1,4 +1,4 @@
-# vibecheck CLI ✨
+# vibecheck CLI
 
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/your-org/vibecheck/actions)
 [![Coverage](https://img.shields.io/badge/coverage-80%25-green)](https://github.com/your-org/vibecheck)
@@ -54,9 +54,9 @@ vibe check -f hello-world.yaml
 
 **Output:**
 ```
-✨ hello-world  ----|+++++  ✅ in 2.3s
+hello-world  ----|+++++  ✅ in 2.3s
 
-hello-world: ✨ good vibes (100% pass rate)
+hello-world: Success Pct: 2/2 (100.0%)
 ```
 
 ## CLI Commands
@@ -199,39 +199,37 @@ evals:
 ```
 
 ### 🔧 MCP Tool Integration
-Validate MCP (Model Context Protocol) tool calling with external services. Use secrets and vars to securely configure MCP servers:
+Validate MCP (Model Context Protocol) tool calling with external services. This example shows how to test Linear MCP integration using secrets and variables to securely configure the MCP server.
 
-**Step 1: Set up secrets and variables**
+**Step 1: Get Your Linear API Key**
+Obtain your Linear API key from your Linear workspace settings. Navigate to Settings → API → Personal API Keys in your Linear workspace to create a new API key.
+
+**Step 2: Set Up the Secret**
+Set your Linear API key as a secret (sensitive, write-only):
+
 ```bash
-# Set a secret for the authorization token (sensitive, write-only)
-vibe set secret linear_token "your-api-token-here"
-
-# Set variables for MCP server configuration (readable)
-vibe set var mcp_url "https://mcp.linear.app/mcp"
-vibe set var mcp_name "linear"
+vibe set secret linear.apiKey "your-linear-api-key-here"
 ```
 
-**Step 2: Use them in your YAML file**
-```yaml
-# examples/mcp-evals.yaml
-metadata:
-  name: mcp_tool_test
-  model: anthropic/claude-3.5-sonnet
-  system_prompt: |
-    You are an AI assistant with access to external tools.
-    Use the available tools to answer questions accurately.
-  mcp_server:
-    url: "{{var('mcp_url')}}"
-    name: "{{var('mcp_name')}}"
-    authorization_token: "{{secret('linear_token')}}"
+**Step 3: Set Up Variables**
+Set your Linear project ID and team name as variables:
 
-evals:
-  - prompt: "What's the weather like today?"
-    checks:
-      - match: "*weather*"  # Should use weather tool
-      - min_tokens: 10
-      - max_tokens: 200
+```bash
+vibe set var linear.projectId "your-project-id"
+vibe set var linear.projectTeam "your-team-name"
 ```
+
+**Step 4: Run the Evaluation**
+Run the Linear MCP evaluation (the suite is preloaded):
+
+```bash
+vibe check linear-mcp
+```
+
+The evaluation tests three scenarios:
+- Listing recent issues from your Linear workspace
+- Retrieving details on a specific Linear todo item
+- Creating a new todo item in Linear
 
 Secrets and vars are resolved at runtime when the evaluation runs, so you can update them without modifying your YAML files.
 
@@ -455,21 +453,21 @@ evals:
 - If a secret or variable is not found, the evaluation will fail with a clear error message
 - Use quotes around template expressions in YAML: `"{{secret('name')}}"` or `"{{var('name')}}"`
 
-## Vibe Ratings
+## Success Rates
 
-vibes breakdown as follows.
+Success rates are displayed as percentages with color coding:
 
-- ✨ **good vibes** = >80% pass rate
-- 😬 **sketchy vibes** = 50-80% pass rate  
-- 🚩 **bad vibes** = <50% pass rate
+- **Green** (>80% pass rate) - High success rate
+- **Yellow** (50-80% pass rate) - Moderate success rate
+- **Red** (<50% pass rate) - Low success rate
 
 **Individual Check Results:**
 - ✅ **PASS** - Check passed
-- 🚩 **FAIL** - Check failed
+- ❌ **FAIL** - Check failed
 
 **Exit Codes:**
-- `0` - Good or sketchy vibes (≥50% pass rate)
-- `1` - Bad vibes (<50% pass rate)
+- `0` - Moderate or high success rate (≥50% pass rate)
+- `1` - Low success rate (<50% pass rate)
 
 ## Model Comparison & Scoring
 

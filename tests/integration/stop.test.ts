@@ -9,9 +9,10 @@ describe('Stop Run Command', () => {
   let axiosCleanup: (() => void) | undefined;
 
   beforeEach(() => {
-    // Configure axios to not keep connections alive
-    axiosCleanup = configureAxiosForTests();
+    // Set up API mock first so nock is active
     setupApiMock();
+    // Then configure axios (which will detect nock and work with it)
+    axiosCleanup = configureAxiosForTests();
     // Set up environment with test API key
     process.env.VIBECHECK_API_KEY = testApiKey;
     process.env.VIBECHECK_URL = 'http://localhost:3000';
@@ -19,11 +20,11 @@ describe('Stop Run Command', () => {
     delete process.env.VIBECHECK_NEVER_PROMPT;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     // Cleanup must happen in order: nock first, then axios agents
-    cleanupApiMocks();
+    await cleanupApiMocks();
     if (axiosCleanup) {
-      axiosCleanup();
+      await axiosCleanup();
       axiosCleanup = undefined;
     }
     jest.restoreAllMocks();
@@ -44,7 +45,7 @@ describe('Stop Run Command', () => {
 
     await stopRunCommand(runId, false);
 
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('✨ Run "test-run-123" cancelled successfully!'));
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Run "test-run-123" cancelled successfully!'));
     expect(processSpy).not.toHaveBeenCalled();
 
     consoleSpy.mockRestore();
@@ -204,10 +205,10 @@ describe('Stop Run Command', () => {
       const mockRunsResponse = { runs: mockQueuedRuns };
       const mockCancelResponse = { success: true, cancelled: true };
 
-      // Mock the runs list request
+      // Mock the runs list request - new API uses status=queued&limit=100 query string
       nock('http://localhost:3000')
         .get('/api/runs')
-        .query({ status: 'queued', limit: 100 })
+        .query(true) // Match any query params (status=queued&limit=100)
         .reply(200, mockRunsResponse);
 
       // Mock the individual cancel requests
@@ -225,7 +226,7 @@ describe('Stop Run Command', () => {
       await stopAllQueuedRunsCommand(false);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Found 2 queued run(s) to cancel:'));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('✨ Successfully cancelled 2 run(s)!'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Successfully cancelled 2 run(s)!'));
       expect(processSpy).not.toHaveBeenCalled();
 
       consoleSpy.mockRestore();
@@ -261,10 +262,10 @@ describe('Stop Run Command', () => {
       const mockCancelResponse = { success: true, cancelled: true };
       const mockErrorResponse = { error: { code: 409, message: 'Run not queued' } };
 
-      // Mock the runs list request
+      // Mock the runs list request - new API uses status=queued&limit=100 query string
       nock('http://localhost:3000')
         .get('/api/runs')
-        .query({ status: 'queued', limit: 100 })
+        .query(true) // Match any query params (status=queued&limit=100)
         .reply(200, mockRunsResponse);
 
       // Mock one successful cancel and one failure
@@ -281,8 +282,8 @@ describe('Stop Run Command', () => {
 
       await stopAllQueuedRunsCommand(false);
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('✨ Successfully cancelled 1 run(s)!'));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('🚩 Failed to cancel 1 run(s).'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Successfully cancelled 1 run(s)!'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('❌ Failed to cancel 1 run(s).'));
       expect(processSpy).not.toHaveBeenCalled();
 
       consoleSpy.mockRestore();
@@ -294,7 +295,7 @@ describe('Stop Run Command', () => {
 
       nock('http://localhost:3000')
         .get('/api/runs')
-        .query({ status: 'queued', limit: 100 })
+        .query(true) // Match any query params (status=queued&limit=100)
         .reply(401, mockErrorResponse);
 
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();

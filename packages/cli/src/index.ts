@@ -63,7 +63,7 @@ if (process.argv.includes('--debug')) {
   }
 }
 
-const CLI_VERSION = '0.1.2';
+const CLI_VERSION = '0.2.0';
 
 async function getServerVersion(apiUrl: string): Promise<string | null> {
   try {

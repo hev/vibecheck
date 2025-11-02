@@ -692,7 +692,8 @@ export class InteractiveUI {
     lines.push('');
     lines.push('{cyan-fg}ID:{/cyan-fg} {white-fg}' + this.escapeText(run.id) + '{/white-fg}');
     lines.push('{cyan-fg}Suite:{/cyan-fg} {white-fg}' + this.escapeText(run.suite_name || 'N/A') + '{/white-fg}');
-    lines.push('{cyan-fg}Status:{/cyan-fg} {white-fg}' + this.escapeText(run.status) + '{/white-fg}');
+    const statusColor = run.status === 'error' || run.status === 'failed' || run.status === 'cancelled' ? '{red-fg}' : run.status === 'completed' ? '{green-fg}' : '{yellow-fg}';
+    lines.push('{cyan-fg}Status:{/cyan-fg} ' + statusColor + this.escapeText(run.status) + '{/}');
     lines.push('{cyan-fg}Success Rate:{/cyan-fg} {white-fg}' + (run.successRate !== undefined ? `${run.successRate.toFixed(1)}%` : 'N/A') + '{/white-fg}');
     lines.push('{cyan-fg}Duration:{/cyan-fg} {white-fg}' + (run.duration ? `${(run.duration / 1000).toFixed(1)}s` : 'N/A') + '{/white-fg}');
     lines.push('{cyan-fg}Created:{/cyan-fg} {gray-fg}' + new Date(run.created_at).toLocaleString() + '{/gray-fg}');

@@ -364,7 +364,7 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     console.log('='.repeat(187));
 
     sortedRuns.forEach((run: any) => {
-      const statusColor = run.status === 'completed' ? chalk.green : (run.status === 'failed' || run.status === 'cancelled') ? chalk.redBright : chalk.yellow;
+      const statusColor = run.status === 'completed' ? chalk.green : (run.status === 'failed' || run.status === 'cancelled' || run.status === 'error') ? chalk.redBright : chalk.yellow;
 
       // Parse fields from API (they come as strings)
       const resultsCount = parseInt(run.results_count, 10) || 0;
@@ -530,7 +530,8 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
     console.log(chalk.cyan('ID:           ') + run.id);
     console.log(chalk.cyan('Suite Name:   ') + run.suite_name);
     console.log(chalk.cyan('Model:        ') + run.model);
-    console.log(chalk.cyan('Status:       ') + (run.status === 'completed' ? chalk.green(run.status) : chalk.yellow(run.status)));
+    const statusColor = run.status === 'completed' ? chalk.green : (run.status === 'error' || run.status === 'failed' || run.status === 'cancelled') ? chalk.redBright : chalk.yellow;
+    console.log(chalk.cyan('Status:       ') + statusColor(run.status));
     console.log(chalk.cyan('Started:      ') + (run.created_at ? new Date(run.created_at).toLocaleString() : 'N/A'));
     if (run.completed_at) {
       console.log(chalk.cyan('Completed:    ') + new Date(run.completed_at).toLocaleString());

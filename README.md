@@ -1,4 +1,4 @@
-# vibecheck CLI ✨
+# vibecheck CLI
 
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/your-org/vibecheck/actions)
 [![Coverage](https://img.shields.io/badge/coverage-80%25-green)](https://github.com/your-org/vibecheck)
@@ -41,9 +41,9 @@ metadata:
 evals:
   - prompt: Say hello
     checks:
-      match: "*hello*"
-      min_tokens: 1
-      max_tokens: 50
+      - match: "*hello*"
+      - min_tokens: 1
+      - max_tokens: 50
 ```
 
 Run the evaluation:
@@ -54,10 +54,119 @@ vibe check -f hello-world.yaml
 
 **Output:**
 ```
-✨ hello-world  ----|+++++  ✅ in 2.3s
+hello-world  ----|+++++  ✅ in 2.3s
 
-hello-world: ✨ good vibes (100% pass rate)
+hello-world: Success Pct: 2/2 (100.0%)
 ```
+
+## CLI Commands
+
+### `vibe check` - Run Evaluations
+Run evaluations from a YAML file or saved suite.
+
+```bash
+vibe check -f hello-world.yaml
+vibe check my-eval-suite
+vibe check -f my-eval.yaml -m "anthropic/claude-3.5-sonnet,openai/gpt-4"
+```
+
+### `vibe stop` - Cancel Queued Runs
+Stop/cancel a queued run that hasn't started executing yet.
+
+```bash
+vibe stop <run-id>
+vibe stop run <run-id>  # Alternative syntax
+vibe stop queued        # Cancel all queued runs
+```
+
+**Examples:**
+```bash
+vibe stop abc123-def456-ghi789
+vibe stop run abc123-def456-ghi789
+vibe stop queued
+```
+
+**Notes:**
+- Only queued runs can be cancelled (not running, completed, or already cancelled)
+- Run IDs can be found using `vibe get runs`
+- Cancelled runs will show as "cancelled" status
+- `vibe stop queued` will cancel all runs with "queued" status
+
+### `vibe get` - List/Retrieve Resources
+Get various resources with filtering options.
+
+```bash
+vibe get runs                    # List all runs
+vibe get run <id>               # Get specific run details
+vibe get suites                 # List saved suites
+vibe get suite <name>           # Get specific suite
+vibe get models                 # List available models
+vibe get org                    # Organization info
+vibe get vars                   # List all variables (name=value)
+vibe get var <name>             # Get variable value
+vibe get secrets                # List all secrets (names only)
+```
+
+### `vibe set` - Save Suites
+Save an evaluation suite from a YAML file.
+
+```bash
+vibe set -f my-eval.yaml
+```
+
+### `vibe redeem` - Redeem Invite Codes
+Redeem an invite code to create an organization and receive an API key.
+
+```bash
+vibe redeem <code>
+```
+
+### `vibe var` - Manage Runtime Variables
+Manage org-scoped runtime variables that can be injected into evaluation YAML files.
+
+```bash
+vibe var set <name> <value>      # Set a variable
+vibe var update <name> <value>   # Update a variable
+vibe var get <name>              # Get a variable value (scripting-friendly)
+vibe var list                    # List all variables (name=value format)
+vibe var delete <name>           # Delete a variable
+```
+
+**Examples:**
+```bash
+vibe var set myvar "my value"
+vibe var update myvar "updated value"
+vibe var get myvar               # Prints: updated value
+vibe var list                    # Prints: myvar=updated value
+vibe var delete myvar
+```
+
+**Environment Variables:**
+- `VIBECHECK_API_URL` or `API_BASE_URL` - API URL (default: `https://vibecheck-api-prod-681369865361.us-central1.run.app`)
+- `VIBECHECK_API_KEY` or `API_KEY` - Organization API key (required)
+
+### `vibe secret` - Manage Runtime Secrets
+Manage org-scoped runtime secrets. Secret values are write-only (cannot be read), but you can list secret names. Secrets can be injected into evaluation YAML files.
+
+```bash
+vibe secret set <name> <value>      # Set a secret
+vibe secret update <name> <value>  # Update a secret
+vibe secret delete <name>          # Delete a secret
+```
+
+**Examples:**
+```bash
+vibe secret set mysecret "sensitive-value"
+vibe secret update mysecret "new-sensitive-value"
+vibe secret delete mysecret
+vibe get secrets                   # List secret names (values not shown)
+```
+
+**Note:** Secret values are write-only for security reasons. You can list secret names with `vibe get secrets`, but individual secret values cannot be retrieved.
+
+**Environment Variables:**
+- `VIBECHECK_API_URL` or `API_BASE_URL` - API URL (default: `https://vibecheck-api-prod-681369865361.us-central1.run.app`)
+- `VIBECHECK_API_KEY` or `API_KEY` - Organization API key (required)
 
 ## Featured Examples
 
@@ -74,44 +183,55 @@ metadata:
 evals:
   - prompt: "Describe how to make a peanut butter and jelly sandwich."
     checks:
-      match: "*bread*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in English"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*bread*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in English"
+      - min_tokens: 20
+      - max_tokens: 300
 
   - prompt: "Décrivez comment faire un sandwich au beurre d'arachide et à la confiture."
     checks:
-      match: "*pain*"
-      llm_judge:
-        criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in French"
-      min_tokens: 20
-      max_tokens: 300
+      - match: "*pain*"
+      - llm_judge:
+          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in French"
+      - min_tokens: 20
+      - max_tokens: 300
 ```
 
 ### 🔧 MCP Tool Integration
-Validate MCP (Model Context Protocol) tool calling with external services:
+Validate MCP (Model Context Protocol) tool calling with external services. This example shows how to test Linear MCP integration using secrets and variables to securely configure the MCP server.
 
-```yaml
-# examples/mcp-evals.yaml
-metadata:
-  name: mcp_tool_test
-  model: anthropic/claude-3.5-sonnet
-  system_prompt: |
-    You are an AI assistant with access to external tools.
-    Use the available tools to answer questions accurately.
-  mcp_server:
-    url: "https://your-mcp-server.com"
-    name: "your-tool-server"
-    authorization_token: "your-token"
+**Step 1: Get Your Linear API Key**
+Obtain your Linear API key from your Linear workspace settings. Navigate to Settings → API → Personal API Keys in your Linear workspace to create a new API key.
 
-evals:
-  - prompt: "What's the weather like today?"
-    checks:
-      match: "*weather*"  # Should use weather tool
-      min_tokens: 10
-      max_tokens: 200
+**Step 2: Set Up the Secret**
+Set your Linear API key as a secret (sensitive, write-only):
+
+```bash
+vibe set secret linear.apiKey "your-linear-api-key-here"
 ```
+
+**Step 3: Set Up Variables**
+Set your Linear project ID and team name as variables:
+
+```bash
+vibe set var linear.projectId "your-project-id"
+vibe set var linear.projectTeam "your-team-name"
+```
+
+**Step 4: Run the Evaluation**
+Run the Linear MCP evaluation (the suite is preloaded):
+
+```bash
+vibe check linear-mcp
+```
+
+The evaluation tests three scenarios:
+- Listing recent issues from your Linear workspace
+- Retrieving details on a specific Linear todo item
+- Creating a new todo item in Linear
+
+Secrets and vars are resolved at runtime when the evaluation runs, so you can update them without modifying your YAML files.
 
 ### 🧠 Advanced Evaluation Patterns
 Combine multiple check types for comprehensive testing:
@@ -121,23 +241,23 @@ Combine multiple check types for comprehensive testing:
 evals:
   - prompt: How are you today?
     checks:
-      semantic:
-        expected: "I'm doing well, thank you for asking"
-        threshold: 0.7
-      llm_judge:
-        criteria: "Is this a friendly and appropriate response to 'How are you today?'"
-      min_tokens: 10
-      max_tokens: 100
+      - semantic:
+          expected: "I'm doing well, thank you for asking"
+          threshold: 0.7
+      - llm_judge:
+          criteria: "Is this a friendly and appropriate response to 'How are you today?'"
+      - min_tokens: 10
+      - max_tokens: 100
 
   - prompt: What is 2+2?
     checks:
-      or:
-        match: "*4*"
-        match: "*four*"
-      llm_judge:
-        criteria: "Is this a correct mathematical answer to 2+2?"
-      min_tokens: 1
-      max_tokens: 20
+      - or:
+          - match: "*4*"
+          - match: "*four*"
+      - llm_judge:
+          criteria: "Is this a correct mathematical answer to 2+2?"
+      - min_tokens: 1
+      - max_tokens: 20
 ```
 
 ## YAML Syntax Reference
@@ -149,10 +269,12 @@ Test if the response contains text matching a glob pattern.
 
 ```yaml
 checks:
-  match: "*hello*"        # Contains "hello" anywhere
-  match: "hello*"         # Starts with "hello"
-  match: "*world"         # Ends with "world"
-  match: ["*yes*", "*ok*"] # Multiple patterns (AND logic)
+  - match: "*hello*"        # Contains "hello" anywhere
+  - match: "hello*"         # Starts with "hello"
+  - match: "*world"         # Ends with "world"
+  # For multiple patterns, use multiple check objects
+  - match: "*yes*"
+  - match: "*ok*"
 ```
 
 **Examples:**
@@ -164,9 +286,15 @@ Ensure the response does NOT contain certain text.
 
 ```yaml
 checks:
-  not_match: "*error*"    # Must not contain "error"
-  not_match: "*sorry*"    # Must not contain "sorry"
+  - not_match: "*error*"                    # Single pattern
+  # For multiple patterns, use multiple check objects
+  - not_match: "*error*"
+  - not_match: "*sorry*"
 ```
+
+**Examples:**
+- `not_match: "*error*"` fails if response contains "error", "Error", "ERROR"
+- Use multiple `not_match` checks for multiple patterns (all must not match)
 
 #### `or` - Explicit OR Logic
 Use when you want ANY of multiple patterns to pass.
@@ -177,6 +305,15 @@ checks:
     - match: "*yes*"
     - match: "*affirmative*"
     - match: "*correct*"
+```
+
+OR checks can be mixed with AND checks:
+```yaml
+checks:
+  - min_tokens: 10          # AND (must pass)
+  - or:                     # OR (one of these must pass)
+      - match: "*hello*"
+      - match: "*hi*"
 ```
 
 #### `min_tokens` / `max_tokens` - Token Length Constraints
@@ -209,12 +346,12 @@ checks:
 
 ### Check Logic
 
-**AND Logic (Implicit)**: Multiple checks at the same level must ALL pass
+**AND Logic (Array Format)**: Multiple checks in an array must ALL pass
 ```yaml
 checks:
-  match: "*hello*"        # AND
-  min_tokens: 5           # AND
-  max_tokens: 100         # AND
+  - match: "*hello*"        # AND
+  - min_tokens: 5           # AND
+  - max_tokens: 100         # AND
 ```
 
 **OR Logic (Explicit)**: Use the `or:` field when you want ANY of the patterns to pass
@@ -229,10 +366,10 @@ checks:
 **Combined Logic**: Mix AND and OR logic
 ```yaml
 checks:
-  min_tokens: 10          # AND (must pass)
-  or:                     # OR (one of these must pass)
-    - match: "*hello*"
-    - match: "*hi*"
+  - min_tokens: 10          # AND (must pass)
+  - or:                     # OR (one of these must pass)
+      - match: "*hello*"
+      - match: "*hi*"
 ```
 
 ### Metadata Configuration
@@ -262,21 +399,165 @@ vibe check my-eval-suite \
   --mcp-token your-token
 ```
 
-## Vibe Ratings
+### Using Secrets and Variables in YAML
 
-vibes breakdown as follows.
+You can inject secrets and variables into your YAML evaluation files using template syntax. This allows you to:
+- Keep sensitive values (like API tokens) secure using secrets
+- Share configuration values across multiple evaluation files using variables
+- Update values without modifying YAML files
 
-- ✨ **good vibes** = >80% pass rate
-- 😬 **sketchy vibes** = 50-80% pass rate  
-- 🚩 **bad vibes** = <50% pass rate
+**Template Syntax:**
+- Secrets: `{{secret('secret-name')}}`
+- Variables: `{{var('var-name')}}`
+
+**Example: Using secrets and vars in metadata**
+
+```bash
+# Set a secret (sensitive, write-only)
+vibe set secret api_token "sk-1234567890abcdef"
+
+# Set variables (readable, can be used for non-sensitive config)
+vibe set var model_name "anthropic/claude-3.5-sonnet"
+vibe set var system_role "You are a helpful assistant"
+```
+
+```yaml
+metadata:
+  name: my-eval-suite
+  model: "{{var('model_name')}}"
+  system_prompt: "{{var('system_role')}}"
+  mcp_server:
+    url: "{{var('mcp_url')}}"
+    authorization_token: "{{secret('api_token')}}"
+```
+
+**Example: Using vars in evaluation prompts**
+
+```bash
+vibe set var company_name "Acme Corp"
+vibe set var project_name "Project Alpha"
+```
+
+```yaml
+evals:
+  - prompt: "List all issues for {{var('project_name')}} at {{var('company_name')}}"
+    checks:
+      - match: "*{{var('project_name')}}*"
+      - min_tokens: 10
+```
+
+**Key Points:**
+- Secrets are **write-only** (values cannot be read for security)
+- Variables are **readable** (you can view values with `vibe get var <name>`)
+- Template resolution happens **at runtime** when evaluations run
+- If a secret or variable is not found, the evaluation will fail with a clear error message
+- Use quotes around template expressions in YAML: `"{{secret('name')}}"` or `"{{var('name')}}"`
+
+## Success Rates
+
+Success rates are displayed as percentages with color coding:
+
+- **Green** (>80% pass rate) - High success rate
+- **Yellow** (50-80% pass rate) - Moderate success rate
+- **Red** (<50% pass rate) - Low success rate
 
 **Individual Check Results:**
 - ✅ **PASS** - Check passed
-- 🚩 **FAIL** - Check failed
+- ❌ **FAIL** - Check failed
 
 **Exit Codes:**
-- `0` - Good or sketchy vibes (≥50% pass rate)
-- `1` - Bad vibes (<50% pass rate)
+- `0` - Moderate or high success rate (≥50% pass rate)
+- `1` - Low success rate (<50% pass rate)
+
+## Model Comparison & Scoring
+
+vibecheck provides a comprehensive scoring system to help you compare models across multiple dimensions.
+
+### Score Calculation
+
+The **Score** column in `vibe get runs` combines three key factors:
+
+```
+Score = success_percentage / (cost * 1000 + duration_seconds * 0.1)
+```
+
+**Components:**
+- **Success Rate**: Percentage of evaluations that passed
+- **Cost Factor**: Total cost in dollars (multiplied by 1000 for scaling)
+- **Latency Factor**: Duration in seconds (multiplied by 0.1 for small penalty)
+
+**Higher scores indicate better overall performance** (more accurate, cheaper, and faster).
+
+### Score Color Coding
+
+- 🟢 **Green (≥1.0)**: Excellent performance
+- 🟡 **Yellow (0.3-1.0)**: Good performance  
+- 🔴 **Red (<0.3)**: Poor performance
+- ⚪ **Gray (N/A)**: Cannot calculate (incomplete runs or missing cost data)
+
+**Note**: Scores are only calculated for completed runs to ensure fair cost comparisons. Incomplete runs show "N/A" to avoid skewing results with partial token processing.
+
+### Multi-Model Comparison
+
+Run evaluations on multiple models using flexible selection patterns:
+
+#### Comma-Delimited Models
+```bash
+# Run on specific models
+vibe check -f my-eval.yaml -m "anthropic/claude-3.5-sonnet,openai/gpt-4"
+
+# Mix and match any combination
+vibe check -f my-eval.yaml -m "openai/gpt-4,anthropic/claude-3.5-sonnet,google/gemini-pro"
+```
+
+#### Wildcard Selection
+```bash
+# Run on all OpenAI models
+vibe check -f my-eval.yaml -m "openai*"
+
+# Run on multiple providers
+vibe check -f my-eval.yaml -m "openai*,anthropic*"
+
+# Mix wildcards and specific models
+vibe check -f my-eval.yaml -m "openai*,anthropic/claude-3.5-sonnet"
+```
+
+#### Select All Models
+```bash
+# Run on all available models
+vibe check -f my-eval.yaml -m all
+```
+
+#### Filter by Criteria
+Combine selection with filters to narrow down:
+
+```bash
+# All $ models with MCP support
+vibe check -f my-eval.yaml -m all --price 1 --mcp
+
+# All OpenAI models in the cheapest quartile
+vibe check -f my-eval.yaml -m openai* --price 1
+
+# All Anthropic and Google models with MCP
+vibe check -f my-eval.yaml -m "anthropic*,google*" --mcp
+```
+
+**View results sorted by score:**
+```bash
+vibe get runs --sort-by price-performance
+```
+
+### Sorting Options
+
+Sort runs by different criteria:
+
+```bash
+vibe get runs --sort-by created          # Default: chronological
+vibe get runs --sort-by success          # By success rate
+vibe get runs --sort-by cost             # By total cost
+vibe get runs --sort-by time             # By duration
+vibe get runs --sort-by price-performance # By score (recommended)
+```
 
 ---
 

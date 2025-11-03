@@ -43,6 +43,57 @@ export const mockStatusCompletedResponse = {
   ],
 };
 
+export const mockStatusCompletedWithOrCheckResponse = {
+  status: 'completed',
+  suiteName: 'test-suite',
+  model: 'anthropic/claude-3-5-sonnet-20241022',
+  systemPrompt: 'You are a helpful assistant.',
+  isUpdate: false,
+  totalTimeMs: 2500,
+  results: [
+    {
+      name: 'or-check-example',
+      prompt: 'What is 2 + 2?',
+      response: 'The answer is 4',
+      passed: true,
+      checkResults: [
+        {
+          type: 'or',
+          passed: true,
+          message: 'OR check passed',
+          children: [
+            {
+              type: 'match',
+              passed: true,
+              message: 'Pattern "*4*" found in response',
+            },
+            {
+              type: 'match',
+              passed: false,
+              message: 'Pattern "*four*" not found in response',
+            },
+            {
+              type: 'min_tokens',
+              passed: true,
+              message: 'Token count 5 (min: 1)',
+            },
+          ],
+        },
+        {
+          type: 'match',
+          passed: true,
+          message: 'Pattern "*4*" found in response',
+        },
+        {
+          type: 'llm_judge',
+          passed: true,
+          message: 'PASS',
+        },
+      ],
+    },
+  ],
+};
+
 export const mockStatusFailedResponse = {
   status: 'failed',
   error: {

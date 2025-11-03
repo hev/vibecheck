@@ -14,9 +14,9 @@ import {
   fetchModels, 
   handleApiError 
 } from '../utils/command-helpers';
+import { getApiUrl } from '../utils/config';
 import { isNetworkError, getNetworkErrorMessage } from '../utils/network-error';
 
-const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
 
 function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
@@ -110,7 +110,7 @@ export async function runInteractiveCommand(options: RunOptions) {
 async function handleGetCommand(args: string[], ui: InteractiveUI, debug?: boolean) {
   if (args.length === 0) {
     ui.displayError('Usage: :get <noun> [identifier] [options]');
-    ui.displayError('Available nouns: suites, suite, runs, run, models, org, credits');
+    ui.displayError('Available nouns: suites, suite, runs, run, models, org, credits, vars, var');
     return;
   }
 
@@ -161,9 +161,30 @@ async function handleGetCommand(args: string[], ui: InteractiveUI, debug?: boole
         ui.displayOrgInfo(orgInfo);
         break;
 
+      case 'vars':
+        // Import var command function
+        const { varListCommand } = await import('../commands/var');
+        await varListCommand(debug);
+        break;
+
+      case 'var':
+        if (!identifier) {
+          ui.displayError('Variable name required. Usage: :get var <name>');
+          return;
+        }
+        const { varGetCommand } = await import('../commands/var');
+        await varGetCommand(identifier, debug);
+        break;
+
+      case 'secret':
+      case 'secrets':
+        ui.displayError('Error: Secrets cannot be read');
+        ui.displayError('Secrets are write-only for security reasons. Use "vibe set secret" to create/update and "vibe delete secret" to remove.');
+        break;
+
       default:
         ui.displayError(`Unknown resource: ${noun}`);
-        ui.displayError('Available nouns: suites, suite, runs, run, models, org, credits');
+        ui.displayError('Available nouns: suites, suite, runs, run, models, org, credits, vars, var');
     }
   } catch (error: any) {
     // Handle network errors first
@@ -226,13 +247,77 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
     // Store YAML content for logging
     ui.setYamlContent(fileContent);
 
-    const data = yaml.load(fileContent);
+    // Parse YAML with specific error handling
+    let data;
+    try {
+      data = yaml.load(fileContent);
+    } catch (yamlError: any) {
+      ui.displayError('Failed to parse YAML file');
+      ui.displayError(`YAML syntax error: ${yamlError.message}`);
+      
+      // Provide specific guidance for duplicate key errors (new DSL)
+      if (yamlError.message && yamlError.message.includes('duplicated mapping key')) {
+        ui.displayError('💡 Multiple patterns detected:');
+        ui.displayError('  Instead of repeating the same key:');
+        ui.displayError('    not_match: "*pattern1*"');
+        ui.displayError('    not_match: "*pattern2*"');
+        ui.displayError('  Use multiple check objects (new DSL):');
+        ui.displayError('    checks:');
+        ui.displayError('      - not_match: "*pattern1*"');
+        ui.displayError('      - not_match: "*pattern2*"');
+        ui.displayError('  This also applies to "match" patterns.');
+      }
+      
+      ui.displayError('Check your YAML syntax and try again.');
+      ui.displayError('See https://github.com/hev/vibecheck?tab=readme-ov-file#yaml-syntax-reference for help.');
+      return;
+    }
+
+    // Check for legacy object-based format (old DSL format no longer supported)
+    if (data && typeof data === 'object' && 'evals' in data && Array.isArray(data.evals)) {
+      for (const evalItem of data.evals) {
+        if (evalItem && typeof evalItem === 'object' && 'checks' in evalItem) {
+          const checks = evalItem.checks;
+          // Legacy format: checks is an object with properties like match, min_tokens, etc.
+          // New format: checks is an array or { or: [...] }
+          if (checks && typeof checks === 'object' && !Array.isArray(checks) && !('or' in checks)) {
+            // Check if it has any of the old property-based check keys
+            const legacyKeys = ['match', 'not_match', 'min_tokens', 'max_tokens', 'semantic', 'llm_judge'];
+            const hasLegacyFormat = legacyKeys.some(key => key in checks);
+            
+            if (hasLegacyFormat) {
+              ui.displayError('Legacy DSL format detected');
+              ui.displayError('\nThe object-based checks format is no longer supported.');
+              ui.displayError('Please update your YAML file to use the new array-based format.\n');
+              ui.displayError('Migration Guide:');
+              ui.displayError('\nOld format (object-based):');
+              ui.displayError('  checks:');
+              ui.displayError('    match: "*hello*"');
+              ui.displayError('    min_tokens: 1');
+              ui.displayError('    max_tokens: 50');
+              ui.displayError('\nNew format (array-based for AND):');
+              ui.displayError('  checks:');
+              ui.displayError('    - match: "*hello*"');
+              ui.displayError('    - min_tokens: 1');
+              ui.displayError('    - max_tokens: 50');
+              ui.displayError('\nFor OR checks, use:');
+              ui.displayError('  checks:');
+              ui.displayError('    or:');
+              ui.displayError('      - match: "*option1*"');
+              ui.displayError('      - match: "*option2*"');
+              ui.displayError('\nSee CLI docs for more details.');
+              return;
+            }
+          }
+        }
+      }
+    }
 
     // Validate YAML structure
     const parseResult = EvalSuiteSchema.safeParse(data);
 
     if (!parseResult.success) {
-      ui.displayError('Invalid YAML format 🚩');
+      ui.displayError('Invalid YAML format');
       parseResult.error.errors.forEach(err => {
         ui.displayError(`  - ${err.path.join('.')}: ${err.message}`);
       });
@@ -240,14 +325,14 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
     }
 
     const evalSuite = parseResult.data;
-    ui.displayInfo('Evaluation file loaded successfully ✨');
+    ui.displayInfo('Evaluation file loaded successfully');
 
     const requestPayload = {
       evalSuite,
       yamlContent: fileContent
     };
 
-    const response = await axios.post(`${API_URL}/api/eval/run`, requestPayload, {
+    const response = await axios.post(`${getApiUrl()}/api/eval/run`, requestPayload, {
       headers: getAuthHeaders()
     });
 
@@ -261,7 +346,7 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
 
     const runId = response.data.runId;
     ui.setRunId(runId);
-    ui.displayInfo(`Checking vibes... Run ID: ${runId}`);
+    ui.displayInfo(`Running evaluation... Run ID: ${runId}`);
 
     // Stream results
     await streamResults(runId, ui, debug);
@@ -286,7 +371,7 @@ async function runEvaluation(file: string, ui: InteractiveUI, debug?: boolean) {
     } else if (error.response?.status === 403) {
       const truncatedKey = process.env.VIBECHECK_API_KEY ? `${process.env.VIBECHECK_API_KEY.substring(0, 8)}...` : 'not set';
       ui.displayError('🔒 Forbidden: Access denied');
-      ui.displayError(`URL: ${API_URL}/api/eval/run`);
+      ui.displayError(`URL: ${getApiUrl()}/api/eval/run`);
       ui.displayError(`API Key: ${truncatedKey}`);
       ui.displayError('Verify your API key at https://vibescheck.io');
     } else if (error.response?.status === 500) {
@@ -314,7 +399,7 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
 
   while (!completed) {
     try {
-      const response = await axios.get(`${API_URL}/api/eval/status/${runId}`, {
+      const response = await axios.get(`${getApiUrl()}/api/eval/status/${runId}`, {
         headers: getAuthHeaders()
       });
 
@@ -344,7 +429,7 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
         await ui.displaySummary(results, totalTimeMs);
       } else if (status === 'failed') {
         const errorMsg = statusError?.message || statusError || 'All evaluations failed due to execution errors';
-        ui.displayError(`🚩 ${errorMsg}`);
+        ui.displayError(`❌ ${errorMsg}`);
         completed = true;
       } else if (status === 'partial_failure') {
         if (results.length > lastDisplayedCount) {
@@ -402,7 +487,7 @@ async function streamResults(runId: string, ui: InteractiveUI, debug?: boolean) 
       } else if (error.response?.status === 403) {
         const truncatedKey = process.env.VIBECHECK_API_KEY ? `${process.env.VIBECHECK_API_KEY.substring(0, 8)}...` : 'not set';
         ui.displayError('🔒 Forbidden: Access denied');
-        ui.displayError(`URL: ${API_URL}/api/eval/status/${runId}`);
+        ui.displayError(`URL: ${getApiUrl()}/api/eval/status/${runId}`);
         ui.displayError(`API Key: ${truncatedKey}`);
         ui.displayError('Verify your API key at https://vibescheck.io');
       } else if (error.response?.status === 500) {
@@ -424,7 +509,7 @@ async function listSuites(ui: InteractiveUI) {
   try {
     ui.displayInfo('Fetching evaluation suites...');
 
-    const response = await axios.get(`${API_URL}/api/eval/suites`, {
+    const response = await axios.get(`${getApiUrl()}/api/eval/suites`, {
       headers: getAuthHeaders()
     });
 

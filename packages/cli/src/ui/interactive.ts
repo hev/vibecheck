@@ -36,6 +36,7 @@ export class InteractiveUI {
   private onCommand: ((cmd: string) => Promise<void>) | null = null;
   private onboardingHandler: ((input: string) => void) | null = null;
   private isOnboarding: boolean = false;
+  private onboardingCancelCallback: (() => void) | null = null;
   private currentFilePath: string | null = null;
   private lastResults: EvalResult[] | null = null;
   private lastTotalTime: number | null = null;
@@ -67,7 +68,7 @@ export class InteractiveUI {
       left: 0,
       width: '100%-2',
       height: '70%-1',
-      content: '{bold}{cyan-fg}✨ VibeCheck - Ready to check those vibes{/cyan-fg}{/bold}\n\nLoad a file to get started',
+      content: '{bold}{cyan-fg}VibeCheck - Ready to run evaluations{/cyan-fg}{/bold}\n\nLoad a file to get started',
       tags: true,
       wrap: false,
       border: {
@@ -192,7 +193,31 @@ export class InteractiveUI {
 
     // Handle Ctrl+C to exit
     this.screen.key(['C-c'], async () => {
+      // If in onboarding mode, exit onboarding gracefully
+      if (this.isOnboarding && this.onboardingHandler) {
+        this.exitOnboarding();
+        this.displayInfo('\n{bold}{yellow-fg}Onboarding cancelled. Use :check to run evaluations or :help for commands.{/yellow-fg}{/bold}\n');
+        this.screen.render();
+        return;
+      }
+      
       await this.printSummaryToConsole();
+      this.destroy();
+      process.exit(0);
+    });
+
+    // Handle Ctrl+D to exit (EOF)
+    this.commandInput.key(['C-d'], () => {
+      // If in onboarding mode, exit onboarding gracefully
+      if (this.isOnboarding && this.onboardingHandler) {
+        this.exitOnboarding();
+        this.displayInfo('\n{bold}{yellow-fg}Onboarding cancelled. Use :check to run evaluations or :help for commands.{/yellow-fg}{/bold}\n');
+        this.screen.render();
+        return;
+      }
+      
+      // Otherwise, exit the program
+      this.printSummaryToConsole();
       this.destroy();
       process.exit(0);
     });
@@ -273,13 +298,19 @@ export class InteractiveUI {
     this.onCommand = handler;
   }
 
-  setOnboardingHandler(handler: (input: string) => void) {
+  setOnboardingHandler(handler: (input: string) => void, cancelCallback?: () => void) {
     this.onboardingHandler = handler;
     this.isOnboarding = true;
+    this.onboardingCancelCallback = cancelCallback || null;
   }
 
   exitOnboarding() {
     this.isOnboarding = false;
+    // Call cancel callback if it exists
+    if (this.onboardingCancelCallback) {
+      this.onboardingCancelCallback();
+      this.onboardingCancelCallback = null;
+    }
     this.onboardingHandler = null;
   }
 
@@ -320,7 +351,7 @@ export class InteractiveUI {
       this.appendResults('{green-fg}Saving new eval suite: ' + suiteName + '{/green-fg}');
     }
     this.appendResults('');
-    this.appendResults('{bold}{cyan-fg}✨ Checking vibes for: ' + suiteName + '{/cyan-fg}{/bold}');
+    this.appendResults('{bold}{cyan-fg}Running evaluation: ' + suiteName + '{/cyan-fg}{/bold}');
     this.appendResults('{bold}{cyan-fg}Model: ' + model + '{/cyan-fg}{/bold}');
     this.appendResults('{bold}{cyan-fg}System prompt: ' + systemPrompt + '{/cyan-fg}{/bold}');
     this.appendResults('');
@@ -333,33 +364,48 @@ export class InteractiveUI {
     this.appendResults('{gray-fg}Response: ' + this.escapeText(result.response) + '{/gray-fg}');
 
     result.checkResults.forEach((cond: ConditionalResult) => {
-      const status = cond.passed ? '{green-fg}✅ PASS{/green-fg}' : '{red-fg}🚩 FAIL{/red-fg}';
-      const details = this.formatConditionalDetails(cond, result.response);
-
-      if (cond.type === 'llm_judge') {
-        this.appendResults('  ' + status + ' ' + cond.type.padEnd(25));
-        if (typeof details === 'string') {
-          this.appendResults('      {gray-fg}' + this.escapeText(details) + '{/gray-fg}');
-        }
-      } else if (cond.type === 'string_contains') {
-        if (typeof details === 'object' && 'text' in details) {
-          const { text } = details;
-          this.appendResults('  ' + status + ' ' + cond.type.padEnd(25) + ' {gray-fg}' + this.escapeText(text) + '{/gray-fg}');
-        } else {
-          this.appendResults('  ' + status + ' ' + cond.type.padEnd(25) + ' {gray-fg}' + this.escapeText(details as string) + '{/gray-fg}');
-        }
-      } else if (cond.type === 'semantic_similarity') {
-        const coloredDetails = cond.passed ? '{green-fg}' + this.escapeText(details as string) + '{/green-fg}' : '{red-fg}' + this.escapeText(details as string) + '{/red-fg}';
-        this.appendResults('  ' + status + ' ' + cond.type.padEnd(25) + ' ' + coloredDetails);
-      } else {
-        const coloredDetails = cond.passed ? '{green-fg}' + this.escapeText(details as string) + '{/green-fg}' : '{red-fg}' + this.escapeText(details as string) + '{/red-fg}';
-        this.appendResults('  ' + status + ' ' + cond.type.padEnd(25) + ' ' + coloredDetails);
-      }
+      this.displayConditionalResult(cond, result.response, 2);
     });
 
-    const overallStatus = result.passed ? '{green-fg}✅ PASS{/green-fg}' : '{red-fg}🚩 FAIL{/red-fg}';
+    const overallStatus = result.passed ? '{green-fg}✅ PASS{/green-fg}' : '{red-fg}❌ FAIL{/red-fg}';
     this.appendResults('  Overall: ' + overallStatus);
     this.appendResults('');
+  }
+
+  private displayConditionalResult(cond: ConditionalResult, response: string, indent: number = 2) {
+    const indentStr = ' '.repeat(indent);
+    const status = cond.passed ? '{green-fg}✅ PASS{/green-fg}' : '{red-fg}❌ FAIL{/red-fg}';
+    const details = this.formatConditionalDetails(cond, response);
+
+    if (cond.type === 'llm_judge') {
+      this.appendResults(indentStr + status + ' ' + cond.type.padEnd(25));
+      if (typeof details === 'string') {
+        this.appendResults(indentStr + '    {gray-fg}' + this.escapeText(details) + '{/gray-fg}');
+      }
+    } else if (cond.type === 'string_contains' || cond.type === 'match' || cond.type === 'not_match') {
+      if (typeof details === 'object' && 'text' in details) {
+        const { text } = details;
+        this.appendResults(indentStr + status + ' ' + cond.type.padEnd(25) + ' {gray-fg}' + this.escapeText(text) + '{/gray-fg}');
+      } else {
+        this.appendResults(indentStr + status + ' ' + cond.type.padEnd(25) + ' {gray-fg}' + this.escapeText(details as string) + '{/gray-fg}');
+      }
+    } else if (cond.type === 'semantic_similarity' || cond.type === 'semantic') {
+      const coloredDetails = cond.passed ? '{green-fg}' + this.escapeText(details as string) + '{/green-fg}' : '{red-fg}' + this.escapeText(details as string) + '{/red-fg}';
+      this.appendResults(indentStr + status + ' ' + cond.type.padEnd(25) + ' ' + coloredDetails);
+    } else if (cond.type === 'min_tokens' || cond.type === 'max_tokens' || cond.type === 'token_length') {
+      const coloredDetails = cond.passed ? '{green-fg}' + this.escapeText(details as string) + '{/green-fg}' : '{red-fg}' + this.escapeText(details as string) + '{/red-fg}';
+      this.appendResults(indentStr + status + ' ' + cond.type.padEnd(25) + ' ' + coloredDetails);
+    } else {
+      const coloredDetails = cond.passed ? '{green-fg}' + this.escapeText(details as string) + '{/green-fg}' : '{red-fg}' + this.escapeText(details as string) + '{/red-fg}';
+      this.appendResults(indentStr + status + ' ' + cond.type.padEnd(25) + ' ' + coloredDetails);
+    }
+
+    // Display child results if present (for OR checks, etc.)
+    if (cond.children && cond.children.length > 0) {
+      cond.children.forEach((child: ConditionalResult) => {
+        this.displayConditionalResult(child, response, indent + 2);
+      });
+    }
   }
 
   async displaySummary(results: EvalResult[], totalTimeMs?: number) {
@@ -373,7 +419,7 @@ export class InteractiveUI {
     const lines: string[] = [];
 
     lines.push('{bold}' + '─'.repeat(TABLE_WIDTH) + '{/bold}');
-    lines.push('{bold}✨ VIBE CHECK SUMMARY ✨{/bold}');
+    lines.push('{bold}EVALUATION SUMMARY{/bold}');
     lines.push('{bold}' + '─'.repeat(TABLE_WIDTH) + '{/bold}');
     lines.push('');
 
@@ -410,7 +456,7 @@ export class InteractiveUI {
 
       const coloredFailBar = '{red-fg}' + failBar + '{/red-fg}';
       const coloredPassBar = '{green-fg}' + passBar + '{/green-fg}';
-      const status = result.passed ? '{green-fg}✅{/green-fg}' : '{red-fg}🚩{/red-fg}';
+      const status = result.passed ? '{green-fg}✅{/green-fg}' : '{red-fg}❌{/red-fg}';
 
       lines.push(paddedName + '  ' + coloredFailBar + '|' + coloredPassBar + '  ' + status + ' ' + timeStr);
     });
@@ -423,27 +469,25 @@ export class InteractiveUI {
     lines.push('');
     lines.push('{bold}' + '─'.repeat(TABLE_WIDTH) + '{/bold}');
 
-    let vibeStatus = '🚩 bad vibes';
     let color = 'red-fg';
     if (passRate > 80) {
       color = 'green-fg';
-      vibeStatus = '✨ good vibes';
     } else if (passRate >= 50) {
       color = 'yellow-fg';
-      vibeStatus = '😬 sketchy vibes';
     }
 
-    lines.push('{' + color + '}Vibe Rating: ' + passedEvals + '/' + totalEvals + ' (' + passRate.toFixed(1) + '%) - ' + vibeStatus + '{/' + color + '}');
+    lines.push('{' + color + '}Success Pct: ' + passedEvals + '/' + totalEvals + ' (' + passRate.toFixed(1) + '%){/' + color + '}');
     if (totalTimeMs) {
       lines.push('{cyan-fg}Total Time: ' + (totalTimeMs / 1000).toFixed(2) + 's{/cyan-fg}');
     }
     lines.push('{bold}' + '─'.repeat(80) + '{/bold}');
     lines.push('');
 
-    if (passRate < 50) {
-      lines.push('{red-fg}🚩 Bad vibes detected: Vibe rating below 50%{/red-fg}');
+    const allEvalsPassed = results.every(r => r.passed);
+    if (allEvalsPassed) {
+      lines.push('{green-fg}All evals ran successfully{/green-fg}');
     } else {
-      lines.push('{green-fg}✨ Good vibes all around!{/green-fg}');
+      lines.push('{red-fg}Some evals failed{/red-fg}');
     }
 
     this.summaryBox.setContent(lines.join('\n'));
@@ -467,7 +511,7 @@ export class InteractiveUI {
 
     console.log();
     console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));
-    console.log(chalk.bold('✨ VIBE CHECK SUMMARY ✨'));
+    console.log(chalk.bold('EVALUATION SUMMARY'));
     console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));
     console.log();
 
@@ -504,7 +548,7 @@ export class InteractiveUI {
 
       const coloredFailBar = chalk.redBright(failBar);
       const coloredPassBar = chalk.green(passBar);
-      const status = result.passed ? chalk.green('✅') : chalk.redBright('🚩');
+      const status = result.passed ? chalk.green('✅') : chalk.redBright('❌');
 
       console.log(`${paddedName}  ${coloredFailBar}|${coloredPassBar}  ${status} ${timeStr}`);
     });
@@ -518,31 +562,29 @@ export class InteractiveUI {
     console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));
 
     let passRateColor = chalk.redBright;
-    let vibeStatus = '🚩 bad vibes';
     if (passRate > 80) {
       passRateColor = chalk.green;
-      vibeStatus = '✨ good vibes';
     } else if (passRate >= 50) {
       passRateColor = chalk.yellow;
-      vibeStatus = '😬 sketchy vibes';
     }
 
-    console.log(passRateColor(`Vibe Rating: ${passedEvals}/${totalEvals} (${passRate.toFixed(1)}%) - ${vibeStatus}`));
+    console.log(passRateColor(`Success Pct: ${passedEvals}/${totalEvals} (${passRate.toFixed(1)}%)`));
     if (totalTimeMs) {
       console.log(chalk.cyan(`Total Time: ${(totalTimeMs / 1000).toFixed(2)}s`));
     }
     console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));
     console.log();
 
-    if (passRate < 50) {
-      console.log(chalk.redBright('🚩 Bad vibes detected: Vibe rating below 50%\n'));
+    const allEvalsPassed = this.lastResults!.every(r => r.passed);
+    if (allEvalsPassed) {
+      console.log(chalk.green('All evals ran successfully\n'));
     } else {
-      console.log(chalk.green('✨ Good vibes all around!\n'));
+      console.log(chalk.redBright('Some evals failed\n'));
     }
   }
 
   displayError(message: string) {
-    this.appendResults('{red-fg}🚩 Error: ' + this.escapeText(message) + '{/red-fg}');
+    this.appendResults('{red-fg}❌ Error: ' + this.escapeText(message) + '{/red-fg}');
   }
 
   displayInfo(message: string) {
@@ -626,7 +668,7 @@ export class InteractiveUI {
 
         let statusColor = '{gray-fg}';
         if (run.status === 'completed') statusColor = '{green-fg}';
-        else if (run.status === 'failed') statusColor = '{red-fg}';
+        else if (run.status === 'failed' || run.status === 'cancelled') statusColor = '{red-fg}';
         else if (run.status === 'running') statusColor = '{yellow-fg}';
 
         lines.push(
@@ -650,7 +692,8 @@ export class InteractiveUI {
     lines.push('');
     lines.push('{cyan-fg}ID:{/cyan-fg} {white-fg}' + this.escapeText(run.id) + '{/white-fg}');
     lines.push('{cyan-fg}Suite:{/cyan-fg} {white-fg}' + this.escapeText(run.suite_name || 'N/A') + '{/white-fg}');
-    lines.push('{cyan-fg}Status:{/cyan-fg} {white-fg}' + this.escapeText(run.status) + '{/white-fg}');
+    const statusColor = run.status === 'error' || run.status === 'failed' || run.status === 'cancelled' ? '{red-fg}' : run.status === 'completed' ? '{green-fg}' : '{yellow-fg}';
+    lines.push('{cyan-fg}Status:{/cyan-fg} ' + statusColor + this.escapeText(run.status) + '{/}');
     lines.push('{cyan-fg}Success Rate:{/cyan-fg} {white-fg}' + (run.successRate !== undefined ? `${run.successRate.toFixed(1)}%` : 'N/A') + '{/white-fg}');
     lines.push('{cyan-fg}Duration:{/cyan-fg} {white-fg}' + (run.duration ? `${(run.duration / 1000).toFixed(1)}s` : 'N/A') + '{/white-fg}');
     lines.push('{cyan-fg}Created:{/cyan-fg} {gray-fg}' + new Date(run.created_at).toLocaleString() + '{/gray-fg}');
@@ -719,8 +762,8 @@ export class InteractiveUI {
   private formatConditionalDetails(cond: ConditionalResult, response: string): string | { text: string; highlight: string } {
     const message = cond.message || '';
 
-    if (cond.type === 'string_contains') {
-      const match = message.match(/contains? ['"](.+?)['"]/i) || message.match(/found ['"](.+?)['"]/i);
+    if (cond.type === 'string_contains' || cond.type === 'match' || cond.type === 'not_match') {
+      const match = message.match(/pattern ['"](.+?)['"]/i) || message.match(/contains? ['"](.+?)['"]/i) || message.match(/found ['"](.+?)['"]/i) || message.match(/matches ['"](.+?)['"]/i);
       if (match) {
         const searchString = match[1];
         const index = response.toLowerCase().indexOf(searchString.toLowerCase());
@@ -736,7 +779,7 @@ export class InteractiveUI {
       return this.truncateText(message, 60);
     }
 
-    if (cond.type === 'semantic_similarity') {
+    if (cond.type === 'semantic_similarity' || cond.type === 'semantic') {
       const simMatch = message.match(/similarity[:\s]+(\d+(?:\.\d+)?)/i);
       if (simMatch) {
         const similarity = parseFloat(simMatch[1]);
@@ -750,7 +793,7 @@ export class InteractiveUI {
       return cond.passed ? 'PASS' : this.truncateText(message, 80);
     }
 
-    if (cond.type === 'token_length') {
+    if (cond.type === 'token_length' || cond.type === 'min_tokens' || cond.type === 'max_tokens') {
       const countMatch = message.match(/(\d+)\s+tokens?/i);
       const minMatch = message.match(/min[:\s]+(\d+)/i);
       const maxMatch = message.match(/max[:\s]+(\d+)/i);

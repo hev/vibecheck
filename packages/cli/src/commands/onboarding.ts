@@ -219,6 +219,8 @@ export async function runOnboarding(ui: InteractiveUI): Promise<string> {
         lines.push(`{bold}${step.question}{/bold}`);
         lines.push(`{gray-fg}Press Enter for:{/gray-fg} {white-fg}${step.suggestion}{/white-fg}`);
         lines.push('');
+        lines.push('{gray-fg}Tip: Press Ctrl-C or Ctrl-D to cancel{/gray-fg}');
+        lines.push('');
 
         ui.displayInfo(lines.join('\n'));
       } else {
@@ -239,7 +241,7 @@ export async function runOnboarding(ui: InteractiveUI): Promise<string> {
       // Show completion message in bottom pane
       const lines: string[] = [];
       lines.push('');
-      lines.push('{bold}{green-fg}✨ Eval suite created successfully!{/green-fg}{/bold}');
+      lines.push('{bold}{green-fg}Eval suite created successfully!{/green-fg}{/bold}');
       lines.push('');
 
       // Write to file
@@ -347,6 +349,40 @@ function generatePartialYAML(data: Partial<OnboardingData>): string {
 }
 
 function generateYAML(data: OnboardingData): string {
+  // Build checks arrays explicitly to ensure they remain arrays
+  const checks1: Array<Record<string, any>> = [
+    { match: data.match1 },
+    { min_tokens: data.minTokens1 },
+    { max_tokens: data.maxTokens1 }
+  ];
+  
+  const checks2: Array<Record<string, any>> = [
+    {
+      semantic: {
+        expected: data.semanticExpected,
+        threshold: data.semanticThreshold
+      }
+    },
+    {
+      llm_judge: {
+        criteria: data.judgeCriteria2
+      }
+    },
+    { min_tokens: data.minTokens2 },
+    { max_tokens: data.maxTokens2 }
+  ];
+  
+  const checks3: Array<Record<string, any>> = [
+    { match: data.match3 },
+    {
+      llm_judge: {
+        criteria: data.judgeCriteria3
+      }
+    },
+    { min_tokens: data.minTokens3 },
+    { max_tokens: data.maxTokens3 }
+  ];
+
   const evalSuite = {
     metadata: {
       name: data.name,
@@ -356,44 +392,73 @@ function generateYAML(data: OnboardingData): string {
     evals: [
       {
         prompt: data.prompt1,
-        checks: {
-          match: data.match1,
-          min_tokens: data.minTokens1,
-          max_tokens: data.maxTokens1
-        }
+        checks: checks1
       },
       {
         prompt: data.prompt2,
-        checks: {
-          semantic: {
-            expected: data.semanticExpected,
-            threshold: data.semanticThreshold
-          },
-          llm_judge: {
-            criteria: data.judgeCriteria2
-          },
-          min_tokens: data.minTokens2,
-          max_tokens: data.maxTokens2
-        }
+        checks: checks2
       },
       {
         prompt: data.prompt3,
-        checks: {
-          match: data.match3,
-          llm_judge: {
-            criteria: data.judgeCriteria3
-          },
-          min_tokens: data.minTokens3,
-          max_tokens: data.maxTokens3
-        }
+        checks: checks3
       }
     ]
   };
 
-  return yaml.dump(evalSuite, {
+  // js-yaml has a bug where it doesn't serialize nested arrays of single-key objects correctly
+  // Workaround: Serialize each eval's checks separately and manually construct the YAML
+  const metadataYaml = yaml.dump({ metadata: evalSuite.metadata }, {
     indent: 2,
-    lineWidth: -1
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false
   });
+  
+  const evalsLines: string[] = ['evals:'];
+  for (const evalItem of evalSuite.evals) {
+    // Quote the prompt if it contains special characters
+    const promptStr = evalItem.prompt.includes(':') || evalItem.prompt.includes('"') 
+      ? `"${evalItem.prompt.replace(/"/g, '\\"')}"` 
+      : evalItem.prompt;
+    evalsLines.push(`  - prompt: ${promptStr}`);
+    evalsLines.push('    checks:');
+    
+    // Manually format each check as an array item with proper YAML syntax
+    for (const check of evalItem.checks) {
+      const keys = Object.keys(check);
+      if (keys.length === 1) {
+        const key = keys[0];
+        const value = check[key];
+        
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          // Nested object (e.g., semantic, llm_judge)
+          evalsLines.push(`      - ${key}:`);
+          const nestedYaml = yaml.dump(value, {
+            indent: 10, // 6 for checks + 4 for nested
+            lineWidth: -1,
+            noRefs: true,
+            sortKeys: false
+          });
+          const nestedLines = nestedYaml.trim().split('\n');
+          for (const line of nestedLines) {
+            // Adjust indentation - remove leading spaces and add proper amount
+            const trimmed = line.trim();
+            if (trimmed) {
+              evalsLines.push(`        ${trimmed}`);
+            }
+          }
+        } else {
+          // Simple key-value pair
+          const valueStr = typeof value === 'string' && (value.includes(':') || value.includes('"'))
+            ? `"${value.replace(/"/g, '\\"')}"`
+            : String(value);
+          evalsLines.push(`      - ${key}: ${valueStr}`);
+        }
+      }
+    }
+  }
+  
+  return metadataYaml + evalsLines.join('\n') + '\n';
 }
 
 function generateFormattedYAML(data: OnboardingData): string {

@@ -67,36 +67,42 @@ function generateYAML(data: any): string {
     evals: [
       {
         prompt: data.prompt1,
-        checks: {
-          match: data.match1,
-          min_tokens: data.minTokens1,
-          max_tokens: data.maxTokens1
-        }
+        checks: [
+          { match: data.match1 },
+          { min_tokens: data.minTokens1 },
+          { max_tokens: data.maxTokens1 }
+        ]
       },
       {
         prompt: data.prompt2,
-        checks: {
-          semantic: {
-            expected: data.semanticExpected,
-            threshold: data.semanticThreshold
+        checks: [
+          {
+            semantic: {
+              expected: data.semanticExpected,
+              threshold: data.semanticThreshold
+            }
           },
-          llm_judge: {
-            criteria: data.judgeCriteria2
+          {
+            llm_judge: {
+              criteria: data.judgeCriteria2
+            }
           },
-          min_tokens: data.minTokens2,
-          max_tokens: data.maxTokens2
-        }
+          { min_tokens: data.minTokens2 },
+          { max_tokens: data.maxTokens2 }
+        ]
       },
       {
         prompt: data.prompt3,
-        checks: {
-          match: data.match3,
-          llm_judge: {
-            criteria: data.judgeCriteria3
+        checks: [
+          { match: data.match3 },
+          {
+            llm_judge: {
+              criteria: data.judgeCriteria3
+            }
           },
-          min_tokens: data.minTokens3,
-          max_tokens: data.maxTokens3
-        }
+          { min_tokens: data.minTokens3 },
+          { max_tokens: data.maxTokens3 }
+        ]
       }
     ]
   };
@@ -166,14 +172,17 @@ describe('Onboarding YAML Generation', () => {
     const yamlContent = generateYAML(data);
     const parsed = yaml.load(yamlContent) as any;
     
+    // Helper to find check by key in array
+    const findCheck = (checks: any[], key: string) => checks.find(c => key in c)?.[key];
+    
     // Verify all numeric fields are numbers, not strings
-    expect(typeof parsed.evals[0].checks.min_tokens).toBe('number');
-    expect(typeof parsed.evals[0].checks.max_tokens).toBe('number');
-    expect(typeof parsed.evals[1].checks.semantic.threshold).toBe('number');
-    expect(typeof parsed.evals[1].checks.min_tokens).toBe('number');
-    expect(typeof parsed.evals[1].checks.max_tokens).toBe('number');
-    expect(typeof parsed.evals[2].checks.min_tokens).toBe('number');
-    expect(typeof parsed.evals[2].checks.max_tokens).toBe('number');
+    expect(typeof findCheck(parsed.evals[0].checks, 'min_tokens')).toBe('number');
+    expect(typeof findCheck(parsed.evals[0].checks, 'max_tokens')).toBe('number');
+    expect(typeof findCheck(parsed.evals[1].checks, 'semantic')?.threshold).toBe('number');
+    expect(typeof findCheck(parsed.evals[1].checks, 'min_tokens')).toBe('number');
+    expect(typeof findCheck(parsed.evals[1].checks, 'max_tokens')).toBe('number');
+    expect(typeof findCheck(parsed.evals[2].checks, 'min_tokens')).toBe('number');
+    expect(typeof findCheck(parsed.evals[2].checks, 'max_tokens')).toBe('number');
   });
   
   it('should parse string inputs to numbers for numeric fields', () => {
@@ -203,23 +212,26 @@ describe('Onboarding YAML Generation', () => {
     const yamlContent = generateYAML(data);
     const parsed = yaml.load(yamlContent) as any;
     
+    // Helper to find check by key in array
+    const findCheck = (checks: any[], key: string) => checks.find(c => key in c)?.[key];
+    
     // Verify all numeric fields are numbers, not strings
-    expect(typeof parsed.evals[0].checks.min_tokens).toBe('number');
-    expect(typeof parsed.evals[0].checks.max_tokens).toBe('number');
-    expect(typeof parsed.evals[1].checks.semantic.threshold).toBe('number');
-    expect(typeof parsed.evals[1].checks.min_tokens).toBe('number');
-    expect(typeof parsed.evals[1].checks.max_tokens).toBe('number');
-    expect(typeof parsed.evals[2].checks.min_tokens).toBe('number');
-    expect(typeof parsed.evals[2].checks.max_tokens).toBe('number');
+    expect(typeof findCheck(parsed.evals[0].checks, 'min_tokens')).toBe('number');
+    expect(typeof findCheck(parsed.evals[0].checks, 'max_tokens')).toBe('number');
+    expect(typeof findCheck(parsed.evals[1].checks, 'semantic')?.threshold).toBe('number');
+    expect(typeof findCheck(parsed.evals[1].checks, 'min_tokens')).toBe('number');
+    expect(typeof findCheck(parsed.evals[1].checks, 'max_tokens')).toBe('number');
+    expect(typeof findCheck(parsed.evals[2].checks, 'min_tokens')).toBe('number');
+    expect(typeof findCheck(parsed.evals[2].checks, 'max_tokens')).toBe('number');
     
     // Verify the actual values
-    expect(parsed.evals[0].checks.min_tokens).toBe(5);
-    expect(parsed.evals[0].checks.max_tokens).toBe(75);
-    expect(parsed.evals[1].checks.semantic.threshold).toBe(0.8);
-    expect(parsed.evals[1].checks.min_tokens).toBe(15);
-    expect(parsed.evals[1].checks.max_tokens).toBe(120);
-    expect(parsed.evals[2].checks.min_tokens).toBe(2);
-    expect(parsed.evals[2].checks.max_tokens).toBe(25);
+    expect(findCheck(parsed.evals[0].checks, 'min_tokens')).toBe(5);
+    expect(findCheck(parsed.evals[0].checks, 'max_tokens')).toBe(75);
+    expect(findCheck(parsed.evals[1].checks, 'semantic')?.threshold).toBe(0.8);
+    expect(findCheck(parsed.evals[1].checks, 'min_tokens')).toBe(15);
+    expect(findCheck(parsed.evals[1].checks, 'max_tokens')).toBe(120);
+    expect(findCheck(parsed.evals[2].checks, 'min_tokens')).toBe(2);
+    expect(findCheck(parsed.evals[2].checks, 'max_tokens')).toBe(25);
   });
 
   it('should handle invalid numeric input gracefully', () => {
@@ -245,14 +257,17 @@ describe('Onboarding YAML Generation', () => {
     const yamlContent = generateYAML(data);
     const parsed = yaml.load(yamlContent) as any;
     
-    // Invalid inputs should be stored as strings (fallback behavior)
-    expect(typeof parsed.evals[0].checks.min_tokens).toBe('string');
-    expect(typeof parsed.evals[0].checks.max_tokens).toBe('string');
-    expect(typeof parsed.evals[1].checks.semantic.threshold).toBe('string');
+    // Helper to find check by key in array
+    const findCheck = (checks: any[], key: string) => checks.find(c => key in c)?.[key];
     
-    expect(parsed.evals[0].checks.min_tokens).toBe('invalid');
-    expect(parsed.evals[0].checks.max_tokens).toBe('not-a-number');
-    expect(parsed.evals[1].checks.semantic.threshold).toBe('also-invalid');
+    // Invalid inputs should be stored as strings (fallback behavior)
+    expect(typeof findCheck(parsed.evals[0].checks, 'min_tokens')).toBe('string');
+    expect(typeof findCheck(parsed.evals[0].checks, 'max_tokens')).toBe('string');
+    expect(typeof findCheck(parsed.evals[1].checks, 'semantic')?.threshold).toBe('string');
+    
+    expect(findCheck(parsed.evals[0].checks, 'min_tokens')).toBe('invalid');
+    expect(findCheck(parsed.evals[0].checks, 'max_tokens')).toBe('not-a-number');
+    expect(findCheck(parsed.evals[1].checks, 'semantic')?.threshold).toBe('also-invalid');
   });
 
   it('should validate generated YAML against schema', () => {
@@ -283,9 +298,5 @@ describe('Onboarding YAML Generation', () => {
     // Validate against the schema
     const parseResult = EvalSuiteSchema.safeParse(parsed);
     expect(parseResult.success).toBe(true);
-    
-    if (!parseResult.success) {
-      console.error('Schema validation errors:', parseResult.error.errors);
-    }
   });
 });

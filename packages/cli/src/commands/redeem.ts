@@ -3,9 +3,7 @@ import ora from 'ora';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as readline from 'readline';
-import { saveApiKey, getConfigPath, readApiKey, debugConfig, readEnvFile } from '../utils/config';
-
-const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
+import { saveApiKey, saveApiUrl, getConfigPath, readApiKey, debugConfig, readEnvFile, getApiUrl } from '../utils/config';
 
 interface RedeemResponse {
   apiKey: string;
@@ -31,7 +29,7 @@ async function performRedeem({ code, debug }: { code: string; debug: boolean }) 
   const spinner = ora('Redeeming invite code...').start();
 
   try {
-    const url = `${API_URL}/api/invites/redeem`;
+    const url = `${getApiUrl()}/api/invites/redeem`;
     const requestBody = { code };
 
     if (debug) {
@@ -84,6 +82,9 @@ async function performRedeem({ code, debug }: { code: string; debug: boolean }) 
 
     // Save API key to config
     saveApiKey(apiKey);
+
+    // Save the API URL used for redemption to config
+    saveApiUrl(getApiUrl());
 
     // Verify the API key was saved correctly
     if (debug) {

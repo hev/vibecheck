@@ -1,7 +1,7 @@
 class Vibe < Formula
   desc "A vibe-themed CLI tool for running language model evaluations"
   homepage "https://github.com/your-org/vibecheck"
-  url "https://registry.npmjs.org/@vibe/cli/-/@vibe/cli-0.1.0.tgz"
+  url "https://registry.npmjs.org/@vibe/cli/-/@vibe/cli-0.2.0.tgz"
   sha256 ""
   license "MIT"
 

@@ -28,9 +28,15 @@ module.exports = {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
-    '**/interactive-run.test.ts',
     '**/onboarding.test.ts',
   ],
+  // Force Jest to exit after tests complete (prevents hanging on interactive components)
+  forceExit: true,
+  // Disable open handles detection to keep output clean
+  // We use forceExit: true anyway, so this just clutters the output
+  detectOpenHandles: false,
+  // Load global mocks for interactive components
+  setupFilesAfterEnv: ['<rootDir>/tests/helpers/setup-mocks.js'],
   // Separate test categories with displayName
   projects: [
     {
@@ -42,6 +48,12 @@ module.exports = {
     {
       displayName: 'integration',
       testMatch: ['<rootDir>/tests/integration/**/*.test.ts'],
+      testPathIgnorePatterns: [
+        '/node_modules/',
+        '/dist/',
+        'interactive-run.test.ts',
+        'onboarding.test.ts',
+      ],
       preset: 'ts-jest',
       testEnvironment: 'node',
     },

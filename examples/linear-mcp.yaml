@@ -1,0 +1,35 @@
+metadata:
+  name: linear-mcp
+  model: openai/gpt-oss-20b
+  system_prompt: You are a helpful assistant. Keep your responses short and concise.
+  #This intentionally *not* a robust system prompt to test the effectiveness of tool detection based on tool description.
+  mcp_server:
+    url: "https://mcp.linear.app/mcp"
+    name: "linear"
+    authorization_token: "{{secret('linear.apiKey')}}" 
+
+evals:
+  # Basic easy / check
+  - prompt: Using Linear, list the most recent issues in my workspace for team {{var('linear.projectTeam')}}.
+    checks:
+      - match: "*{{var('linear.projectId')}}*"               #Use your Linear Project-id (ideally unique string)
+      - min_tokens: 25
+
+
+ #Research item
+  - prompt: Get the deatils on Linear todo item {{var('linear.projectId')}}-1 for team {{var('linear.projectTeam')}}. 
+    checks:
+      or:
+        - semantic:
+            expected: "Get familiar with the Linear."
+            threshold: 0.8 
+        - llm_judge:
+            criteria: "Response should be a high level summary of the Linear API and the project team item."
+                                                  # use a real item title you have in your backlog here
+          
+# More complicated nuance langauge 
+  - prompt: Create a new to do item in linear for team {{var('linear.projectTeam')}}. Remember the milk. 
+    checks:
+      - match: ".*{{var('linear.projectId')}}-[0-9]+.*"         #Matches the linear ID pattern for your project item.    
+      - min_tokens: 10
+      - max_tokens: 100

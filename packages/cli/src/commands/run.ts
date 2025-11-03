@@ -10,20 +10,22 @@ import { displaySummary } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { writeRunOutput } from '../utils/output-writer';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
-
-const API_URL = process.env.VIBECHECK_URL || 'https://vibecheck-api-prod-681369865361.us-central1.run.app';
+import { getApiUrl } from '../utils/config';
 const API_KEY = process.env.VIBECHECK_API_KEY;
 
 function getAuthHeaders() {
   const currentApiKey = process.env.VIBECHECK_API_KEY;
+  const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
   
   if (!currentApiKey) {
-    displayInvitePrompt();
-    // Trigger interactive redeem flow for users to obtain an API key
-    try {
-      spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
-    } catch {
-      // ignore spawn errors in non-interactive test environments
+    if (!neverPrompt) {
+      displayInvitePrompt();
+      // Trigger interactive redeem flow for users to obtain an API key
+      try {
+        spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+      } catch {
+        // ignore spawn errors in non-interactive test environments
+      }
     }
     process.exit(1);
   }
@@ -39,11 +41,18 @@ interface RunOptions {
   debug?: boolean;
   interactive?: boolean;
   async?: boolean;
+  model?: string | string[];
+  models?: string[];
+  mcp?: boolean;
+  priceFilter?: string;
+  providerFilter?: string;
+  neverPrompt?: boolean;
 }
 
 interface SuiteRunOptions {
   suiteName: string;
-  model?: string;
+  model?: string | string[];
+  models?: string[];
   systemPrompt?: string;
   threads?: number;
   mcpUrl?: string;
@@ -52,6 +61,9 @@ interface SuiteRunOptions {
   debug?: boolean;
   interactive?: boolean;
   async?: boolean;
+  mcp?: boolean;
+  priceFilter?: string;
+  providerFilter?: string;
 }
 
 export async function runInteractiveMode(options: RunOptions) {
@@ -59,7 +71,12 @@ export async function runInteractiveMode(options: RunOptions) {
 }
 
 export async function runCommand(options: RunOptions) {
-  const { file, debug, async: asyncMode } = options;
+  const { file, debug, async: asyncMode, models, neverPrompt } = options;
+  
+  // Set environment variable to prevent prompting in tests
+  if (neverPrompt) {
+    process.env.VIBECHECK_NEVER_PROMPT = 'true';
+  }
 
   if (!file) {
     console.error(chalk.redBright('Error: --file option is required'));
@@ -82,29 +99,59 @@ export async function runCommand(options: RunOptions) {
     try {
       data = yaml.load(fileContent);
     } catch (yamlError: any) {
-      spinner.fail(chalk.redBright('Failed to parse YAML file 🚩'));
+      spinner.fail(chalk.redBright('Failed to parse YAML file'));
       console.error(chalk.redBright('\nYAML syntax error:'));
       console.error(chalk.redBright(`  ${yamlError.message}`));
+      
+      // Provide specific guidance for duplicate key errors
+      if (yamlError.message && yamlError.message.includes('duplicated mapping key')) {
+        console.error(chalk.yellow('\n💡 Multiple patterns detected:'));
+        console.error(chalk.gray('  Instead of multiple keys with the same name:'));
+        console.error(chalk.gray('    not_match: "*pattern1*"'));
+        console.error(chalk.gray('    not_match: "*pattern2*"'));
+        console.error(chalk.gray('  Use an array for multiple patterns:'));
+        console.error(chalk.gray('    not_match: ["*pattern1*", "*pattern2*"]'));
+        console.error(chalk.gray('\n  This also applies to "match" patterns.'));
+      }
+      
       console.error(chalk.gray('\nCheck your YAML syntax and try again.'));
       console.error(chalk.gray('See https://github.com/hev/vibecheck?tab=readme-ov-file#yaml-syntax-reference for help.'));
       process.exit(1);
     }
 
-    // Check for old format (array of checks with type field)
+    // Check for legacy object-based format (old DSL format no longer supported)
     if (data && typeof data === 'object' && 'evals' in data && Array.isArray(data.evals)) {
       for (const evalItem of data.evals) {
-        if (evalItem && typeof evalItem === 'object' && 'checks' in evalItem && Array.isArray(evalItem.checks)) {
-          for (const check of evalItem.checks) {
-            if (check && typeof check === 'object' && 'type' in check) {
-              spinner.fail(chalk.redBright('Old YAML format detected 🚩'));
-              console.error(chalk.redBright('\nPlease update your YAML file to use the new syntax.'));
-              console.error(chalk.gray('See https://github.com/hev/vibecheck?tab=readme-ov-file#yaml-syntax-reference for migration guide.\n'));
-              console.error(chalk.yellow('Key changes:'));
-              console.error(chalk.gray('  - checks is now an object, not an array'));
-              console.error(chalk.gray('  - string_contains → match (supports glob and regex patterns)'));
-              console.error(chalk.gray('  - semantic_similarity → semantic'));
-              console.error(chalk.gray('  - token_length → min_tokens/max_tokens'));
-              console.error(chalk.gray('  - system_prompt is now optional'));
+        if (evalItem && typeof evalItem === 'object' && 'checks' in evalItem) {
+          const checks = evalItem.checks;
+          // Legacy format: checks is an object with properties like match, min_tokens, etc.
+          // New format: checks is an array or { or: [...] }
+          if (checks && typeof checks === 'object' && !Array.isArray(checks) && !('or' in checks)) {
+            // Check if it has any of the old property-based check keys
+            const legacyKeys = ['match', 'not_match', 'min_tokens', 'max_tokens', 'semantic', 'llm_judge'];
+            const hasLegacyFormat = legacyKeys.some(key => key in checks);
+            
+            if (hasLegacyFormat) {
+              spinner.fail(chalk.redBright('Legacy DSL format detected'));
+              console.error(chalk.redBright('\nThe object-based checks format is no longer supported.'));
+              console.error(chalk.redBright('Please update your YAML file to use the new array-based format.\n'));
+              console.error(chalk.yellow('Migration Guide:'));
+              console.error(chalk.gray('\nOld format (object-based):'));
+              console.error(chalk.gray('  checks:'));
+              console.error(chalk.gray('    match: "*hello*"'));
+              console.error(chalk.gray('    min_tokens: 1'));
+              console.error(chalk.gray('    max_tokens: 50'));
+              console.error(chalk.gray('\nNew format (array-based for AND):'));
+              console.error(chalk.gray('  checks:'));
+              console.error(chalk.gray('    - match: "*hello*"'));
+              console.error(chalk.gray('    - min_tokens: 1'));
+              console.error(chalk.gray('    - max_tokens: 50'));
+              console.error(chalk.gray('\nFor OR checks, use:'));
+              console.error(chalk.gray('  checks:'));
+              console.error(chalk.gray('    or:'));
+              console.error(chalk.gray('      - match: "*option1*"'));
+              console.error(chalk.gray('      - match: "*option2*"'));
+              console.error(chalk.gray('\nSee CLI docs for more details.'));
               process.exit(1);
             }
           }
@@ -116,7 +163,7 @@ export async function runCommand(options: RunOptions) {
     const parseResult = EvalSuiteSchema.safeParse(data);
 
     if (!parseResult.success) {
-      spinner.fail(chalk.redBright('Invalid YAML format 🚩'));
+      spinner.fail(chalk.redBright('Invalid YAML format'));
       console.error(chalk.redBright('\nValidation errors:'));
       parseResult.error.errors.forEach(err => {
         console.error(chalk.redBright(`  - ${err.path.join('.')}: ${err.message}`));
@@ -125,11 +172,89 @@ export async function runCommand(options: RunOptions) {
     }
 
     const evalSuite = parseResult.data;
-    spinner.succeed(chalk.green('Evaluation file loaded successfully ✨'));
+    spinner.succeed(chalk.green('Evaluation file loaded successfully'));
 
     // Warning for missing system_prompt
     if (!evalSuite.metadata.system_prompt) {
       console.log(chalk.yellow('⚠️  Warning: system_prompt is optional but recommended for better results'));
+    }
+
+    // Inform when a model flag is provided with -f/--file (file-based run)
+    // because file-based runs use the YAML's model and ignore the CLI model.
+    if (options.model && (!models || models.length <= 1)) {
+      const providedModel = Array.isArray(options.model)
+        ? options.model.join(', ')
+        : options.model;
+      const yamlModel = evalSuite.metadata?.model;
+      const suiteName = evalSuite.metadata?.name;
+
+      if (providedModel) {
+        console.log(
+          chalk.yellow(
+            `Note: Ignoring model "${providedModel}" for file-based run ${file}. Using YAML model "${yamlModel}".`
+          )
+        );
+        if (suiteName) {
+          console.log(
+            chalk.gray(
+              `Tip: To run this suite on "${providedModel}", use: vibe check ${suiteName} -m ${providedModel}`
+            )
+          );
+        }
+      }
+    }
+
+    // Handle multi-model execution
+    if (models && models.length > 1) {
+      console.log(chalk.blue(`Running evaluation on ${models.length} models: ${models.join(', ')}`));
+      
+      const runIds: string[] = [];
+      for (const model of models) {
+        try {
+          // Create a copy of the evalSuite with the specific model
+          const modelEvalSuite = {
+            ...evalSuite,
+            metadata: {
+              ...evalSuite.metadata,
+              model: model
+            }
+          };
+
+          const requestPayload = {
+            evalSuite: modelEvalSuite,
+            yamlContent: fileContent
+          };
+
+          if (debug) {
+            console.log(chalk.cyan(`[DEBUG] Starting run for model: ${model}`));
+          }
+
+          const response = await axios.post(`${getApiUrl()}/api/eval/run`, requestPayload, {
+            headers: getAuthHeaders()
+          });
+
+          if (response.data.error) {
+            const errorMsg = typeof response.data.error === 'string'
+              ? response.data.error
+              : response.data.error.message || JSON.stringify(response.data.error);
+            console.error(chalk.redBright(`API Error for model ${model}: ${errorMsg}`));
+            continue; // Continue with other models
+          }
+
+          const runId = response.data.runId;
+          runIds.push(runId);
+          console.log(chalk.green(`Run started for ${model}! Run ID: ${runId}`));
+        } catch (error: any) {
+          console.error(chalk.redBright(`Failed to start run for model ${model}: ${error.message}`));
+          continue; // Continue with other models
+        }
+      }
+
+      console.log(chalk.cyan(`\nAll runs started! Check status with:`));
+      runIds.forEach((runId, index) => {
+        console.log(chalk.gray(`  vibe get run ${runId}  # ${models[index]}`));
+      });
+      process.exit(0);
     }
 
     const requestPayload = {
@@ -143,13 +268,13 @@ export async function runCommand(options: RunOptions) {
       if (debugHeaders['X-API-KEY']) {
         debugHeaders['X-API-KEY'] = `${debugHeaders['X-API-KEY'].substring(0, 10)}...`;
       }
-      console.log(chalk.cyan('\n[DEBUG] Request to:'), `${API_URL}/api/eval/run`);
+      console.log(chalk.cyan('\n[DEBUG] Request to:'), `${getApiUrl()}/api/eval/run`);
       console.log(chalk.cyan('[DEBUG] Headers:'), JSON.stringify(debugHeaders, null, 2));
       console.log(chalk.cyan('[DEBUG] Request payload:'), JSON.stringify(requestPayload, null, 2));
       console.log();
     }
 
-    const response = await axios.post(`${API_URL}/api/eval/run`, requestPayload, {
+    const response = await axios.post(`${getApiUrl()}/api/eval/run`, requestPayload, {
       headers: getAuthHeaders()
     });
 
@@ -163,7 +288,7 @@ export async function runCommand(options: RunOptions) {
       const errorMsg = typeof response.data.error === 'string'
         ? response.data.error
         : response.data.error.message || JSON.stringify(response.data.error);
-      console.error(chalk.redBright(`API Error 🚩: ${errorMsg}`));
+      console.error(chalk.redBright(`API Error: ${errorMsg}`));
       process.exit(1);
     }
 
@@ -171,19 +296,19 @@ export async function runCommand(options: RunOptions) {
 
     // If async mode, exit immediately after starting the run
     if (asyncMode) {
-      console.log(chalk.green(`✨ Run started successfully!`));
+      console.log(chalk.green(`Run started successfully!`));
       console.log(chalk.cyan(`Run ID: ${runId}`));
       console.log(chalk.gray(`\nCheck status with: vibe get run ${runId}`));
       process.exit(0);
     }
 
-    console.log(chalk.blue(`Checking vibes... Run ID: ${runId}\n`));
+    console.log(chalk.blue(`Running evaluation... Run ID: ${runId}\n`));
 
     // Stream results using EventSource or polling
     await streamResults(runId, debug, fileContent);
 
   } catch (error: any) {
-    spinner.fail(chalk.redBright('Failed to check vibes 🚩'));
+    spinner.fail(chalk.redBright('Failed to run evaluation'));
 
     // Handle network errors first
     if (isNetworkError(error)) {
@@ -193,10 +318,13 @@ export async function runCommand(options: RunOptions) {
 
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
-      displayInvitePrompt();
-      try {
-        spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
-      } catch {}
+      const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
+      if (!neverPrompt) {
+        displayInvitePrompt();
+        try {
+          spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+        } catch {}
+      }
       process.exit(1);
     } else if (error.response?.status === 402) {
       const errorMsg = error.response.data?.error?.message ||
@@ -228,13 +356,13 @@ export async function runSuiteInteractiveMode(options: SuiteRunOptions) {
 }
 
 export async function runSuiteCommand(options: SuiteRunOptions) {
-  const { suiteName, model, systemPrompt, threads, mcpUrl, mcpName, mcpToken, debug, async: asyncMode } = options;
+  const { suiteName, model, models, systemPrompt, threads, mcpUrl, mcpName, mcpToken, debug, async: asyncMode } = options;
 
   const spinner = ora(`Fetching suite "${suiteName}"...`).start();
 
   try {
     // Fetch suite from API
-    const suiteResponse = await axios.get(`${API_URL}/api/suite/${encodeURIComponent(suiteName)}`, {
+    const suiteResponse = await axios.get(`${getApiUrl()}/api/suite/${encodeURIComponent(suiteName)}`, {
       headers: getAuthHeaders()
     });
 
@@ -246,14 +374,36 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
     const suite = suiteResponse.data.suite;
     spinner.text = 'Parsing suite...';
 
-    // Parse YAML content from the suite
-    const data = yaml.load(suite.yamlContent);
+    // Parse YAML content from the suite with specific error handling
+    let data;
+    try {
+      data = yaml.load(suite.yamlContent);
+    } catch (yamlError: any) {
+      spinner.fail(chalk.redBright('Failed to parse suite YAML'));
+      console.error(chalk.redBright('\nYAML syntax error:'));
+      console.error(chalk.redBright(`  ${yamlError.message}`));
+      
+      // Provide specific guidance for duplicate key errors
+      if (yamlError.message && yamlError.message.includes('duplicated mapping key')) {
+        console.error(chalk.yellow('\n💡 Multiple patterns detected:'));
+        console.error(chalk.gray('  Instead of multiple keys with the same name:'));
+        console.error(chalk.gray('    not_match: "*pattern1*"'));
+        console.error(chalk.gray('    not_match: "*pattern2*"'));
+        console.error(chalk.gray('  Use an array for multiple patterns:'));
+        console.error(chalk.gray('    not_match: ["*pattern1*", "*pattern2*"]'));
+        console.error(chalk.gray('\n  This also applies to "match" patterns.'));
+      }
+      
+      console.error(chalk.gray('\nCheck your YAML syntax and try again.'));
+      console.error(chalk.gray('See https://github.com/hev/vibecheck?tab=readme-ov-file#yaml-syntax-reference for help.'));
+      process.exit(1);
+    }
 
     // Validate YAML structure
     const parseResult = EvalSuiteSchema.safeParse(data);
 
     if (!parseResult.success) {
-      spinner.fail(chalk.redBright('Invalid suite format 🚩'));
+      spinner.fail(chalk.redBright('Invalid suite format'));
       console.error(chalk.redBright('\nValidation errors:'));
       parseResult.error.errors.forEach(err => {
         console.error(chalk.redBright(`  - ${err.path.join('.')}: ${err.message}`));
@@ -265,7 +415,7 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
     spinner.text = 'Applying overrides...';
 
     // Apply metadata overrides
-    if (model) {
+    if (model && typeof model === 'string') {
       evalSuite.metadata.model = model;
     }
     if (systemPrompt !== undefined) {
@@ -284,11 +434,64 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
       };
     }
 
-    spinner.succeed(chalk.green(`Suite "${suiteName}" loaded successfully ✨`));
+    spinner.succeed(chalk.green(`Suite "${suiteName}" loaded successfully`));
 
     // Warning for missing system_prompt
     if (!evalSuite.metadata.system_prompt) {
       console.log(chalk.yellow('⚠️  Warning: system_prompt is optional but recommended for better results'));
+    }
+
+    // Handle multi-model execution
+    if (models && models.length > 1) {
+      console.log(chalk.blue(`Running suite "${suiteName}" on ${models.length} models: ${models.join(', ')}`));
+      
+      const runIds: string[] = [];
+      for (const modelName of models) {
+        try {
+          // Create a copy of the evalSuite with the specific model
+          const modelEvalSuite = {
+            ...evalSuite,
+            metadata: {
+              ...evalSuite.metadata,
+              model: modelName
+            }
+          };
+
+          const requestPayload = {
+            evalSuite: modelEvalSuite,
+            yamlContent: suite.yamlContent
+          };
+
+          if (debug) {
+            console.log(chalk.cyan(`[DEBUG] Starting run for model: ${modelName}`));
+          }
+
+          const response = await axios.post(`${getApiUrl()}/api/eval/run`, requestPayload, {
+            headers: getAuthHeaders()
+          });
+
+          if (response.data.error) {
+            const errorMsg = typeof response.data.error === 'string'
+              ? response.data.error
+              : response.data.error.message || JSON.stringify(response.data.error);
+            console.error(chalk.redBright(`API Error for model ${modelName} 🚩: ${errorMsg}`));
+            continue; // Continue with other models
+          }
+
+          const runId = response.data.runId;
+          runIds.push(runId);
+          console.log(chalk.green(`Run started for ${modelName}! Run ID: ${runId}`));
+        } catch (error: any) {
+          console.error(chalk.redBright(`Failed to start run for model ${modelName}: ${error.message}`));
+          continue; // Continue with other models
+        }
+      }
+
+      console.log(chalk.cyan(`\nAll runs started! Check status with:`));
+      runIds.forEach((runId, index) => {
+        console.log(chalk.gray(`  vibe get run ${runId}  # ${models[index]}`));
+      });
+      process.exit(0);
     }
 
     const requestPayload = {
@@ -302,13 +505,13 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
       if (debugHeaders['X-API-KEY']) {
         debugHeaders['X-API-KEY'] = `${debugHeaders['X-API-KEY'].substring(0, 10)}...`;
       }
-      console.log(chalk.cyan('\n[DEBUG] Request to:'), `${API_URL}/api/eval/run`);
+      console.log(chalk.cyan('\n[DEBUG] Request to:'), `${getApiUrl()}/api/eval/run`);
       console.log(chalk.cyan('[DEBUG] Headers:'), JSON.stringify(debugHeaders, null, 2));
       console.log(chalk.cyan('[DEBUG] Request payload:'), JSON.stringify(requestPayload, null, 2));
       console.log();
     }
 
-    const response = await axios.post(`${API_URL}/api/eval/run`, requestPayload, {
+    const response = await axios.post(`${getApiUrl()}/api/eval/run`, requestPayload, {
       headers: getAuthHeaders()
     });
 
@@ -322,7 +525,7 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
       const errorMsg = typeof response.data.error === 'string'
         ? response.data.error
         : response.data.error.message || JSON.stringify(response.data.error);
-      console.error(chalk.redBright(`API Error 🚩: ${errorMsg}`));
+      console.error(chalk.redBright(`API Error: ${errorMsg}`));
       process.exit(1);
     }
 
@@ -330,19 +533,19 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
 
     // If async mode, exit immediately after starting the run
     if (asyncMode) {
-      console.log(chalk.green(`✨ Run started successfully!`));
+      console.log(chalk.green(`Run started successfully!`));
       console.log(chalk.cyan(`Run ID: ${runId}`));
       console.log(chalk.gray(`\nCheck status with: vibe get run ${runId}`));
       process.exit(0);
     }
 
-    console.log(chalk.blue(`Checking vibes... Run ID: ${runId}\n`));
+    console.log(chalk.blue(`Running evaluation... Run ID: ${runId}\n`));
 
     // Stream results using existing function
     await streamResults(runId, debug, suite.yamlContent);
 
   } catch (error: any) {
-    spinner.fail(chalk.redBright('Failed to check vibes 🚩'));
+    spinner.fail(chalk.redBright('Failed to run evaluation'));
 
     // Handle network errors first
     if (isNetworkError(error)) {
@@ -352,10 +555,13 @@ export async function runSuiteCommand(options: SuiteRunOptions) {
 
     // Handle specific HTTP error codes
     if (error.response?.status === 401 || error.response?.status === 403) {
-      displayInvitePrompt();
-      try {
-        spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
-      } catch {}
+      const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
+      if (!neverPrompt) {
+        displayInvitePrompt();
+        try {
+          spawnSync('vibe', ['redeem'], { stdio: 'inherit' });
+        } catch {}
+      }
       process.exit(1);
     } else if (error.response?.status === 404) {
       console.error(chalk.redBright(`\nSuite "${suiteName}" not found`));
@@ -395,11 +601,11 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
   let totalTimeMs: number | undefined;
 
   // Create spinner for polling
-  const spinner = ora('Checking vibes...').start();
+  const spinner = ora('Running evaluation...').start();
 
   while (!completed) {
     try {
-      const response = await axios.get(`${API_URL}/api/eval/status/${runId}`, {
+      const response = await axios.get(`${getApiUrl()}/api/eval/status/${runId}`, {
         headers: getAuthHeaders()
       });
 
@@ -422,7 +628,7 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
           console.log(chalk.green(`Saving new eval suite: ${suiteName}`));
         }
         console.log();
-        console.log(chalk.bold.cyan(`✨ Checking vibes for: ${suiteName}`));
+        console.log(chalk.bold.cyan(`Running evaluation: ${suiteName}`));
         console.log(chalk.bold.cyan(`Model: ${model}`));
         console.log(chalk.bold.cyan(`System prompt: ${systemPrompt}`));
         console.log();
@@ -458,7 +664,7 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
       } else if (status === 'failed') {
         spinner.stop();
         const errorMsg = statusError?.message || statusError || 'All evaluations failed due to execution errors';
-        console.error(chalk.redBright(`\n🚩 ${errorMsg}`));
+        console.error(chalk.redBright(`\n❌ ${errorMsg}`));
         completed = true;
         process.exit(1);
       } else if (status === 'partial_failure') {
@@ -518,7 +724,7 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
       } else if (status === 'error') {
         spinner.stop();
         const errorMsg = statusError?.message || statusError || 'Vibe check failed';
-        console.error(chalk.redBright(`\n🚩 ${errorMsg}`));
+        console.error(chalk.redBright(`\n❌ ${errorMsg}`));
         completed = true;
         process.exit(1);
       }
@@ -542,7 +748,10 @@ async function streamResults(runId: string, debug?: boolean, yamlContent?: strin
       
       // Handle specific HTTP error codes
       if (error.response?.status === 401 || error.response?.status === 403) {
-        displayInvitePrompt();
+        const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
+        if (!neverPrompt) {
+          displayInvitePrompt();
+        }
         process.exit(1);
       } else if (error.response?.status === 402) {
         const errorMsg = error.response.data?.error?.message ||
@@ -583,42 +792,54 @@ function displayResults(results: EvalResult[]) {
     console.log(chalk.gray(`Response: ${result.response}`));
 
     result.checkResults.forEach((cond: ConditionalResult) => {
-      const status = cond.passed ? chalk.green('✅ PASS') : chalk.redBright('🚩 FAIL');
-      const details = formatConditionalDetails(cond, result.response);
-
-      // Apply different coloring based on conditional type
-      if (cond.type === 'llm_judge') {
-        // Show llm_judge details on the line below in gray
-        console.log(`  ${status} ${cond.type.padEnd(25)}`);
-        if (typeof details === 'string') {
-          console.log(`      ${chalk.gray(details)}`);
-        }
-      } else if (cond.type === 'match' || cond.type === 'not_match') {
-        // Handle match/not_match with snippet in gray (no highlighting)
-        if (typeof details === 'object' && 'text' in details) {
-          const { text } = details;
-          console.log(`  ${status} ${cond.type.padEnd(25)} ${chalk.gray(text)}`);
-        } else {
-          console.log(`  ${status} ${cond.type.padEnd(25)} ${chalk.gray(details as string)}`);
-        }
-      } else if (cond.type === 'semantic') {
-        // Green for passed, red only for failed
-        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
-        console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
-      } else if (cond.type === 'min_tokens' || cond.type === 'max_tokens') {
-        // Handle token length checks
-        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
-        console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
-      } else {
-        // Default: use pass/fail colors
-        const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
-        console.log(`  ${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
-      }
+      displayConditionalResult(cond, result.response, 2);
     });
 
-    const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.redBright('🚩 FAIL');
+    const overallStatus = result.passed ? chalk.green('✅ PASS') : chalk.redBright('❌ FAIL');
     console.log(`  Overall: ${overallStatus}`);
   });
+}
+
+function displayConditionalResult(cond: ConditionalResult, response: string, indent: number = 2) {
+  const indentStr = ' '.repeat(indent);
+  const status = cond.passed ? chalk.green('✅ PASS') : chalk.redBright('❌ FAIL');
+  const details = formatConditionalDetails(cond, response);
+
+  // Apply different coloring based on conditional type
+  if (cond.type === 'llm_judge') {
+    // Show llm_judge details on the line below in gray
+    console.log(`${indentStr}${status} ${cond.type.padEnd(25)}`);
+    if (typeof details === 'string') {
+      console.log(`${indentStr}    ${chalk.gray(details)}`);
+    }
+  } else if (cond.type === 'match' || cond.type === 'not_match') {
+    // Handle match/not_match with snippet in gray (no highlighting)
+    if (typeof details === 'object' && 'text' in details) {
+      const { text } = details;
+      console.log(`${indentStr}${status} ${cond.type.padEnd(25)} ${chalk.gray(text)}`);
+    } else {
+      console.log(`${indentStr}${status} ${cond.type.padEnd(25)} ${chalk.gray(details as string)}`);
+    }
+  } else if (cond.type === 'semantic') {
+    // Green for passed, red only for failed
+    const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
+    console.log(`${indentStr}${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
+  } else if (cond.type === 'min_tokens' || cond.type === 'max_tokens') {
+    // Handle token length checks
+    const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
+    console.log(`${indentStr}${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
+  } else {
+    // Default: use pass/fail colors
+    const coloredDetails = cond.passed ? chalk.green(details as string) : chalk.redBright(details as string);
+    console.log(`${indentStr}${status} ${cond.type.padEnd(25)} ${coloredDetails}`);
+  }
+
+  // Display child results if present (for OR checks, etc.)
+  if (cond.children && cond.children.length > 0) {
+    cond.children.forEach((child: ConditionalResult) => {
+      displayConditionalResult(child, response, indent + 2);
+    });
+  }
 }
 
 function formatConditionalDetails(cond: ConditionalResult, response: string): string | { text: string; highlight: string } {

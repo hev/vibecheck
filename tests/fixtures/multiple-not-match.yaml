@@ -1,0 +1,14 @@
+metadata:
+  name: multiple-not-match-test
+  model: anthropic/claude-3-5-sonnet-20241022
+  system_prompt: You are a helpful assistant.
+
+evals:
+  - prompt: "What is a retirement account?"
+    checks:
+      - not_match: "*adviceSetId*"
+      - not_match: "*Taffrail*"
+      - match: "*retirement*"
+      - min_tokens: 5
+      - max_tokens: 100
+

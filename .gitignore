@@ -161,3 +161,6 @@ vite.config.ts.timestamp-*
 
 # Scripts for running eval examples
 scripts/run-all-evals.sh
+
+# Cursor IDE files
+.cursor/

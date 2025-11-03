@@ -79,18 +79,20 @@ This project uses playful internet slang terminology:
 
 **Command Structure:**
 - `vibe check` (or `vibes check`) - Run evaluations
-- `vibe set` - Save a suite
-- `vibe get` - List or retrieve resources (suites, runs, models, org)
+- `vibe set suite` - Save a suite
+- `vibe get` - List or retrieve resources (suites, runs, models, org, vars)
+- `vibe delete` - Delete resources (vars, secrets)
 - `vibe redeem` - Redeem invite codes
 
 **Results:**
-- ✨ **good vibes** = 100% pass rate
-- 😬 **sketchy vibes** = ≥80% pass rate
-- 🚩 **bad vibes** = <80% pass rate
+Success rates are displayed with color coding:
+- **Green** (>80% pass rate) - High success rate
+- **Yellow** (50-80% pass rate) - Moderate success rate
+- **Red** (<50% pass rate) - Low success rate
 
 **Individual Conditionals:**
 - ✅ **PASS** - Check passed
-- 🚩 **FAIL** - Check failed
+- ❌ **FAIL** - Check failed
 
 ### Evaluation Suite Format
 
@@ -109,18 +111,18 @@ metadata:
 evals:
   - prompt: Question to ask the model
     checks:
-      match: "*expected text*"  # glob pattern matching
-      not_match: "*unwanted text*"  # negated patterns
-      or:  # OR operator for multiple patterns
-        - match: "*option1*"
-        - match: "*option2*"
-      min_tokens: 10
-      max_tokens: 100
-      semantic:
-        expected: "semantic target"
-        threshold: 0.8
-      llm_judge:
-        criteria: "what to judge"
+      - match: "*expected text*"  # glob pattern matching
+      - not_match: "*unwanted text*"  # negated patterns
+      - or:  # OR operator for multiple patterns
+          - match: "*option1*"
+          - match: "*option2*"
+      - min_tokens: 10
+      - max_tokens: 100
+      - semantic:
+          expected: "semantic target"
+          threshold: 0.8
+      - llm_judge:
+          criteria: "what to judge"
 ```
 
 ### Check Types
@@ -136,12 +138,12 @@ evals:
 
 ### Check Logic
 
-**AND Logic (Implicit)**: Multiple checks at the same level must ALL pass
+**AND Logic (Array Format)**: Multiple checks in an array must ALL pass
 ```yaml
 checks:
-  match: "*hello*"      # AND
-  min_tokens: 5         # AND
-  max_tokens: 100       # AND
+  - match: "*hello*"      # AND
+  - min_tokens: 5         # AND
+  - max_tokens: 100       # AND
 ```
 
 **OR Logic (Explicit)**: Use the `or:` field when you want ANY of the patterns to pass
@@ -156,11 +158,45 @@ checks:
 **Combined Logic**: You can mix AND and OR logic
 ```yaml
 checks:
-  min_tokens: 10        # AND (must pass)
-  or:                   # OR (one of these must pass)
-    - match: "*hello*"
-    - match: "*hi*"
+  - min_tokens: 10        # AND (must pass)
+  - or:                   # OR (one of these must pass)
+      - match: "*hello*"
+      - match: "*hi*"
 ```
+
+### CLI Command Pattern
+
+All CLI commands follow the `vibe <verb> <noun>` pattern for consistency and clarity.
+
+**Standard Pattern:** `vibe <verb> <noun> [arguments] [options]`
+
+**Verbs:**
+- `check` - Run evaluations
+- `get` - Retrieve/list resources
+- `set` - Create/update resources
+- `delete` - Remove resources
+- `stop` - Stop/cancel operations
+- `redeem` - Redeem invite codes
+
+**Nouns:**
+- `suite` - Evaluation suites
+- `runs` / `run` - Evaluation runs
+- `models` - Available models
+- `org` / `credits` - Organization info
+- `var` / `vars` - Runtime variables
+- `secret` / `secrets` - Runtime secrets
+
+**Examples:**
+```bash
+vibe check <suite-name>          # Verb: check, Noun: suite-name
+vibe get suite <name>            # Verb: get, Noun: suite
+vibe get vars                    # Verb: get, Noun: vars (plural for list)
+vibe set var <name> <value>      # Verb: set, Noun: var
+vibe delete secret <name>        # Verb: delete, Noun: secret
+vibe stop queued                 # Verb: stop, Noun: queued (special case)
+```
+
+This pattern makes commands predictable and easy to discover through tab completion and help text.
 
 ## CLI Commands Reference
 
@@ -186,18 +222,43 @@ vibe check  # Auto-detect evals.yaml, eval.yaml, evals.yml, eval.yml
 - Use `:exit` or `:quit` to exit
 - Auto-detects files and shows content
 
-### `vibe set` - Save Suites
+### `vibe set` - Create/Update Resources
 
-Save an evaluation suite from a YAML file.
+Create or update resources (suites, variables, secrets).
 
+#### Suites
 ```bash
-vibe set -f my-eval.yaml
-vibe set -f my-eval.yaml --debug
+vibe set suite -f my-eval.yaml
+vibe set suite -f my-eval.yaml --debug
 ```
 
 **Options:**
 - `-f, --file <path>` - Path to YAML file (required)
 - `-d, --debug` - Enable debug logging (hidden option)
+
+#### Variables
+```bash
+vibe set var <name> <value>
+vibe set var <name> <value> --debug
+```
+
+Sets or updates a runtime variable. The API handles upsert logic.
+
+**Arguments:**
+- `<name>` - Variable name (required)
+- `<value>` - Variable value (required)
+
+#### Secrets
+```bash
+vibe set secret <name> <value>
+vibe set secret <name> <value> --debug
+```
+
+Sets or updates a runtime secret. The API handles upsert logic.
+
+**Arguments:**
+- `<name>` - Secret name (required)
+- `<value>` - Secret value (required)
 
 ### `vibe get` - List/Retrieve Resources
 
@@ -237,10 +298,49 @@ vibe get org                      # Organization info
 vibe get credits                  # Credits/usage info
 ```
 
+#### Variables
+```bash
+vibe get vars                     # List all variables (name=value format)
+vibe get var <name>               # Get specific variable value
+```
+
+**Arguments:**
+- `<name>` - Variable name (required for `vibe get var`)
+
+#### Secrets
+```bash
+vibe get secrets                  # List all secrets (names only, no values)
+vibe get secret <name>            # Error: Secret values cannot be read
+```
+
+Secret values are write-only for security reasons. You can list secret names with `vibe get secrets`, but individual secret values cannot be retrieved. Use `vibe set secret` to create/update and `vibe delete secret` to remove.
+
 **Common Options:**
 - `-l, --limit <number>` - Limit results (default: 50)
 - `-o, --offset <number>` - Offset for pagination (default: 0)
 - `-d, --debug` - Enable debug logging (hidden option)
+
+### `vibe delete` - Remove Resources
+
+Delete variables or secrets.
+
+#### Variables
+```bash
+vibe delete var <name>
+vibe delete var <name> --debug
+```
+
+**Arguments:**
+- `<name>` - Variable name (required)
+
+#### Secrets
+```bash
+vibe delete secret <name>
+vibe delete secret <name> --debug
+```
+
+**Arguments:**
+- `<name>` - Secret name (required)
 
 ### `vibe redeem` - Redeem Invite Codes
 
@@ -356,8 +456,8 @@ Create a configuration file at `~/.vibecheck/.env`:
 # Required: Get your API key at https://vibescheck.io
 VIBECHECK_API_KEY=your-api-key-here
 
-# Optional: Override the API URL (defaults to production)
-VIBECHECK_URL=https://api.vibescheck.io
+# Optional: Override the API URL (defaults to production Cloud Run)
+VIBECHECK_URL=https://vibecheck-api-prod-681369865361.us-central1.run.app
 ```
 
 Quick setup:
@@ -404,7 +504,7 @@ The project uses **Jest** with TypeScript for testing. Tests are organized into 
 - **Display Utilities** (`utils/display.test.ts`)
   - Summary formatting
   - Pass/fail rate calculations
-  - Vibe rating logic (good/sketchy/bad vibes)
+  - Success rate calculation and color coding
   - Visual bar charts
   - Text truncation
 
@@ -421,6 +521,15 @@ The project uses **Jest** with TypeScript for testing. Tests are organized into 
   - Missing API key scenarios
 
 Uses **nock** for HTTP mocking to simulate API responses.
+
+**⚠️ Interactive Commands Cannot Be Tested:**
+
+DO NOT add test coverage for these interactive commands:
+- `packages/cli/src/commands/interactive-run.ts` - Interactive mode with terminal UI
+- `packages/cli/src/commands/onboarding.ts` - Interactive onboarding flow
+- `packages/cli/src/ui/interactive.ts` - Blessed-based terminal UI
+
+These commands use terminal UI libraries (`blessed`, `readline`) that cause Jest to hang even with mocks. They are excluded from test coverage via `jest.config.js` `testPathIgnorePatterns`.
 
 #### 3. E2E Tests (`tests/e2e/**/*.test.ts`)
 
@@ -522,9 +631,9 @@ describe('My Feature Integration', () => {
 The CLI provides rich, colored output:
 - **Blue** - Prompts
 - **Gray** - Responses
-- **Green** - Passed items, good vibes
-- **Yellow** - Sketchy vibes (≥80%)
-- **Red** - Failed items, bad vibes
+- **Green** - Passed items, high success rate
+- **Yellow** - Moderate success rate (50-80%)
+- **Red** - Failed items, low success rate
 
 Summary uses GitHub-style diff notation:
 ```
@@ -571,7 +680,7 @@ npm run test:coverage
 
 - The CLI supports both `vibe` and `vibes` commands (aliases)
 - Documentation consistently uses `vibe` for clarity
-- Exit code 1 when vibe rating < 80%
+- Exit code 1 when success rate < 50%
 - Results are streamed in real-time via polling
 - The CLI is **open source (MIT)** - encourage contributions!
 - Get your API key at **vibescheck.io**

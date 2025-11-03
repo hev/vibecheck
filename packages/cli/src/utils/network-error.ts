@@ -4,17 +4,29 @@ import chalk from 'chalk';
  * Detects if an error is a network/connection error
  */
 export function isNetworkError(error: any): boolean {
+  // If error has a response property, it means we got a response from the server
+  // (even if it's an error status like 401, 500, etc.), so it's NOT a network error
+  if (error.response) {
+    return false;
+  }
+  
   // Check for common network error codes
   const networkErrorCodes = ['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNABORTED'];
   
-  // Check for axios network errors (no response property)
-  if (!error.response) {
+  // If there's no response and we have a network error code, it's a network error
+  if (error.code && networkErrorCodes.includes(error.code)) {
     return true;
   }
   
-  // Check for specific error codes
-  if (error.code && networkErrorCodes.includes(error.code)) {
-    return true;
+  // Axios network errors (no response and no status) are network errors
+  // But be careful: axios errors with status codes are HTTP errors, not network errors
+  if (!error.response && !error.status && error.message) {
+    // Check if it looks like a network error message
+    const networkErrorMessages = ['network', 'timeout', 'ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT'];
+    const lowerMessage = error.message.toLowerCase();
+    if (networkErrorMessages.some(msg => lowerMessage.includes(msg.toLowerCase()))) {
+      return true;
+    }
   }
   
   return false;

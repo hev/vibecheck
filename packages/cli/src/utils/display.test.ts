@@ -47,9 +47,9 @@ describe('Display Utilities', () => {
       // Check that console.log was called
       expect(mockConsoleLog).toHaveBeenCalled();
 
-      // Check for vibe status message (100% pass rate)
+      // Check for success percentage (100% pass rate)
       const calls = mockConsoleLog.mock.calls.map((call: any) => call[0]).join('\n');
-      expect(calls).toContain('good vibes');
+      expect(calls).toContain('Success Pct');
       expect(calls).toContain('100.0%');
     });
 
@@ -70,11 +70,11 @@ describe('Display Utilities', () => {
       await displaySummary(results, 1500);
 
       const calls = mockConsoleLog.mock.calls.map((call: any) => call[0]).join('\n');
-      expect(calls).toContain('bad vibes');
+      expect(calls).toContain('Success Pct');
       expect(calls).toContain('0.0%');
     });
 
-    it('should display summary for mixed results (sketchy vibes)', async () => {
+    it('should display summary for mixed results (50-80% pass rate)', async () => {
       const results: EvalResult[] = [
         {
           evalName: 'test-1',
@@ -126,11 +126,11 @@ describe('Display Utilities', () => {
       await displaySummary(results);
 
       const calls = mockConsoleLog.mock.calls.map((call: any) => call[0]).join('\n');
-      expect(calls).toContain('sketchy vibes');
+      expect(calls).toContain('Success Pct');
       expect(calls).toContain('80.0%');
     });
 
-    it('should display summary for results below 50% (bad vibes)', async () => {
+    it('should display summary for results below 50%', async () => {
       const results: EvalResult[] = [
         {
           evalName: 'test-1',
@@ -155,7 +155,7 @@ describe('Display Utilities', () => {
       await displaySummary(results);
 
       const calls = mockConsoleLog.mock.calls.map((call: any) => call[0]).join('\n');
-      expect(calls).toContain('sketchy vibes');
+      expect(calls).toContain('Success Pct');
       expect(calls).toContain('50.0%');
     });
 
@@ -283,7 +283,7 @@ describe('Display Utilities', () => {
       await displaySummary(results1);
       let calls = mockConsoleLog.mock.calls.map((call: any) => String(call[0])).join('\n');
       expect(calls).toContain('66.7%');
-      expect(calls).toContain('sketchy vibes');
+      expect(calls).toContain('Success Pct');
 
       mockConsoleLog.mockClear();
 
@@ -292,7 +292,86 @@ describe('Display Utilities', () => {
       await displaySummary(results2);
       calls = mockConsoleLog.mock.calls.map((call: any) => String(call[0])).join('\n');
       expect(calls).toContain('100.0%');
-      expect(calls).toContain('good vibes');
+      expect(calls).toContain('Success Pct');
+    });
+
+    it('should handle child results in OR checks correctly', async () => {
+      const results: EvalResult[] = [
+        {
+          evalName: 'or-check-test',
+          prompt: 'What is 2 + 2?',
+          response: 'The answer is 4',
+          passed: true,
+          checkResults: [
+            {
+              type: 'or',
+              passed: true,
+              message: 'OR check passed',
+              children: [
+                { type: 'match', passed: true, message: 'Pattern "*4*" found' },
+                { type: 'match', passed: false, message: 'Pattern "*four*" not found' },
+                { type: 'min_tokens', passed: true, message: 'Token count 5 (min: 1)' },
+              ],
+            },
+            {
+              type: 'match',
+              passed: true,
+              message: 'Pattern "*4*" found',
+            },
+          ],
+        },
+      ];
+
+      await displaySummary(results);
+
+      const calls = mockConsoleLog.mock.calls.map((call: any) => String(call[0])).join('\n');
+      
+      // Should display summary without errors
+      expect(mockConsoleLog).toHaveBeenCalled();
+      expect(calls).toContain('Success Pct');
+      
+      // The summary should count all checks including child checks for the visual bar
+      // Parent OR check: 1 pass, Child checks: 2 pass, 1 fail, Regular check: 1 pass
+      // Total: 4 pass, 1 fail
+      expect(calls).toContain('100.0%'); // Eval-level pass rate
+    });
+
+    it('should handle nested child results correctly in pass/fail bars', async () => {
+      const results: EvalResult[] = [
+        {
+          evalName: 'nested-check-test',
+          prompt: 'Test prompt',
+          response: 'Test response',
+          passed: false,
+          checkResults: [
+            {
+              type: 'or',
+              passed: false,
+              message: 'OR check failed',
+              children: [
+                { type: 'match', passed: true, message: 'Pattern found' },
+                { type: 'match', passed: false, message: 'Pattern not found' },
+                { type: 'match', passed: false, message: 'Pattern not found' },
+              ],
+            },
+            {
+              type: 'semantic',
+              passed: true,
+              message: 'Similarity 0.85',
+            },
+          ],
+        },
+      ];
+
+      await displaySummary(results);
+
+      const calls = mockConsoleLog.mock.calls.map((call: any) => String(call[0])).join('\n');
+      
+      // Should handle child results without errors
+      expect(mockConsoleLog).toHaveBeenCalled();
+      expect(calls).toContain('Success Pct');
+      // Eval failed, so pass rate should be 0%
+      expect(calls).toContain('0.0%');
     });
   });
 });

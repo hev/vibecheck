@@ -48,7 +48,7 @@ async function truncatePrompt(prompt: string, maxLength: number = 100): Promise<
 export async function displaySummary(results: EvalResult[], totalTimeMs?: number) {
   console.log();
   console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));
-  console.log(chalk.bold('✨ VIBE CHECK SUMMARY ✨'));
+  console.log(chalk.bold('EVALUATION SUMMARY'));
   console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));
   console.log();
 
@@ -86,7 +86,7 @@ export async function displaySummary(results: EvalResult[], totalTimeMs?: number
     // Color the bar and status
     const coloredFailBar = chalk.redBright(failBar);
     const coloredPassBar = chalk.green(passBar);
-    const status = result.passed ? chalk.green('✅') : chalk.redBright('🚩');
+    const status = result.passed ? chalk.green('✅') : chalk.redBright('❌');
 
     console.log(`${paddedName}  ${coloredFailBar}|${coloredPassBar}  ${status} ${timeStr}`);
   });
@@ -100,26 +100,24 @@ export async function displaySummary(results: EvalResult[], totalTimeMs?: number
   console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));
 
   let passRateColor = chalk.redBright;
-  let vibeStatus = '🚩 bad vibes';
   if (passRate > 80) {
     passRateColor = chalk.green;
-    vibeStatus = '✨ good vibes';
   } else if (passRate >= 50) {
     passRateColor = chalk.yellow;
-    vibeStatus = '😬 sketchy vibes';
   }
 
-  console.log(passRateColor(`Vibe Rating: ${passedEvals}/${totalEvals} (${passRate.toFixed(1)}%) - ${vibeStatus}`));
+  console.log(passRateColor(`Success Pct: ${passedEvals}/${totalEvals} (${passRate.toFixed(1)}%)`));
   if (totalTimeMs) {
     console.log(chalk.cyan(`Total Time: ${(totalTimeMs / 1000).toFixed(2)}s`));
   }
   console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));
   console.log();
 
-  // Display vibe status (don't exit with error code - failed evals are valid results)
-  if (passRate < 50) {
-    console.log(chalk.redBright('🚩 Bad vibes detected: Vibe rating below 50%\n'));
+  // Display status message based on eval-level status (not pass rate)
+  const allEvalsPassed = results.every(r => r.passed);
+  if (allEvalsPassed) {
+    console.log(chalk.green('All evals ran successfully\n'));
   } else {
-    console.log(chalk.green('✨ Good vibes all around!\n'));
+    console.log(chalk.redBright('Some evals failed\n'));
   }
 }

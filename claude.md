@@ -456,8 +456,8 @@ Create a configuration file at `~/.vibecheck/.env`:
 # Required: Get your API key at https://vibescheck.io
 VIBECHECK_API_KEY=your-api-key-here
 
-# Optional: Override the API URL (defaults to production)
-VIBECHECK_URL=https://api.vibescheck.io
+# Optional: Override the API URL (defaults to production Cloud Run)
+VIBECHECK_URL=https://vibecheck-api-prod-681369865361.us-central1.run.app
 ```
 
 Quick setup:

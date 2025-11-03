@@ -142,7 +142,7 @@ vibe var delete myvar
 ```
 
 **Environment Variables:**
-- `VIBECHECK_API_URL` or `API_BASE_URL` - API URL (default: `http://localhost:3000`)
+- `VIBECHECK_API_URL` or `API_BASE_URL` - API URL (default: `https://vibecheck-api-prod-681369865361.us-central1.run.app`)
 - `VIBECHECK_API_KEY` or `API_KEY` - Organization API key (required)
 
 ### `vibe secret` - Manage Runtime Secrets
@@ -165,7 +165,7 @@ vibe get secrets                   # List secret names (values not shown)
 **Note:** Secret values are write-only for security reasons. You can list secret names with `vibe get secrets`, but individual secret values cannot be retrieved.
 
 **Environment Variables:**
-- `VIBECHECK_API_URL` or `API_BASE_URL` - API URL (default: `http://localhost:3000`)
+- `VIBECHECK_API_URL` or `API_BASE_URL` - API URL (default: `https://vibecheck-api-prod-681369865361.us-central1.run.app`)
 - `VIBECHECK_API_KEY` or `API_KEY` - Organization API key (required)
 
 ## Featured Examples

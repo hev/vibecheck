@@ -1,3 +1,9 @@
+## 0.2.1 (2025-11-03)
+
+### Fixes
+- Unify API base URL resolution for vars/secrets with all other commands; default to production Cloud Run URL.
+- Update docs to remove api.vibescheck.io and reflect the Cloud Run default.
+
 ## 0.2.0 (2025-11-03)
 
 ### Breaking changes

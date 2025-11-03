@@ -147,26 +147,12 @@ export function getApiUrl(): string {
 }
 
 /**
- * Gets the effective API URL with fallback to localhost for runtime commands
- * Used by var/secret commands that may run against local dev server
- * Precedence: VIBECHECK_API_URL -> API_BASE_URL -> localhost:3000
+ * Gets the effective API URL for runtime commands.
+ * Delegates to getApiUrl() so all commands share identical behavior and
+ * default to the production Cloud Run URL unless overridden by env or .env.
  */
 export function getApiUrlForRuntime(): string {
-  // Check environment variables first
-  if (process.env.VIBECHECK_API_URL) {
-    debugConfig('getApiUrlForRuntime', `Using VIBECHECK_API_URL: ${process.env.VIBECHECK_API_URL}`);
-    return process.env.VIBECHECK_API_URL;
-  }
-  
-  if (process.env.API_BASE_URL) {
-    debugConfig('getApiUrlForRuntime', `Using API_BASE_URL: ${process.env.API_BASE_URL}`);
-    return process.env.API_BASE_URL;
-  }
-
-  // Default to localhost for runtime commands
-  const localhostUrl = 'http://localhost:3000';
-  debugConfig('getApiUrlForRuntime', `Using default localhost: ${localhostUrl}`);
-  return localhostUrl;
+  return getApiUrl();
 }
 
 /**

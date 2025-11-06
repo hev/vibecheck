@@ -220,7 +220,7 @@ vibe set var linear.projectTeam "your-team-name"
 ```
 
 **Step 4: Run the Evaluation**
-Run the Linear MCP evaluation (the suite is preloaded):
+Run the [Linear MCP evaluation](./examples/linear-mcp.yaml) (the suite is preloaded):
 
 ```bash
 vibe check linear-mcp

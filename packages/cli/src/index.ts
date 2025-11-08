@@ -121,8 +121,8 @@ program.action(async () => {
       // Will trigger unauth flow if missing/invalid
       await fetchOrgInfo(false);
     } catch (error: any) {
-      // Handle network errors with Halloween message
-      if (error.message.includes('🎃 The Halloween pop-up can no longer be reached')) {
+      // Handle network errors with developer preview message
+      if (error.message.includes('The developer preview can no longer be reached')) {
         console.error(error.message);
         process.exit(1);
       }
@@ -291,8 +291,8 @@ const checkCommand = program
           // Auth preflight
           await fetchOrgInfo(!!options.debug);
         } catch (error: any) {
-          // Handle network errors with Halloween message
-          if (error.message.includes('🎃 The Halloween pop-up can no longer be reached')) {
+          // Handle network errors with developer preview message
+          if (error.message.includes('The developer preview can no longer be reached')) {
             console.error(error.message);
             process.exit(1);
           }
@@ -312,8 +312,8 @@ const checkCommand = program
           // Auth preflight
           await fetchOrgInfo(!!options.debug);
         } catch (error: any) {
-          // Handle network errors with Halloween message
-          if (error.message.includes('🎃 The Halloween pop-up can no longer be reached')) {
+          // Handle network errors with developer preview message
+          if (error.message.includes('The developer preview can no longer be reached')) {
             console.error(error.message);
             process.exit(1);
           }

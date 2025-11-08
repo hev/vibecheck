@@ -61,7 +61,7 @@ async function performRedeem({ code, debug }: { code: string; debug: boolean }) 
     if (envExists) {
       spinner.stop();
       console.log('');
-      console.log(chalk.magenta('🦇 Welcome back, ghoulfriend! It looks like you have an existing coffin (config).'));
+      console.log(chalk.magenta('Welcome back! It looks like you have an existing configuration.'));
       console.log(chalk.gray(`Found: ${envPath}`));
       const shouldOverwrite = await promptYesNo(
         chalk.yellow('Would you like to overwrite your existing VIBECHECK_API_KEY? [y/N] ')
@@ -131,7 +131,7 @@ async function performRedeem({ code, debug }: { code: string; debug: boolean }) 
       console.error(chalk.gray('Server error: The VibeCheck API encountered an error'));
       process.exit(2);
     } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
-      console.error(chalk.redBright('\n🎃 The Halloween pop-up can no longer be reached'));
+      console.error(chalk.redBright('\nThe developer preview can no longer be reached'));
       console.error(chalk.gray('\nYour run logs are available at: ') + chalk.cyan('~/.vibecheck/runs'));
       console.error(chalk.gray('Go to ') + chalk.cyan('https://vibescheck.io') + chalk.gray(' to find out what\'s next.'));
       console.error('');
@@ -149,7 +149,7 @@ async function performRedeem({ code, debug }: { code: string; debug: boolean }) 
 export async function redeemFlow({ code, debug = false }: { code?: string; debug?: boolean }) {
   let finalCode = code?.trim();
   if (!finalCode) {
-    printSpookyHeader();
+    printPreviewHeader();
     console.log(chalk.gray('Tip: Press Enter with no code to cancel.'));
     finalCode = (await promptLine(chalk.yellow('Enter your invite code: '))).trim();
     if (!finalCode) {
@@ -166,15 +166,13 @@ export async function redeemFlow({ code, debug = false }: { code?: string; debug
   }
 }
 
-function printSpookyHeader() {
-  const pumpkin = '🎃';
-  const ghost = '👻';
+function printPreviewHeader() {
   const lines = [
-    `${pumpkin} meet your redeemer — a vibe check awaits`,
-    `${ghost} something wicked this way comes — time for a vibe check`,
-    `${pumpkin} step into the circle — commence the vibe check`,
-    `${ghost} heed the call of the night — begin your vibe check`,
-    `${pumpkin} from the crypt we rise — initiate your vibe check`,
+    `Welcome to the developer preview — a vibe check awaits`,
+    `Join the developer preview — time for a vibe check`,
+    `Step into the developer preview — commence the vibe check`,
+    `Begin your developer preview journey — start your vibe check`,
+    `Enter the developer preview — initiate your vibe check`,
   ];
   const pick = lines[Math.floor(Math.random() * lines.length)];
   console.log('');

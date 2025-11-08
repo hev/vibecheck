@@ -10,9 +10,9 @@
 vibecheck makes it easy to evaluate any language model with a simple YAML configuration. Run evals,
 save the results, and tweak your system prompts with incredibly tight feedback loop from the command line.
 
-> 🎃 **Get Your Invite** 👻
+> **Get Your Invite** 
 >
-> vibe check is currently being offered as an exclusive invite-only halloween pop up! Read our FAQ and summon your API key at [vibescheck.io](https://vibescheck.io).
+> vibe check is currently being offered as an invite-only developer preview! Read our FAQ and request your API key at [vibescheck.io](https://vibescheck.io).
 
 ## Installation
 

@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 
 /**
- * Displays a Halloween-themed message prompting users to redeem an invite code
+ * Displays a developer preview message prompting users to redeem an invite code
  */
 export function displayInvitePrompt(): void {
   console.error(chalk.redBright('\nUnauthorized: Invalid or missing API key'));

@@ -334,7 +334,7 @@ evals:
   });
 
   describe('Integration with CLI commands', () => {
-    it('should save outputs in non-interactive mode', async () => {
+    it('should save outputs', async () => {
       // This would require running the actual CLI command, which is complex to test
       // For now, we'll test that the utility function works as expected
       const outputPath = await writeRunOutput({

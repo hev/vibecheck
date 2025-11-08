@@ -43,7 +43,7 @@ export function displayNetworkError(): void {
 }
 
 /**
- * Displays network error message for interactive mode (no console.error)
+ * Returns network error messages as an array (for use in UI components)
  */
 export function getNetworkErrorMessage(): string[] {
   return [

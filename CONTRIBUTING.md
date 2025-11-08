@@ -47,8 +47,6 @@ npm run dev
 # Run with a specific file
 npm run start -- check -f examples/hello-world.yaml
 
-# Run in interactive mode
-npm run start -- check -f examples/hello-world.yaml --interactive
 ```
 
 #### Testing
@@ -82,7 +80,6 @@ vibecheck/
 │   │   ├── src/
 │   │   │   ├── index.ts        # Main entry point, commander setup
 │   │   │   ├── commands/       # Command implementations
-│   │   │   ├── ui/             # Interactive UI components
 │   │   │   └── utils/          # Utilities (display, parsing, etc.)
 │   │   └── package.json        # CLI package config
 │   └── shared/                 # Shared types & schemas
@@ -98,7 +95,6 @@ vibecheck/
 ### Key Components
 
 - **CLI Commands** (`packages/cli/src/commands/`): Implementation of all CLI commands
-- **Interactive UI** (`packages/cli/src/ui/`): Blessed-based terminal UI
 - **Utilities** (`packages/cli/src/utils/`): Display formatting, YAML parsing, etc.
 - **Shared Types** (`packages/shared/`): TypeScript types and Zod schemas
 

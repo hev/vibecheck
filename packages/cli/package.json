@@ -15,9 +15,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@types/blessed": "^0.1.25",
     "axios": "^1.6.2",
-    "blessed": "^0.1.81",
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
     "dotenv": "^16.3.1",

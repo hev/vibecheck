@@ -5,7 +5,6 @@ import chalk from 'chalk';
 import ora from 'ora';
 import axios from 'axios';
 import { EvalSuiteSchema, EvalResult, ConditionalResult } from '../types';
-import { runInteractiveCommand } from './interactive-run';
 import { displaySummary } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { writeRunOutput } from '../utils/output-writer';
@@ -39,7 +38,6 @@ function getAuthHeaders() {
 interface RunOptions {
   file?: string;
   debug?: boolean;
-  interactive?: boolean;
   async?: boolean;
   model?: string | string[];
   models?: string[];
@@ -59,15 +57,10 @@ interface SuiteRunOptions {
   mcpName?: string;
   mcpToken?: string;
   debug?: boolean;
-  interactive?: boolean;
   async?: boolean;
   mcp?: boolean;
   priceFilter?: string;
   providerFilter?: string;
-}
-
-export async function runInteractiveMode(options: RunOptions) {
-  return runInteractiveCommand(options);
 }
 
 export async function runCommand(options: RunOptions) {
@@ -132,7 +125,7 @@ export async function runCommand(options: RunOptions) {
             const hasLegacyFormat = legacyKeys.some(key => key in checks);
             
             if (hasLegacyFormat) {
-              spinner.fail(chalk.redBright('Legacy DSL format detected'));
+              spinner.fail(chalk.redBright('Invalid or legacy format detected'));
               console.error(chalk.redBright('\nThe object-based checks format is no longer supported.'));
               console.error(chalk.redBright('Please update your YAML file to use the new array-based format.\n'));
               console.error(chalk.yellow('Migration Guide:'));
@@ -347,12 +340,6 @@ export async function runCommand(options: RunOptions) {
       process.exit(1);
     }
   }
-}
-
-export async function runSuiteInteractiveMode(options: SuiteRunOptions) {
-  // For now, we'll implement this as a simple wrapper that calls runSuiteCommand
-  // In the future, this could be enhanced to provide interactive suite selection
-  return runSuiteCommand(options);
 }
 
 export async function runSuiteCommand(options: SuiteRunOptions) {

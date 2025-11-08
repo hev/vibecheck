@@ -36,11 +36,7 @@ vibecheck/
 │   │   │   │   ├── runs.ts        # vibe get runs command
 │   │   │   │   ├── models.ts      # vibe get models command
 │   │   │   │   ├── org.ts         # vibe get org command
-│   │   │   │   ├── redeem.ts      # vibe redeem command
-│   │   │   │   ├── onboarding.ts  # Interactive onboarding
-│   │   │   │   └── interactive-run.ts # Interactive mode
-│   │   │   ├── ui/                # Interactive UI components
-│   │   │   │   └── interactive.ts # Blessed-based terminal UI
+│   │   │   │   └── redeem.ts      # vibe redeem command
 │   │   │   └── utils/             # Utilities
 │   │   │       ├── display.ts     # Display formatting
 │   │   │       ├── config.ts      # Configuration management
@@ -206,21 +202,14 @@ Run evaluations from a YAML file.
 
 ```bash
 vibe check -f examples/hello-world.yaml
-vibe check -f examples/hello-world.yaml --interactive  # Interactive mode
 vibe check -f examples/hello-world.yaml --async        # Non-blocking
 vibe check  # Auto-detect evals.yaml, eval.yaml, evals.yml, eval.yml
 ```
 
 **Options:**
 - `-f, --file <path>` - Path to YAML file (required if no auto-detected file)
-- `-i, --interactive` - Run in interactive mode with terminal UI
 - `-a, --async` - Exit immediately after starting (non-blocking)
 - `-d, --debug` - Enable debug logging (hidden option)
-
-**Interactive Mode:**
-- Use `:check <file>` to run evaluations
-- Use `:exit` or `:quit` to exit
-- Auto-detects files and shows content
 
 ### `vibe set` - Create/Update Resources
 
@@ -521,15 +510,6 @@ The project uses **Jest** with TypeScript for testing. Tests are organized into 
   - Missing API key scenarios
 
 Uses **nock** for HTTP mocking to simulate API responses.
-
-**⚠️ Interactive Commands Cannot Be Tested:**
-
-DO NOT add test coverage for these interactive commands:
-- `packages/cli/src/commands/interactive-run.ts` - Interactive mode with terminal UI
-- `packages/cli/src/commands/onboarding.ts` - Interactive onboarding flow
-- `packages/cli/src/ui/interactive.ts` - Blessed-based terminal UI
-
-These commands use terminal UI libraries (`blessed`, `readline`) that cause Jest to hang even with mocks. They are excluded from test coverage via `jest.config.js` `testPathIgnorePatterns`.
 
 #### 3. E2E Tests (`tests/e2e/**/*.test.ts`)
 

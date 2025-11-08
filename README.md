@@ -24,12 +24,6 @@ npm install -g vibecheck-cli
 
 ## Quick Start 
 
-> 💡 Tip: Try the interactive onboarding experience
->
-> ```bash
-> vibe check
-> ```
->
 Create a simple evaluation file:
 
 ```yaml

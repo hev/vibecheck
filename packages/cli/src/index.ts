@@ -6,8 +6,7 @@ import * as fs from 'fs';
 import chalk from 'chalk';
 import axios from 'axios';
 import { Command } from 'commander';
-import { runCommand, runInteractiveMode, runSuiteCommand, runSuiteInteractiveMode } from './commands/run';
-import { runInteractiveCommand } from './commands/interactive-run';
+import { runCommand, runSuiteCommand } from './commands/run';
 import { saveCommand, listCommand, getCommand as getSuiteCommand } from './commands/suite';
 import { orgCommand } from './commands/org';
 import { listRunsCommand, getRunCommand } from './commands/runs';
@@ -116,23 +115,11 @@ program.action(async () => {
     if (process.argv.includes('--help') || process.argv.includes('-h')) {
       return; // Let commander handle these
     }
-    // Auth preflight before launching interactive mode
-    try {
-      // Will trigger unauth flow if missing/invalid
-      await fetchOrgInfo(false);
-    } catch (error: any) {
-      // Handle network errors with developer preview message
-      if (error.message.includes('The developer preview can no longer be reached')) {
-        console.error(error.message);
-        process.exit(1);
-      }
-      // Ignore other auth errors - interactive mode will handle them
-    }
-    // Launch interactive mode with no file
-    runInteractiveCommand({ file: undefined, debug: false });
+    // Show help if no command provided
+    program.help();
   });
 
-// Check command - runs in non-interactive mode by default, or interactive with -i/--interactive flag
+// Check command
 const checkCommand = program
   .command('check [suite-name]')
   .description('Check vibes by running evaluations from a YAML file or saved suite')
@@ -146,9 +133,21 @@ const checkCommand = program
   .option('--mcp', 'Filter to only models with MCP support (use with -m all or wildcards)')
   .option('--price <quartiles>', 'Filter models by price quartiles (e.g., "1,2" for $ and $$)', '')
   .option('--provider <providers>', 'Filter models by provider(s), comma-separated (e.g., "openai,anthropic")', '')
-  .option('-i, --interactive', 'Run in interactive mode')
   .option('-a, --async', 'Exit immediately after starting the run (non-blocking)')
+  .addHelpText('after', `
+Examples:
+  $ vibe check -f examples/strawberry.yaml     Run evaluations from a local YAML file
+  $ vibe check strawberry                      Run evaluations from a preloaded suite named "strawberry"
+  $ vibe check -f my-eval.yaml --async         Run evaluations asynchronously (non-blocking)
+  $ vibe check my-suite -m claude-3.5-sonnet   Run a suite with a different model
+`)
   .action(async (suiteName, options, command) => {
+    // Show help if no suite name and no file provided
+    if (!suiteName && !options.file) {
+      command.help();
+      return;
+    }
+
     if (options.debug) {
       console.log('[DEBUG] Commander options object:', options);
       console.log('[DEBUG] Suite name:', suiteName);
@@ -242,18 +241,13 @@ const checkCommand = program
         mcpName: options.mcpName,
         mcpToken: options.mcpToken,
         debug: options.debug,
-        interactive: options.interactive,
         async: options.async,
         mcp: options.mcp,
         priceFilter: options.price,
         providerFilter: options.provider
       };
 
-      if (options.interactive) {
-        await runSuiteInteractiveMode(suiteOptions);
-      } else {
-        await runSuiteCommand(suiteOptions);
-      }
+      await runSuiteCommand(suiteOptions);
     } else {
       // File-based execution (existing logic)
       let foundFile = options.file;
@@ -285,55 +279,26 @@ const checkCommand = program
       }
 
       if (!foundFile) {
-        // Launch interactive mode instead of exiting
-        console.log(chalk.yellow('No evaluation file found. Launching interactive mode...\n'));
-        try {
-          // Auth preflight
-          await fetchOrgInfo(!!options.debug);
-        } catch (error: any) {
-          // Handle network errors with developer preview message
-          if (error.message.includes('The developer preview can no longer be reached')) {
-            console.error(error.message);
-            process.exit(1);
-          }
-          // Ignore other auth errors - interactive mode will handle them
-        }
-        await runInteractiveCommand({ file: undefined, debug: options.debug });
-        return;
+        console.error(chalk.redBright('Error: No evaluation file found'));
+        console.error(chalk.gray('Please specify a file with -f <path> or create one of: evals.yaml, eval.yaml, evals.yml, eval.yml'));
+        process.exit(1);
       }
 
       if (options.debug) {
         console.log(`[DEBUG] Final file to use: ${foundFile}`);
       }
 
-      // Run interactive mode if -i/--interactive flag is present
-      if (options.interactive) {
-        try {
-          // Auth preflight
-          await fetchOrgInfo(!!options.debug);
-        } catch (error: any) {
-          // Handle network errors with developer preview message
-          if (error.message.includes('The developer preview can no longer be reached')) {
-            console.error(error.message);
-            process.exit(1);
-          }
-          // Ignore other auth errors - interactive mode will handle them
-        }
-        runInteractiveMode({ file: foundFile });
-      } else {
-        runCommand({ 
-          file: foundFile, 
-          debug: options.debug, 
-          interactive: false, 
-          async: options.async,
-          model: isMultiModel ? models : options.model,
-          models: isMultiModel ? models : undefined,
-          mcp: options.mcp,
-          priceFilter: options.price,
-          providerFilter: options.provider,
-          neverPrompt: options.neverPrompt
-        });
-      }
+      runCommand({ 
+        file: foundFile, 
+        debug: options.debug, 
+        async: options.async,
+        model: isMultiModel ? models : options.model,
+        models: isMultiModel ? models : undefined,
+        mcp: options.mcp,
+        priceFilter: options.price,
+        providerFilter: options.provider,
+        neverPrompt: options.neverPrompt
+      });
     }
   });
 

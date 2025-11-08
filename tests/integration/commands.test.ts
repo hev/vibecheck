@@ -63,7 +63,7 @@ evals:
 
       try {
         await suppressConsole(async () => {
-          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
+          await runCommand({ file: tempFile, debug: false, neverPrompt: true });
         });
       } catch (error: any) {
         // If process.exit was called, it means something went wrong - fail the test with details
@@ -96,7 +96,7 @@ evals:
 
       await suppressConsole(async () => {
         try {
-          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
+          await runCommand({ file: tempFile, debug: false, neverPrompt: true });
         } catch (error: any) {
           expect(error.message).toContain('process.exit: 1');
         }
@@ -126,7 +126,7 @@ evals:
 
       await suppressConsole(async () => {
         try {
-          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
+          await runCommand({ file: tempFile, debug: false, neverPrompt: true });
         } catch (error: any) {
           expect(error.message).toContain('process.exit: 1');
         }
@@ -145,7 +145,6 @@ evals:
           await runCommand({
             file: '/nonexistent/file.yaml',
             debug: false,
-            interactive: false,
             neverPrompt: true
           });
         } catch (error: any) {
@@ -187,7 +186,7 @@ evals:
 
       await suppressConsole(async () => {
         try {
-          await runCommand({ file: tempFile, debug: false, interactive: false });
+          await runCommand({ file: tempFile, debug: false });
         } catch (error: any) {
           expect(error.message).toContain('process.exit: 1');
         }
@@ -224,7 +223,7 @@ evals:
 
       await suppressConsole(async () => {
         try {
-          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
+          await runCommand({ file: tempFile, debug: false, neverPrompt: true });
         } catch (error: any) {
           expect(error.message).toContain('process.exit: 1');
         }
@@ -256,7 +255,7 @@ evals:
         const spawnSpy = jest.spyOn(childProc, 'spawnSync').mockReturnValue({ status: 0 } as any);
         await suppressConsole(async () => {
           try {
-          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
+          await runCommand({ file: tempFile, debug: false, neverPrompt: true });
         } catch (error: any) {
           expect(error.message).toContain('process.exit: 1');
         }
@@ -522,7 +521,7 @@ evals:
 
       await suppressConsole(async () => {
         try {
-          await runCommand({ file: tempFile, debug: false, interactive: false, neverPrompt: true });
+          await runCommand({ file: tempFile, debug: false, neverPrompt: true });
         } catch (error: any) {
           expect(error.message).toMatch(/process.exit|ECONNREFUSED|Network/i);
         }
@@ -566,7 +565,6 @@ evals:
           await runSuiteCommand({
             suiteName: 'test-suite',
             debug: false,
-            interactive: false,
             async: false
           });
         });
@@ -704,7 +702,6 @@ evals:
             mcpName: 'new-mcp-server',
             mcpToken: 'new-token',
             debug: false,
-            interactive: false,
             async: false
           });
         });
@@ -733,7 +730,6 @@ evals:
           await runSuiteCommand({
             suiteName: 'nonexistent-suite',
             debug: false,
-            interactive: false,
             async: false
           });
         } catch (error: any) {
@@ -764,7 +760,6 @@ evals:
           await runSuiteCommand({
             suiteName: 'invalid-suite',
             debug: false,
-            interactive: false,
             async: false
           });
         } catch (error: any) {

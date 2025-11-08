@@ -5,15 +5,23 @@
 
 set -e  # Exit on any error
 
+# Default values
+SKIP_TESTS=false
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --skip-tests)
+            SKIP_TESTS=true
+            shift
+            ;;
         --help|-h)
-            echo "Usage: $0"
+            echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "This script publishes the vibecheck CLI to npm and creates a GitHub release."
             echo ""
             echo "Options:"
+            echo "  --skip-tests      Skip running tests before publishing"
             echo "  --help, -h        Show this help message"
             echo ""
             echo "Prerequisites:"
@@ -80,16 +88,20 @@ fi
 echo "✅ Git working directory is clean"
 
 # Run tests
-echo "🧪 Running tests..."
-npm run test:unit
-npm run test:integration
+if [ "$SKIP_TESTS" != true ]; then
+    echo "🧪 Running tests..."
+    npm run test:unit
+    npm run test:integration
 
-if [ $? -ne 0 ]; then
-    echo "❌ Tests failed. Please fix them before publishing"
-    exit 1
+    if [ $? -ne 0 ]; then
+        echo "❌ Tests failed. Use --skip-tests to publish anyway"
+        exit 1
+    fi
+
+    echo "✅ All tests passed"
+else
+    echo "⚠️  Skipping tests (--skip-tests flag provided)"
 fi
-
-echo "✅ All tests passed"
 
 # Build all packages
 echo "🔨 Building packages..."

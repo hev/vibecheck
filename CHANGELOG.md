@@ -1,3 +1,13 @@
+## 0.3.0 (2025-11-08)
+
+### Removed
+- Removed interactive mode and onboarding flow (`vibe interactive`, `vibe onboarding`)
+- Removed interactive UI components and related functionality
+- Simplified CLI to focus on core evaluation workflows
+
+### Breaking changes
+- Interactive commands are no longer available; use standard `vibe check` workflow instead
+
 ## 0.2.1 (2025-11-03)
 
 ### Fixes

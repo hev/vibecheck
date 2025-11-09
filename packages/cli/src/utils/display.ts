@@ -45,6 +45,102 @@ async function truncatePrompt(prompt: string, maxLength: number = 100): Promise<
   return truncated + '...';
 }
 
+/**
+ * Format a token count with commas for readability
+ * @param count Token count (number or null)
+ * @returns Formatted string like "1,234" or "N/A"
+ */
+export function formatTokenCount(count: number | null | undefined): string {
+  if (count === null || count === undefined || isNaN(count)) {
+    return 'N/A';
+  }
+  return count.toLocaleString('en-US');
+}
+
+/**
+ * Format a cost value with 6 decimal places
+ * @param cost Cost value (number or null)
+ * @returns Formatted string like "$0.001234" or "N/A"
+ */
+export function formatCost(cost: number | null | undefined): string {
+  if (cost === null || cost === undefined || isNaN(cost)) {
+    return 'N/A';
+  }
+  return `$${cost.toFixed(6)}`;
+}
+
+/**
+ * Format a cost breakdown showing input, output, and total costs
+ * @param inputCost Input/prompt cost
+ * @param outputCost Output/completion cost
+ * @param totalCost Total cost
+ * @returns Formatted string with breakdown
+ */
+export function formatCostBreakdown(
+  inputCost: number | null | undefined,
+  outputCost: number | null | undefined,
+  totalCost: number | null | undefined
+): string {
+  const parts: string[] = [];
+  
+  if (inputCost !== null && inputCost !== undefined && !isNaN(inputCost)) {
+    parts.push(`Input: ${formatCost(inputCost)}`);
+  }
+  
+  if (outputCost !== null && outputCost !== undefined && !isNaN(outputCost)) {
+    parts.push(`Output: ${formatCost(outputCost)}`);
+  }
+  
+  if (totalCost !== null && totalCost !== undefined && !isNaN(totalCost)) {
+    parts.push(`Total: ${formatCost(totalCost)}`);
+  }
+  
+  if (parts.length === 0) {
+    return 'N/A';
+  }
+  
+  return parts.join(' | ');
+}
+
+/**
+ * Format token usage breakdown showing input, output, thinking, and total tokens
+ * @param promptTokens Input/prompt tokens
+ * @param completionTokens Output/completion tokens
+ * @param thinkingTokens Thinking tokens (optional, for models that support it)
+ * @param totalTokens Total tokens
+ * @returns Formatted string with breakdown
+ */
+export function formatTokenBreakdown(
+  promptTokens: number | null | undefined,
+  completionTokens: number | null | undefined,
+  thinkingTokens: number | null | undefined,
+  totalTokens: number | null | undefined
+): string {
+  const parts: string[] = [];
+  
+  if (promptTokens !== null && promptTokens !== undefined && !isNaN(promptTokens)) {
+    parts.push(`Input: ${formatTokenCount(promptTokens)}`);
+  }
+  
+  if (completionTokens !== null && completionTokens !== undefined && !isNaN(completionTokens)) {
+    parts.push(`Output: ${formatTokenCount(completionTokens)}`);
+  }
+  
+  if (thinkingTokens !== null && thinkingTokens !== undefined && !isNaN(thinkingTokens) && thinkingTokens > 0) {
+    parts.push(`Thinking: ${formatTokenCount(thinkingTokens)}`);
+  }
+  
+  if (totalTokens !== null && totalTokens !== undefined && !isNaN(totalTokens)) {
+    parts.push(`Total: ${formatTokenCount(totalTokens)}`);
+  }
+  
+  if (parts.length === 0) {
+    return 'N/A';
+  }
+  
+  return parts.join(' | ');
+}
+
 export async function displaySummary(results: EvalResult[], totalTimeMs?: number) {
   console.log();
   console.log(chalk.bold('─'.repeat(TABLE_WIDTH)));

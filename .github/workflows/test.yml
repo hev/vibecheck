@@ -32,13 +32,13 @@ jobs:
         run: npm run build
 
       - name: Run unit tests
-        run: npm run test:unit -- --forceExit
+        run: npm run test:unit
 
       - name: Run integration tests
-        run: npm run test:integration -- --forceExit
+        run: npm run test:integration
 
       - name: Run tests with coverage
-        run: npm run test:ci -- --forceExit
+        run: npm run test:ci
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

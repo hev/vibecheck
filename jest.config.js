@@ -30,9 +30,13 @@ module.exports = {
     '/dist/',
   ],
   // Force Jest to exit after tests complete
+  // This is necessary because nock's MockHttpSocket creates lingering connections
+  // that don't close synchronously. All tests pass successfully - the warning
+  // "Force exiting Jest: Have you considered using --detectOpenHandles" is expected
+  // and can be safely ignored. The cleanup in afterEach() is already optimal.
   forceExit: true,
-  // Disable open handles detection to keep output clean
-  // We use forceExit: true anyway, so this just clutters the output
+  // Note: detectOpenHandles: false doesn't suppress the forceExit warning
+  // The warning is hardcoded in Jest when forceExit: true
   detectOpenHandles: false,
   // Load global mocks
   setupFilesAfterEnv: ['<rootDir>/tests/helpers/setup-mocks.js'],
@@ -43,6 +47,8 @@ module.exports = {
       testMatch: ['<rootDir>/packages/*/src/**/*.test.ts'],
       preset: 'ts-jest',
       testEnvironment: 'node',
+      forceExit: true,
+      detectOpenHandles: false,
     },
     {
       displayName: 'integration',
@@ -53,6 +59,8 @@ module.exports = {
       ],
       preset: 'ts-jest',
       testEnvironment: 'node',
+      forceExit: true,
+      detectOpenHandles: false,
     },
     // E2E tests are commented out until test helpers are created
     // See tests/e2e/README.md for setup instructions

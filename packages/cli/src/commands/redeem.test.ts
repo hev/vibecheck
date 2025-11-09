@@ -31,9 +31,10 @@ describe('redeem interactive flow', () => {
 
   beforeEach(() => {
     jest.resetModules();
-    jest.restoreAllMocks();
-    // Reset axios mock
+    // Note: Don't use jest.restoreAllMocks() here as it clears the axios mock
+    // Reset axios mock manually instead
     mockAxiosPost.mockClear();
+    mockAxiosPost.mockReset();
   });
 
   afterEach(() => {

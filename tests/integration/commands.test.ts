@@ -387,7 +387,7 @@ evals:
       }) as any;
 
       try {
-        await runCommand({ file: tempFile, model: 'openai/gpt-4o', debug: false, interactive: false, neverPrompt: true });
+        await runCommand({ file: tempFile, model: 'openai/gpt-4o', debug: false, neverPrompt: true });
       } catch (error: any) {
         // runCommand may call process.exit, which we catch above; ignore here
       }
@@ -611,7 +611,6 @@ evals:
           suiteName: 'test-suite',
           model: 'openai/gpt-4',
           debug: false,
-          interactive: false,
           async: false
         });
       });
@@ -655,7 +654,6 @@ evals:
           systemPrompt: 'You are a pirate assistant.',
           threads: 5,
           debug: false,
-          interactive: false,
           async: false
         });
       });

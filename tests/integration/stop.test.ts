@@ -223,7 +223,7 @@ describe('Stop Run Command', () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       const processSpy = jest.spyOn(process, 'exit').mockImplementation();
 
-      await stopAllQueuedRunsCommand(false);
+      await stopAllQueuedRunsCommand(undefined, false);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Found 2 queued run(s) to cancel:'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Successfully cancelled 2 run(s)!'));
@@ -238,13 +238,13 @@ describe('Stop Run Command', () => {
 
       nock('http://localhost:3000')
         .get('/api/runs')
-        .query({ status: 'queued', limit: 100 })
+        .query({ status: 'queued', limit: 100, offset: 0 })
         .reply(200, mockRunsResponse);
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       const processSpy = jest.spyOn(process, 'exit').mockImplementation();
 
-      await stopAllQueuedRunsCommand(false);
+      await stopAllQueuedRunsCommand(undefined, false);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('No queued runs found to cancel.'));
       expect(processSpy).not.toHaveBeenCalled();
@@ -280,7 +280,7 @@ describe('Stop Run Command', () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       const processSpy = jest.spyOn(process, 'exit').mockImplementation();
 
-      await stopAllQueuedRunsCommand(false);
+      await stopAllQueuedRunsCommand(undefined, false);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Successfully cancelled 1 run(s)!'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('❌ Failed to cancel 1 run(s).'));
@@ -301,7 +301,7 @@ describe('Stop Run Command', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       const processSpy = jest.spyOn(process, 'exit').mockImplementation();
 
-      await stopAllQueuedRunsCommand(false);
+      await stopAllQueuedRunsCommand(undefined, false);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Authentication failed'));
       expect(processSpy).toHaveBeenCalledWith(1);
@@ -317,7 +317,7 @@ describe('Stop Run Command', () => {
 
       nock('http://localhost:3000')
         .get('/api/runs')
-        .query({ status: 'queued', limit: 100 })
+        .query({ status: 'queued', limit: 100, offset: 0 })
         .reply(200, mockRunsResponse);
 
       nock('http://localhost:3000')
@@ -327,7 +327,7 @@ describe('Stop Run Command', () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       const processSpy = jest.spyOn(process, 'exit').mockImplementation();
 
-      await stopAllQueuedRunsCommand(true);
+      await stopAllQueuedRunsCommand(undefined, true);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Runs request URL:'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[DEBUG] Runs response status: 200'));

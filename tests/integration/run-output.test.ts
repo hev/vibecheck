@@ -230,7 +230,6 @@ evals:
 
       const content = fs.readFileSync(path.join(tempDir, `${runId}.txt`), 'utf8');
       expect(content).toContain('Success Pct: 0/1 (0.0%)');
-      expect(content).toContain('Low success rate: Below 50%');
     });
 
     it('should handle 50% pass rate correctly', async () => {

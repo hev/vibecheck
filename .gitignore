@@ -164,3 +164,4 @@ scripts/run-all-evals.sh
 
 # Cursor IDE files
 .cursor/
+.actrc

@@ -4,7 +4,7 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { EvalResult, ConditionalResult } from '../types';
-import { displaySummary } from '../utils/display';
+import { displaySummary, formatTokenCount, formatCost, formatCostBreakdown, formatTokenBreakdown } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
 import { getApiUrl } from '../utils/config';
@@ -90,6 +90,12 @@ function exportRunsToCSV(runs: any[], filePath: string): void {
     'total_evals',
     'success_percentage',
     'duration_seconds',
+    'total_prompt_tokens',
+    'total_completion_tokens',
+    'total_thinking_tokens',
+    'total_tokens',
+    'total_input_cost',
+    'total_output_cost',
     'cost_usd',
     'score',
     'created_at'
@@ -124,6 +130,38 @@ function exportRunsToCSV(runs: any[], filePath: string): void {
     // Format created_at timestamp
     const createdAt = run.created_at || '';
 
+    // Parse token counts (they may come as strings from API)
+    const totalPromptTokens = run.total_prompt_tokens !== undefined && run.total_prompt_tokens !== null
+      ? (typeof run.total_prompt_tokens === 'string' ? parseInt(run.total_prompt_tokens, 10) : run.total_prompt_tokens)
+      : null;
+    const totalCompletionTokens = run.total_completion_tokens !== undefined && run.total_completion_tokens !== null
+      ? (typeof run.total_completion_tokens === 'string' ? parseInt(run.total_completion_tokens, 10) : run.total_completion_tokens)
+      : null;
+    const totalThinkingTokens = run.total_thinking_tokens !== undefined && run.total_thinking_tokens !== null
+      ? (typeof run.total_thinking_tokens === 'string' ? parseInt(run.total_thinking_tokens, 10) : run.total_thinking_tokens)
+      : null;
+    const totalTokens = run.total_tokens !== undefined && run.total_tokens !== null
+      ? (typeof run.total_tokens === 'string' ? parseInt(run.total_tokens, 10) : run.total_tokens)
+      : null;
+
+    // Format token counts or empty
+    const promptTokensStr = totalPromptTokens !== null && !isNaN(totalPromptTokens) ? totalPromptTokens.toString() : '';
+    const completionTokensStr = totalCompletionTokens !== null && !isNaN(totalCompletionTokens) ? totalCompletionTokens.toString() : '';
+    const thinkingTokensStr = totalThinkingTokens !== null && !isNaN(totalThinkingTokens) ? totalThinkingTokens.toString() : '';
+    const totalTokensStr = totalTokens !== null && !isNaN(totalTokens) ? totalTokens.toString() : '';
+
+    // Parse cost breakdown (they may come as strings from API)
+    const totalInputCost = run.total_input_cost !== undefined && run.total_input_cost !== null
+      ? (typeof run.total_input_cost === 'string' ? parseFloat(run.total_input_cost) : run.total_input_cost)
+      : null;
+    const totalOutputCost = run.total_output_cost !== undefined && run.total_output_cost !== null
+      ? (typeof run.total_output_cost === 'string' ? parseFloat(run.total_output_cost) : run.total_output_cost)
+      : null;
+
+    // Format cost breakdown or empty
+    const inputCostStr = totalInputCost !== null && !isNaN(totalInputCost) ? totalInputCost.toFixed(6) : '';
+    const outputCostStr = totalOutputCost !== null && !isNaN(totalOutputCost) ? totalOutputCost.toFixed(6) : '';
+
     const row = [
       escapeCSVField(run.id),
       escapeCSVField(run.suite_name),
@@ -133,6 +171,12 @@ function exportRunsToCSV(runs: any[], filePath: string): void {
       escapeCSVField(resultsCount),
       escapeCSVField(successPercentage.toFixed(1)),
       escapeCSVField(duration),
+      escapeCSVField(promptTokensStr),
+      escapeCSVField(completionTokensStr),
+      escapeCSVField(thinkingTokensStr),
+      escapeCSVField(totalTokensStr),
+      escapeCSVField(inputCostStr),
+      escapeCSVField(outputCostStr),
       escapeCSVField(costUsd),
       escapeCSVField(scoreStr),
       escapeCSVField(createdAt)
@@ -395,9 +439,9 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         ? `${durationSeconds.toFixed(1)}s`
         : 'N/A';
 
-      // Format cost from API response
+      // Format cost from API response (keep compact for table)
       const cost = totalCost !== null
-        ? `$${totalCost.toFixed(6)}`
+        ? formatCost(totalCost)
         : 'N/A';
 
       // Calculate and format Score (price-performance-latency)
@@ -463,12 +507,92 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
       }, 0);
       const avgDuration = totalDuration / sortedRuns.length;
 
+      // Calculate token usage totals if available
+      let totalPromptTokens = 0;
+      let totalCompletionTokens = 0;
+      let totalThinkingTokens = 0;
+      let totalTokens = 0;
+      let hasTokenData = false;
+      
+      let totalInputCost = 0;
+      let totalOutputCost = 0;
+      let hasCostBreakdown = false;
+
+      sortedRuns.forEach((run: any) => {
+        const promptTokens = run.total_prompt_tokens !== undefined && run.total_prompt_tokens !== null
+          ? (typeof run.total_prompt_tokens === 'string' ? parseInt(run.total_prompt_tokens, 10) : run.total_prompt_tokens)
+          : 0;
+        const completionTokens = run.total_completion_tokens !== undefined && run.total_completion_tokens !== null
+          ? (typeof run.total_completion_tokens === 'string' ? parseInt(run.total_completion_tokens, 10) : run.total_completion_tokens)
+          : 0;
+        const thinkingTokens = run.total_thinking_tokens !== undefined && run.total_thinking_tokens !== null
+          ? (typeof run.total_thinking_tokens === 'string' ? parseInt(run.total_thinking_tokens, 10) : run.total_thinking_tokens)
+          : 0;
+        const tokens = run.total_tokens !== undefined && run.total_tokens !== null
+          ? (typeof run.total_tokens === 'string' ? parseInt(run.total_tokens, 10) : run.total_tokens)
+          : 0;
+
+        if (promptTokens > 0 || completionTokens > 0 || tokens > 0) {
+          hasTokenData = true;
+          totalPromptTokens += promptTokens;
+          totalCompletionTokens += completionTokens;
+          totalThinkingTokens += thinkingTokens;
+          totalTokens += tokens;
+        }
+
+        const inputCost = run.total_input_cost !== undefined && run.total_input_cost !== null
+          ? (typeof run.total_input_cost === 'string' ? parseFloat(run.total_input_cost) : run.total_input_cost)
+          : 0;
+        const outputCost = run.total_output_cost !== undefined && run.total_output_cost !== null
+          ? (typeof run.total_output_cost === 'string' ? parseFloat(run.total_output_cost) : run.total_output_cost)
+          : 0;
+
+        if (inputCost > 0 || outputCost > 0) {
+          hasCostBreakdown = true;
+          totalInputCost += inputCost;
+          totalOutputCost += outputCost;
+        }
+      });
+
       console.log(chalk.bold('Summary:'));
       console.log(
         chalk.gray('  Avg Success Rate: ') + chalk.white(`${avgSuccessRate.toFixed(1)}%`) +
         chalk.gray('  │  Total Cost: ') + chalk.white(`$${totalCost.toFixed(6)}`) +
         chalk.gray('  │  Avg Time: ') + chalk.white(`${avgDuration.toFixed(1)}s`)
       );
+
+      // Show cost breakdown if available
+      if (hasCostBreakdown) {
+        console.log(
+          chalk.gray('  Cost Breakdown: ') +
+          chalk.white(`Input: ${formatCost(totalInputCost)}`) +
+          chalk.gray(' | ') +
+          chalk.white(`Output: ${formatCost(totalOutputCost)}`) +
+          chalk.gray(' | ') +
+          chalk.white(`Total: ${formatCost(totalCost)}`)
+        );
+      }
+
+      // Show token usage if available
+      if (hasTokenData) {
+        const tokenParts: string[] = [];
+        if (totalPromptTokens > 0) {
+          tokenParts.push(`Input: ${formatTokenCount(totalPromptTokens)}`);
+        }
+        if (totalCompletionTokens > 0) {
+          tokenParts.push(`Output: ${formatTokenCount(totalCompletionTokens)}`);
+        }
+        if (totalThinkingTokens > 0) {
+          tokenParts.push(`Thinking: ${formatTokenCount(totalThinkingTokens)}`);
+        }
+        if (totalTokens > 0) {
+          tokenParts.push(`Total: ${formatTokenCount(totalTokens)}`);
+        }
+        if (tokenParts.length > 0) {
+          console.log(chalk.gray('  Token Usage:     ') + chalk.white(tokenParts.join(' | ')));
+        }
+      }
+
       // Score formula note
       console.log(chalk.gray('  Score formula: success% / (cost*1000 + duration_seconds*0.1). Higher is better.'));
       console.log(chalk.gray('  Scores shown for completed and partial_failure runs.'));
@@ -544,6 +668,50 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
       const percentage = !isNaN(successPercentage) ? `${successPercentage.toFixed(1)}%` : 'N/A';
       console.log(chalk.cyan('Results:      ') + `${passRate} passed (${percentage})`);
     }
+
+    // Display token usage if available
+    const totalPromptTokens = run.total_prompt_tokens !== undefined && run.total_prompt_tokens !== null 
+      ? parseInt(run.total_prompt_tokens, 10) 
+      : null;
+    const totalCompletionTokens = run.total_completion_tokens !== undefined && run.total_completion_tokens !== null
+      ? parseInt(run.total_completion_tokens, 10)
+      : null;
+    const totalThinkingTokens = run.total_thinking_tokens !== undefined && run.total_thinking_tokens !== null
+      ? parseInt(run.total_thinking_tokens, 10)
+      : null;
+    const totalTokens = run.total_tokens !== undefined && run.total_tokens !== null
+      ? parseInt(run.total_tokens, 10)
+      : null;
+
+    if (totalPromptTokens !== null || totalCompletionTokens !== null || totalTokens !== null) {
+      const tokenBreakdown = formatTokenBreakdown(
+        totalPromptTokens,
+        totalCompletionTokens,
+        totalThinkingTokens,
+        totalTokens
+      );
+      console.log(chalk.cyan('Token Usage:  ') + tokenBreakdown);
+    }
+
+    // Display cost breakdown if available
+    const totalInputCost = run.total_input_cost !== undefined && run.total_input_cost !== null
+      ? parseFloat(run.total_input_cost)
+      : null;
+    const totalOutputCost = run.total_output_cost !== undefined && run.total_output_cost !== null
+      ? parseFloat(run.total_output_cost)
+      : null;
+    const totalCost = run.total_cost !== undefined && run.total_cost !== null
+      ? parseFloat(run.total_cost)
+      : null;
+
+    if (totalInputCost !== null || totalOutputCost !== null || totalCost !== null) {
+      const costBreakdown = formatCostBreakdown(totalInputCost, totalOutputCost, totalCost);
+      console.log(chalk.cyan('Cost:         ') + costBreakdown);
+    } else if (totalCost !== null) {
+      // Fallback to just total cost if breakdown not available
+      console.log(chalk.cyan('Cost:         ') + formatCost(totalCost));
+    }
+
     console.log('');
 
     if (run.results && run.results.length > 0) {
@@ -652,6 +820,69 @@ export async function getRunCommand(runId: string, debug: boolean = false) {
         console.log(chalk.bold(displayName + ':'));
         console.log(chalk.blue('Prompt: ') + (result.prompt || ''));
         console.log(chalk.gray('Response: ' + (result.response || '')));
+
+        // Display per-eval token usage if available
+        const promptTokens = result.prompt_tokens !== undefined && result.prompt_tokens !== null
+          ? parseInt(result.prompt_tokens, 10)
+          : null;
+        const completionTokens = result.completion_tokens !== undefined && result.completion_tokens !== null
+          ? parseInt(result.completion_tokens, 10)
+          : null;
+        const thinkingTokens = result.thinking_tokens !== undefined && result.thinking_tokens !== null
+          ? parseInt(result.thinking_tokens, 10)
+          : null;
+        const totalTokens = result.total_tokens !== undefined && result.total_tokens !== null
+          ? parseInt(result.total_tokens, 10)
+          : null;
+
+        if (promptTokens !== null || completionTokens !== null || totalTokens !== null) {
+          const tokenParts: string[] = [];
+          if (promptTokens !== null && !isNaN(promptTokens)) {
+            tokenParts.push(`${formatTokenCount(promptTokens)} input`);
+          }
+          if (completionTokens !== null && !isNaN(completionTokens)) {
+            tokenParts.push(`${formatTokenCount(completionTokens)} output`);
+          }
+          if (thinkingTokens !== null && !isNaN(thinkingTokens) && thinkingTokens > 0) {
+            tokenParts.push(`${formatTokenCount(thinkingTokens)} thinking`);
+          }
+          if (totalTokens !== null && !isNaN(totalTokens)) {
+            tokenParts.push(`${formatTokenCount(totalTokens)} total`);
+          }
+          if (tokenParts.length > 0) {
+            console.log(chalk.gray('Tokens:       ') + tokenParts.join(', '));
+          }
+        }
+
+        // Display per-eval cost if available
+        const inputCost = result.input_cost !== undefined && result.input_cost !== null
+          ? parseFloat(result.input_cost)
+          : null;
+        const outputCost = result.output_cost !== undefined && result.output_cost !== null
+          ? parseFloat(result.output_cost)
+          : null;
+        const cost = result.cost !== undefined && result.cost !== null
+          ? parseFloat(result.cost)
+          : null;
+
+        if (inputCost !== null || outputCost !== null || cost !== null) {
+          const costParts: string[] = [];
+          if (inputCost !== null && !isNaN(inputCost)) {
+            costParts.push(`Input: ${formatCost(inputCost)}`);
+          }
+          if (outputCost !== null && !isNaN(outputCost)) {
+            costParts.push(`Output: ${formatCost(outputCost)}`);
+          }
+          if (cost !== null && !isNaN(cost)) {
+            costParts.push(`Total: ${formatCost(cost)}`);
+          }
+          if (costParts.length > 0) {
+            console.log(chalk.gray('Cost:         ') + costParts.join(' | '));
+          }
+        } else if (cost !== null && !isNaN(cost)) {
+          // Fallback to just cost if breakdown not available
+          console.log(chalk.gray('Cost:         ') + formatCost(cost));
+        }
 
         if (Array.isArray(result.check_results) && result.check_results.length > 0) {
           result.check_results.forEach((cond: any) => {

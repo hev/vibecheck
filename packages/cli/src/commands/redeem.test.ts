@@ -16,7 +16,12 @@ jest.mock('readline', () => {
 
 jest.mock('fs', () => {
   const actual: any = jest.requireActual('fs');
-  return Object.assign({}, actual, { existsSync: jest.fn() });
+  return Object.assign({}, actual, {
+    existsSync: jest.fn(),
+    readFileSync: jest.fn(),
+    writeFileSync: jest.fn(),
+    mkdirSync: jest.fn()
+  });
 });
 
 const mockAxiosPost = jest.fn() as jest.MockedFunction<any>;
@@ -58,6 +63,9 @@ describe('redeem interactive flow', () => {
   it('prompts overwrite if env exists and respects No', async () => {
     // Set up mocks before importing the module
     (fs.existsSync as unknown as jest.Mock).mockReturnValue(true);
+    (fs.readFileSync as unknown as jest.Mock).mockReturnValue('VIBECHECK_API_KEY=old');
+    (fs.mkdirSync as unknown as jest.Mock).mockImplementation(() => {});
+    (fs.writeFileSync as unknown as jest.Mock).mockImplementation(() => {});
     jest.spyOn(config, 'readEnvFile').mockReturnValue('VIBECHECK_API_KEY=old');
     jest.spyOn(config, 'saveApiKey').mockImplementation(() => {});
 
@@ -87,7 +95,10 @@ describe('redeem interactive flow', () => {
     // Use jest.doMock to ensure mocks are applied before module import
     jest.doMock('fs', () => ({
       ...(jest.requireActual('fs') as any),
-      existsSync: jest.fn().mockReturnValue(true)
+      existsSync: jest.fn().mockReturnValue(true),
+      readFileSync: jest.fn().mockReturnValue('VIBECHECK_API_KEY=old'),
+      mkdirSync: jest.fn(),
+      writeFileSync: jest.fn()
     }));
 
     jest.doMock('../utils/config', () => ({

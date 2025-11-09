@@ -319,11 +319,18 @@ evals:
     });
 
     it('should throw error when file write fails', async () => {
+      // Skip this test when running as root (e.g., in Docker/CI)
+      // Root can write to read-only directories, making this test unreliable
+      if (process.getuid && process.getuid() === 0) {
+        console.log('Skipping read-only test when running as root');
+        return;
+      }
+
       // Create a read-only directory to simulate write failure
       const readOnlyDir = path.join(tempDir, 'readonly');
       fs.mkdirSync(readOnlyDir);
       fs.chmodSync(readOnlyDir, 0o444);
-      
+
       await expect(writeRunOutput({
         runId: 'test-readonly',
         results: createMockResults(),

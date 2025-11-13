@@ -2,13 +2,13 @@ import axios from 'axios';
 import { displayInvitePrompt } from './auth-error';
 import { spawnSync } from 'child_process';
 import { isNetworkError } from './network-error';
-import { getApiUrl } from './config';
+import { getApiUrl, getOrgApiKey } from './config';
 import * as readline from 'readline';
 
 export function getAuthHeaders() {
-  const currentApiKey = process.env.VIBECHECK_API_KEY;
+  const currentApiKey = getOrgApiKey();
   const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
-  
+
   if (!currentApiKey) {
     if (!neverPrompt) {
       displayInvitePrompt();

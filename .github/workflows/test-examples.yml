@@ -1,0 +1,69 @@
+name: Example Tests
+
+on:
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'examples/**'
+      - 'packages/runner/**'
+      - 'tests/examples/**'
+      - '.github/workflows/test-examples.yml'
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'examples/**'
+      - 'packages/runner/**'
+      - 'tests/examples/**'
+      - '.github/workflows/test-examples.yml'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  test-examples:
+    name: Run Example Evaluations
+    runs-on: ubuntu-latest
+
+    # Only run if API key is available
+    if: ${{ secrets.VIBECHECK_API_KEY != '' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Run example tests
+        env:
+          VIBECHECK_API_KEY: ${{ secrets.VIBECHECK_API_KEY }}
+        run: npm run test:examples
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: example-test-results
+          path: |
+            coverage/
+            test-results/
+          retention-days: 7
+
+  skip-if-no-key:
+    name: Skipped (No API Key)
+    runs-on: ubuntu-latest
+    if: ${{ secrets.VIBECHECK_API_KEY == '' }}
+
+    steps:
+      - name: Notify skipped
+        run: |
+          echo "⚠️  Example tests skipped - VIBECHECK_API_KEY secret not configured"
+          echo "To enable example tests, add VIBECHECK_API_KEY to repository secrets"
+          echo "Get your API key at https://vibescheck.io"

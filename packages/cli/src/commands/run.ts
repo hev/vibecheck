@@ -9,13 +9,12 @@ import { displaySummary } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { writeRunOutput } from '../utils/output-writer';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
-import { getApiUrl } from '../utils/config';
-const API_KEY = process.env.VIBECHECK_API_KEY;
+import { getApiUrl, getOrgApiKey } from '../utils/config';
 
 function getAuthHeaders() {
-  const currentApiKey = process.env.VIBECHECK_API_KEY;
+  const currentApiKey = getOrgApiKey();
   const neverPrompt = process.env.VIBECHECK_NEVER_PROMPT === 'true';
-  
+
   if (!currentApiKey) {
     if (!neverPrompt) {
       displayInvitePrompt();

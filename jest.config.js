@@ -13,6 +13,8 @@ module.exports = {
     'packages/*/src/**/*.ts',
     '!packages/*/src/**/*.d.ts',
     '!packages/*/src/index.ts',
+    '!packages/*/src/**/*.test.ts',
+    '!packages/*/src/**/*.spec.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
@@ -38,6 +40,9 @@ module.exports = {
   // Note: detectOpenHandles: false doesn't suppress the forceExit warning
   // The warning is hardcoded in Jest when forceExit: true
   detectOpenHandles: false,
+  // Run projects sequentially to avoid race conditions with nock mocks
+  // This prevents intermittent failures when running 'npm test'
+  maxWorkers: 1,
   // Load global mocks
   setupFilesAfterEnv: ['<rootDir>/tests/helpers/setup-mocks.js'],
   // Separate test categories with displayName
@@ -47,8 +52,6 @@ module.exports = {
       testMatch: ['<rootDir>/packages/*/src/**/*.test.ts'],
       preset: 'ts-jest',
       testEnvironment: 'node',
-      forceExit: true,
-      detectOpenHandles: false,
     },
     {
       displayName: 'integration',
@@ -59,8 +62,6 @@ module.exports = {
       ],
       preset: 'ts-jest',
       testEnvironment: 'node',
-      forceExit: true,
-      detectOpenHandles: false,
     },
     // E2E tests are commented out until test helpers are created
     // See tests/e2e/README.md for setup instructions
@@ -70,6 +71,16 @@ module.exports = {
     //   preset: 'ts-jest',
     //   testEnvironment: 'node',
     //   testTimeout: 120000, // E2E tests may take longer
+    // },
+    // Example tests are excluded from default runs (require API key)
+    // Run explicitly with: npm run test:examples
+    // See tests/examples/README.md for setup instructions
+    // {
+    //   displayName: 'examples',
+    //   testMatch: ['<rootDir>/tests/examples/**/*.test.ts'],
+    //   preset: 'ts-jest',
+    //   testEnvironment: 'node',
+    //   testTimeout: 120000, // Examples involve API calls
     // },
   ],
 };

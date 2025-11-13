@@ -553,6 +553,83 @@ vibe get runs --sort-by time             # By duration
 vibe get runs --sort-by price-performance # By score (recommended)
 ```
 
+## Programmatic API
+
+The `@vibecheck/runner` package allows you to run vibe checks directly in your code and tests.
+
+### Installation
+
+```bash
+npm install --save-dev @vibecheck/runner
+```
+
+### Basic Usage
+
+```typescript
+import { runVibeCheck } from '@vibecheck/runner';
+
+const results = await runVibeCheck({
+  file: './examples/hello-world.yaml'
+});
+
+console.log(`Passed: ${results.filter(r => r.passed).length}/${results.length}`);
+```
+
+### Jest Integration
+
+```typescript
+import { runVibeCheck } from '@vibecheck/runner';
+import { extendExpect } from '@vibecheck/runner/jest';
+
+// Extend Jest with custom matchers
+extendExpect(expect);
+
+describe('My LLM Feature', () => {
+  it('should pass all vibe checks', async () => {
+    const results = await runVibeCheck({
+      file: './evals/my-feature.yaml'
+    });
+
+    expect(results).toHavePassedAll();
+  });
+});
+```
+
+**Available Jest matchers:**
+- `toHavePassedAll()` - Assert all evaluations passed
+- `toHaveSuccessRateAbove(threshold)` - Assert success rate above threshold
+- `toHaveSuccessRateBelow(threshold)` - Assert success rate below threshold
+- `toHavePassedCount(count)` - Assert exact number of passed evaluations
+- `toHaveFailedCount(count)` - Assert exact number of failed evaluations
+
+See the [runner package README](./packages/runner/README.md) for full API documentation.
+
+## Example Tests
+
+The repository includes automated tests that run all example evaluations to validate the runner package and examples.
+
+### Run Example Tests
+
+```bash
+# Set your API key first
+export VIBECHECK_API_KEY=your-api-key
+
+# Build and run examples
+npm run build
+npm run test:examples
+```
+
+This will run all examples in parallel:
+- ✅ `hello-world.yaml` - Basic checks
+- ✅ `finance.yaml` - Financial knowledge
+- ✅ `healthcare.yaml` - Medical knowledge
+- ✅ `lang.yaml` - Multilingual capabilities
+- ✅ `politics.yaml` - Political knowledge
+- ✅ `sports.yaml` - Sports knowledge
+- ✅ `strawberry.yaml` - Reasoning capabilities
+
+Example tests are automatically run on pull requests via GitHub Actions. See [tests/examples/README.md](./tests/examples/README.md) for details.
+
 ---
 
 **Wanna check the vibe?** Get started at [vibescheck.io](https://vibescheck.io) 🚀

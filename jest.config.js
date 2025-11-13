@@ -72,5 +72,12 @@ module.exports = {
     //   testEnvironment: 'node',
     //   testTimeout: 120000, // E2E tests may take longer
     // },
+    {
+      displayName: 'examples',
+      testMatch: ['<rootDir>/tests/examples/**/*.test.ts'],
+      preset: 'ts-jest',
+      testEnvironment: 'node',
+      testTimeout: 120000, // Examples involve API calls
+    },
   ],
 };

@@ -1,0 +1,11 @@
+metadata:
+  name: test-eval
+  model: anthropic/claude-3.5-sonnet
+  system_prompt: You are a helpful assistant
+
+evals:
+  - prompt: What is 2+2?
+    checks:
+      - match: "*4*"
+      - min_tokens: 1
+      - max_tokens: 100

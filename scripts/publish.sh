@@ -18,7 +18,8 @@ while [[ $# -gt 0 ]]; do
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
-            echo "This script publishes the vibecheck CLI to npm and creates a GitHub release."
+            echo "This script publishes vibecheck packages to npm and creates a GitHub release."
+            echo "Packages published: vibecheck-cli, @vibecheck/runner"
             echo ""
             echo "Options:"
             echo "  --skip-tests      Skip running tests before publishing"
@@ -38,11 +39,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-echo "🚀 vibecheck CLI Publishing Script"
+echo "🚀 vibecheck Publishing Script"
 echo "=================================="
+echo "Publishing: vibecheck-cli + @vibecheck/runner"
+echo ""
 
 # Check if we're in the right directory
-if [ ! -f "package.json" ] || [ ! -d "packages/cli" ]; then
+if [ ! -f "package.json" ] || [ ! -d "packages/cli" ] || [ ! -d "packages/runner" ]; then
     echo "❌ Error: Please run this script from the project root directory"
     exit 1
 fi
@@ -114,18 +117,27 @@ fi
 
 echo "✅ Build completed successfully"
 
-# Check package version and prompt for version bump
-echo "📦 Checking package version..."
+# Check package versions and prompt for version bump
+echo "📦 Checking package versions..."
 cd packages/cli
-CURRENT_VERSION=$(node -p "require('./package.json').version")
-echo "Current version: $CURRENT_VERSION"
+CLI_VERSION=$(node -p "require('./package.json').version")
+cd ../runner
+RUNNER_VERSION=$(node -p "require('./package.json').version")
+cd ../..
+ROOT_VERSION=$(node -p "require('./package.json').version")
 
-# Also check root package.json version
-ROOT_VERSION=$(node -p "require('../../package.json').version")
-if [ "$CURRENT_VERSION" != "$ROOT_VERSION" ]; then
-    echo "⚠️  Warning: Version mismatch between root ($ROOT_VERSION) and CLI ($CURRENT_VERSION)"
-    echo "   Both versions will be updated together"
+echo "Current versions:"
+echo "  Root:    $ROOT_VERSION"
+echo "  CLI:     $CLI_VERSION"
+echo "  Runner:  $RUNNER_VERSION"
+
+# Check for version mismatches
+if [ "$CLI_VERSION" != "$ROOT_VERSION" ] || [ "$RUNNER_VERSION" != "$ROOT_VERSION" ]; then
+    echo "⚠️  Warning: Version mismatch detected"
+    echo "   All versions will be updated together (monorepo versioning)"
 fi
+
+CURRENT_VERSION=$ROOT_VERSION
 
 # Ask for version bump
 echo "Version bump options:"
@@ -139,28 +151,32 @@ echo
 NEW_VERSION=""
 case $REPLY in
     1)
+        # Update all three package.json files
         npm version patch --no-git-tag-version
         NEW_VERSION=$(node -p "require('./package.json').version")
-        # Update root package.json version
-        cd ../..
-        npm version patch --no-git-tag-version
         cd packages/cli
+        npm version patch --no-git-tag-version
+        cd ../runner
+        npm version patch --no-git-tag-version
+        cd ../..
         ;;
     2)
         npm version minor --no-git-tag-version
         NEW_VERSION=$(node -p "require('./package.json').version")
-        # Update root package.json version
-        cd ../..
-        npm version minor --no-git-tag-version
         cd packages/cli
+        npm version minor --no-git-tag-version
+        cd ../runner
+        npm version minor --no-git-tag-version
+        cd ../..
         ;;
     3)
         npm version major --no-git-tag-version
         NEW_VERSION=$(node -p "require('./package.json').version")
-        # Update root package.json version
-        cd ../..
-        npm version major --no-git-tag-version
         cd packages/cli
+        npm version major --no-git-tag-version
+        cd ../runner
+        npm version major --no-git-tag-version
+        cd ../..
         ;;
     4)
         echo "Skipping version bump"
@@ -172,23 +188,44 @@ case $REPLY in
         ;;
 esac
 
-# Publish to npm
-echo "📤 Publishing to npm..."
+# Publish both packages to npm
+echo "📤 Publishing packages to npm..."
+echo ""
+
+# Publish runner package first (it has no dependencies on CLI)
+echo "Publishing @vibecheck/runner@$NEW_VERSION..."
+cd packages/runner
 npm publish --access public
 
-if [ $? -eq 0 ]; then
-    echo "🎉 Successfully published vibecheck-cli to npm!"
-else
-    echo "❌ npm publishing failed"
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to publish @vibecheck/runner"
+    cd ../..
     exit 1
 fi
+echo "✅ Successfully published @vibecheck/runner@$NEW_VERSION"
+
+# Publish CLI package
+cd ../cli
+echo ""
+echo "Publishing vibecheck-cli@$NEW_VERSION..."
+npm publish --access public
+
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to publish vibecheck-cli"
+    cd ../..
+    exit 1
+fi
+echo "✅ Successfully published vibecheck-cli@$NEW_VERSION"
+
+# Return to root directory
+cd ../..
 
 # Extract release notes from CHANGELOG.md
-cd ../..
+echo ""
 echo "📝 Extracting release notes from CHANGELOG.md..."
 
 if [ -z "$NEW_VERSION" ]; then
-    NEW_VERSION=$(node -p "require('./packages/cli/package.json').version")
+    NEW_VERSION=$(node -p "require('./package.json').version")
 fi
 
 # Extract the section for the new version from CHANGELOG.md
@@ -272,4 +309,5 @@ rm -f "$RELEASE_NOTES_FILE"
 echo ""
 echo "✨ Publishing complete!"
 echo "   - Published to npm: vibecheck-cli@$NEW_VERSION"
+echo "   - Published to npm: @vibecheck/runner@$NEW_VERSION"
 echo "   - Created GitHub release: $TAG_NAME"

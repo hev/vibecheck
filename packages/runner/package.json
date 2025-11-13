@@ -1,6 +1,6 @@
 {
   "name": "@vibecheck/runner",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Programmatic runner for vibecheck evaluations - Run vibe checks directly in your Jest tests",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

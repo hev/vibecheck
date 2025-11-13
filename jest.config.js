@@ -72,12 +72,15 @@ module.exports = {
     //   testEnvironment: 'node',
     //   testTimeout: 120000, // E2E tests may take longer
     // },
-    {
-      displayName: 'examples',
-      testMatch: ['<rootDir>/tests/examples/**/*.test.ts'],
-      preset: 'ts-jest',
-      testEnvironment: 'node',
-      testTimeout: 120000, // Examples involve API calls
-    },
+    // Example tests are excluded from default runs (require API key)
+    // Run explicitly with: npm run test:examples
+    // See tests/examples/README.md for setup instructions
+    // {
+    //   displayName: 'examples',
+    //   testMatch: ['<rootDir>/tests/examples/**/*.test.ts'],
+    //   preset: 'ts-jest',
+    //   testEnvironment: 'node',
+    //   testTimeout: 120000, // Examples involve API calls
+    // },
   ],
 };

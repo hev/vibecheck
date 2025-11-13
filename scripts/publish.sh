@@ -19,7 +19,7 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "This script publishes vibecheck packages to npm and creates a GitHub release."
-            echo "Packages published: vibecheck-cli, @vibecheck/runner"
+            echo "Packages published: vibecheck-cli, vibecheck-runner"
             echo ""
             echo "Options:"
             echo "  --skip-tests      Skip running tests before publishing"
@@ -41,7 +41,7 @@ done
 
 echo "🚀 vibecheck Publishing Script"
 echo "=================================="
-echo "Publishing: vibecheck-cli + @vibecheck/runner"
+echo "Publishing: vibecheck-cli + vibecheck-runner"
 echo ""
 
 # Check if we're in the right directory
@@ -193,16 +193,16 @@ echo "📤 Publishing packages to npm..."
 echo ""
 
 # Publish runner package first (it has no dependencies on CLI)
-echo "Publishing @vibecheck/runner@$NEW_VERSION..."
+echo "Publishing vibecheck-runner@$NEW_VERSION..."
 cd packages/runner
 npm publish --access public
 
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to publish @vibecheck/runner"
+    echo "❌ Failed to publish vibecheck-runner"
     cd ../..
     exit 1
 fi
-echo "✅ Successfully published @vibecheck/runner@$NEW_VERSION"
+echo "✅ Successfully published vibecheck-runner@$NEW_VERSION"
 
 # Publish CLI package
 cd ../cli
@@ -309,5 +309,5 @@ rm -f "$RELEASE_NOTES_FILE"
 echo ""
 echo "✨ Publishing complete!"
 echo "   - Published to npm: vibecheck-cli@$NEW_VERSION"
-echo "   - Published to npm: @vibecheck/runner@$NEW_VERSION"
+echo "   - Published to npm: vibecheck-runner@$NEW_VERSION"
 echo "   - Created GitHub release: $TAG_NAME"

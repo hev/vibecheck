@@ -7,7 +7,7 @@ import { EvalResult, ConditionalResult } from '../types';
 import { displaySummary, formatTokenCount, formatCost, formatCostBreakdown, formatTokenBreakdown } from '../utils/display';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
-import { getApiUrl } from '../utils/config';
+import { getApiUrl, getOrgApiKey } from '../utils/config';
 import { RunsListFilters, buildRunsQueryParams } from '../utils/runs-filters';
 
 /**
@@ -45,8 +45,8 @@ function calculatePricePerformanceScore(successPercentage: number, totalCost: nu
 }
 
 function getAuthHeaders() {
-  const currentApiKey = process.env.VIBECHECK_API_KEY;
-  
+  const currentApiKey = getOrgApiKey();
+
   if (!currentApiKey) {
     displayInvitePrompt();
     process.exit(1);

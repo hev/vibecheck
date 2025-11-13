@@ -6,11 +6,11 @@ import axios from 'axios';
 import { EvalSuiteSchema } from '../types';
 import { displayInvitePrompt } from '../utils/auth-error';
 import { isNetworkError, displayNetworkError } from '../utils/network-error';
-import { getApiUrl } from '../utils/config';
+import { getApiUrl, getOrgApiKey } from '../utils/config';
 
 function getAuthHeaders() {
-  const currentApiKey = process.env.VIBECHECK_API_KEY;
-  
+  const currentApiKey = getOrgApiKey();
+
   if (!currentApiKey) {
     displayInvitePrompt();
     process.exit(1);

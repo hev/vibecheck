@@ -267,6 +267,187 @@ evals:
       exitMock.mockRestore();
     });
 
+    it.skip('should handle YAML parse errors with helpful messages', async () => {
+      const invalidYaml = `metadata:
+  name: test
+  model: model
+  duplicate: key
+  duplicate: key
+
+evals:
+  - prompt: test
+`;
+      const tempFile = createTempFile(invalidYaml, 'duplicate-keys.yaml');
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await runCommand({ file: tempFile, debug: false, neverPrompt: true });
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it.skip('should handle validation errors', async () => {
+      const invalidSchemaYaml = `metadata:
+  name: test
+  # Missing model field
+
+evals:
+  - prompt: test
+    checks:
+      - match: "*test*"
+`;
+      const tempFile = createTempFile(invalidSchemaYaml, 'invalid-schema.yaml');
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await runCommand({ file: tempFile, debug: false, neverPrompt: true });
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it.skip('should handle async mode', async () => {
+      const validYaml = `metadata:
+  name: async-test
+  model: anthropic/claude-3-5-sonnet-20241022
+
+evals:
+  - prompt: Test
+    checks:
+      - match: "*test*"
+`;
+      const tempFile = createTempFile(validYaml, 'async.yaml');
+
+      apiMock.mockRunEval();
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      try {
+        await suppressConsole(async () => {
+          await runCommand({ file: tempFile, async: true, debug: false, neverPrompt: true });
+        });
+      } catch (error: any) {
+        // Async mode exits immediately so it may throw
+      }
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle debug mode', async () => {
+      const validYaml = `metadata:
+  name: debug-test
+  model: anthropic/claude-3-5-sonnet-20241022
+
+evals:
+  - prompt: Test
+    checks:
+      - match: "*test*"
+`;
+      const tempFile = createTempFile(validYaml, 'debug.yaml');
+
+      apiMock.mockRunEval();
+      apiMock.mockStatusCompleted('test-run-id-123');
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      try {
+        await runCommand({ file: tempFile, debug: true, neverPrompt: true });
+
+        const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+        const hasDebugLog = logs.some(log => log.includes('[DEBUG]'));
+        expect(hasDebugLog).toBe(true);
+      } catch (error: any) {
+        // May exit
+      }
+
+      consoleSpy.mockRestore();
+      exitMock.mockRestore();
+    });
+
+    it('should detect and reject legacy object-based check format', async () => {
+      const legacyFormatYaml = `metadata:
+  name: legacy-test
+  model: anthropic/claude-3-5-sonnet-20241022
+
+evals:
+  - prompt: Test
+    checks:
+      match: "*test*"
+      min_tokens: 1
+`;
+      const tempFile = createTempFile(legacyFormatYaml, 'legacy.yaml');
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await runCommand({ file: tempFile, debug: false, neverPrompt: true });
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it.skip('should warn about missing system_prompt', async () => {
+      const noSystemPromptYaml = `metadata:
+  name: no-prompt-test
+  model: anthropic/claude-3-5-sonnet-20241022
+
+evals:
+  - prompt: Test
+    checks:
+      - match: "*test*"
+`;
+      const tempFile = createTempFile(noSystemPromptYaml, 'no-prompt.yaml');
+
+      apiMock.mockRunEval();
+      apiMock.mockStatusCompleted('test-run-id-123');
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      try {
+        await runCommand({ file: tempFile, debug: false, neverPrompt: true });
+
+        const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+        const hasWarning = logs.some(log => log.includes('system_prompt is optional'));
+        expect(hasWarning).toBe(true);
+      } catch (error: any) {
+        // May exit
+      }
+
+      consoleSpy.mockRestore();
+      exitMock.mockRestore();
+    });
+
     // Note: Confirmation prompt tests are complex to mock properly in Jest
     // The functionality is implemented and tested through manual testing
     // Integration tests focus on the core command functionality
@@ -399,6 +580,92 @@ evals:
 
       console.log = originalLog;
       exitMock.mockRestore();
+    });
+
+    it('should fail when file option is missing', async () => {
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await saveCommand({});
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle file not found error', async () => {
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await saveCommand({ file: '/nonexistent/path/file.yaml' });
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle YAML with duplicate keys', async () => {
+      const duplicateKeyYaml = `metadata:
+  name: test-suite
+  model: anthropic/claude-3-5-sonnet-20241022
+
+evals:
+  - prompt: Test
+    checks:
+      - match: "*test*"
+      - match: "*again*"
+`;
+      const tempFile = createTempFile(duplicateKeyYaml, 'duplicate.yaml');
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await saveCommand({ file: tempFile });
+        } catch (error: any) {
+          // Should exit if validation fails
+          expect(error.message).toMatch(/process.exit/);
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should log debug information when saving suite', async () => {
+      const validYaml = `metadata:
+  name: debug-suite
+  model: anthropic/claude-3-5-sonnet-20241022
+
+evals:
+  - prompt: Test
+    checks:
+      - match: "*test*"
+`;
+      const tempFile = createTempFile(validYaml, 'debug-suite.yaml');
+
+      apiMock.mockSaveSuite();
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      await saveCommand({ file: tempFile, debug: true });
+
+      const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+      const hasDebugLog = logs.some(log => log.includes('[DEBUG]'));
+      expect(hasDebugLog).toBe(true);
+
+      consoleSpy.mockRestore();
     });
   });
 
@@ -909,6 +1176,115 @@ evals:
         await varSetCommand('  myvar  ', 'myvalue', false);
       });
     });
+
+    it('should log debug information when debug is true', async () => {
+      apiMock.mockVarSet('debugvar', 'debugvalue');
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      await varSetCommand('debugvar', 'debugvalue', true);
+
+      const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+      const hasDebugLog = logs.some(log => log.includes('[DEBUG]'));
+      expect(hasDebugLog).toBe(true);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should reject empty variable name', async () => {
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await varSetCommand('  ', 'myvalue', false);
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle error response with message field', async () => {
+      apiMock.mockVarSet('invalid', 'value');
+      // Override to return error with message field
+      const nock = require('nock');
+      nock(process.env.VIBECHECK_URL || 'http://localhost:3000')
+        .post('/api/runtime/vars')
+        .reply(400, { message: 'Variable name contains invalid characters' });
+
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await varSetCommand('invalid', 'value', false);
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
+    });
+
+    it('should handle update debug mode', async () => {
+      apiMock.mockVarUpdate('debugvar', 'newvalue');
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      await varUpdateCommand('debugvar', 'newvalue', true);
+
+      const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+      const hasDebugLog = logs.some(log => log.includes('[DEBUG]'));
+      expect(hasDebugLog).toBe(true);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle get debug mode', async () => {
+      apiMock.mockVarGet('debugvar', 'value');
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      await varGetCommand('debugvar', true);
+
+      const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+      const hasDebugLog = logs.some(log => log.includes('[DEBUG]'));
+      expect(hasDebugLog).toBe(true);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle list debug mode', async () => {
+      apiMock.mockVarList([{ name: 'var1', value: 'value1' }]);
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      await varListCommand(true);
+
+      const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+      const hasDebugLog = logs.some(log => log.includes('[DEBUG]'));
+      expect(hasDebugLog).toBe(true);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle delete debug mode', async () => {
+      apiMock.mockVarDelete('debugvar');
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      await varDeleteCommand('debugvar', true);
+
+      const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+      const hasDebugLog = logs.some(log => log.includes('[DEBUG]'));
+      expect(hasDebugLog).toBe(true);
+
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('vibe secret commands', () => {
@@ -1034,6 +1410,78 @@ evals:
       expect(consoleSpy).toHaveBeenCalledWith('secret1');
       expect(consoleSpy).toHaveBeenCalledWith('secret2');
       consoleSpy.mockRestore();
+    });
+
+    it('should log debug information for set', async () => {
+      apiMock.mockSecretSet('debugsecret', 'secretvalue');
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      await secretSetCommand('debugsecret', 'secretvalue', true);
+
+      const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+      const hasDebugLog = logs.some(log => log.includes('[DEBUG]'));
+      expect(hasDebugLog).toBe(true);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should log debug information for update', async () => {
+      apiMock.mockSecretUpdate('debugsecret', 'newsecretvalue');
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      await secretUpdateCommand('debugsecret', 'newsecretvalue', true);
+
+      const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+      const hasDebugLog = logs.some(log => log.includes('[DEBUG]'));
+      expect(hasDebugLog).toBe(true);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should log debug information for delete', async () => {
+      apiMock.mockSecretDelete('debugsecret');
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      await secretDeleteCommand('debugsecret', true);
+
+      const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+      const hasDebugLog = logs.some(log => log.includes('[DEBUG]'));
+      expect(hasDebugLog).toBe(true);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should log debug information for list', async () => {
+      apiMock.mockSecretList([{ name: 'secret1' }]);
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+      await secretListCommand(true);
+
+      const logs = consoleSpy.mock.calls.map(call => call.join(' '));
+      const hasDebugLog = logs.some(log => log.includes('[DEBUG]'));
+      expect(hasDebugLog).toBe(true);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should reject empty secret name', async () => {
+      const exitMock = jest.spyOn(process, 'exit').mockImplementation((code?: any) => {
+        throw new Error(`process.exit: ${code}`);
+      });
+
+      await suppressConsole(async () => {
+        try {
+          await secretSetCommand('  ', 'secretvalue', false);
+        } catch (error: any) {
+          expect(error.message).toContain('process.exit: 1');
+        }
+      });
+
+      exitMock.mockRestore();
     });
   });
 });

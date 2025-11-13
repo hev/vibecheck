@@ -7,10 +7,9 @@
 
 **An agent evaluation framework for any LLM** - A simple and intuitive YAML based DSL for language evals.
 
-vibecheck makes it easy to evaluate any language model with a simple YAML configuration. Run evals,
-save the results, and tweak your system prompts with incredibly tight feedback loop from the command line.
+vibecheck makes it easy to evaluate any language model with a simple YAML configuration. Run evals, save the results, and tweak your system prompts with incredibly tight feedback loop from the command line.
 
-> **Get Your Invite** 
+> **Get Your Invite**
 >
 > vibe check is currently being offered as an invite-only developer preview! Read our FAQ and request your API key at [vibescheck.io](https://vibescheck.io).
 
@@ -22,7 +21,7 @@ npm install -g vibecheck-cli
 
 **Get your API key at [vibescheck.io](https://vibescheck.io)**
 
-## Quick Start 
+## Quick Start
 
 Create a simple evaluation file:
 
@@ -53,122 +52,69 @@ hello-world  ----|+++++  ✅ in 2.3s
 hello-world: Success Pct: 2/2 (100.0%)
 ```
 
-## CLI Commands
+## Documentation
 
-### `vibe check` - Run Evaluations
-Run evaluations from a YAML file or saved suite.
+### Core Documentation
 
-```bash
-vibe check -f hello-world.yaml
-vibe check my-eval-suite
-vibe check -f my-eval.yaml -m "anthropic/claude-3.5-sonnet,openai/gpt-4"
-```
+- **[YAML Syntax Reference](./docs/yaml-syntax.md)** - Complete guide to evaluation syntax and check types
+- **[CLI Reference](./docs/cli-reference.md)** - All CLI commands, options, and flags
+- **[Examples](./docs/examples.md)** - Featured examples and best practices
+- **[Model Comparison & Scoring](./docs/model-comparison.md)** - Compare models and understand scoring
+- **[Programmatic API](./docs/programmatic-api.md)** - Use vibecheck in your code and tests
 
-### `vibe stop` - Cancel Queued Runs
-Stop/cancel a queued run that hasn't started executing yet.
+### Quick Links
 
-```bash
-vibe stop <run-id>
-vibe stop run <run-id>  # Alternative syntax
-vibe stop queued        # Cancel all queued runs
-```
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Essential Commands](#essential-commands)
+- [Featured Examples](#featured-examples)
+- [YAML Syntax Reference](#yaml-syntax-reference)
 
-**Examples:**
-```bash
-vibe stop abc123-def456-ghi789
-vibe stop run abc123-def456-ghi789
-vibe stop queued
-```
+## Essential Commands
 
-**Notes:**
-- Only queued runs can be cancelled (not running, completed, or already cancelled)
-- Run IDs can be found using `vibe get runs`
-- Cancelled runs will show as "cancelled" status
-- `vibe stop queued` will cancel all runs with "queued" status
-
-### `vibe get` - List/Retrieve Resources
-Get various resources with filtering options.
+### Run Evaluations
 
 ```bash
-vibe get runs                    # List all runs
-vibe get run <id>               # Get specific run details
-vibe get suites                 # List saved suites
-vibe get suite <name>           # Get specific suite
-vibe get models                 # List available models
-vibe get org                    # Organization info
-vibe get vars                   # List all variables (name=value)
-vibe get var <name>             # Get variable value
-vibe get secrets                # List all secrets (names only)
+vibe check -f hello-world.yaml                    # Run from file
+vibe check my-suite                               # Run saved suite
+vibe check -f my-eval.yaml -m "openai*,anthropic*" # Multi-model comparison
 ```
 
-### `vibe set` - Save Suites
-Save an evaluation suite from a YAML file.
+[→ Full CLI Reference](./docs/cli-reference.md)
+
+### Manage Suites
 
 ```bash
-vibe set -f my-eval.yaml
+vibe set -f my-eval.yaml        # Save a suite
+vibe get suites                 # List all suites
+vibe get suite <name>          # Get specific suite
 ```
 
-### `vibe redeem` - Redeem Invite Codes
-Redeem an invite code to create an organization and receive an API key.
+### View Results
 
 ```bash
-vibe redeem <code>
+vibe get runs                           # List all runs
+vibe get runs --sort-by price-performance # Compare models by score
+vibe get runs --suite my-suite         # Filter by suite
 ```
 
-### `vibe var` - Manage Runtime Variables
-Manage org-scoped runtime variables that can be injected into evaluation YAML files.
+### Manage Variables & Secrets
 
 ```bash
 vibe var set <name> <value>      # Set a variable
-vibe var update <name> <value>   # Update a variable
-vibe var get <name>              # Get a variable value (scripting-friendly)
-vibe var list                    # List all variables (name=value format)
-vibe var delete <name>           # Delete a variable
+vibe secret set <name> <value>   # Set a secret (write-only)
+vibe get vars                    # List all variables
 ```
 
-**Examples:**
-```bash
-vibe var set myvar "my value"
-vibe var update myvar "updated value"
-vibe var get myvar               # Prints: updated value
-vibe var list                    # Prints: myvar=updated value
-vibe var delete myvar
-```
-
-**Environment Variables:**
-- `VIBECHECK_API_URL` or `API_BASE_URL` - API URL (default: `https://vibecheck-api-prod-681369865361.us-central1.run.app`)
-- `VIBECHECK_API_KEY` or `API_KEY` - Organization API key (required)
-
-### `vibe secret` - Manage Runtime Secrets
-Manage org-scoped runtime secrets. Secret values are write-only (cannot be read), but you can list secret names. Secrets can be injected into evaluation YAML files.
-
-```bash
-vibe secret set <name> <value>      # Set a secret
-vibe secret update <name> <value>  # Update a secret
-vibe secret delete <name>          # Delete a secret
-```
-
-**Examples:**
-```bash
-vibe secret set mysecret "sensitive-value"
-vibe secret update mysecret "new-sensitive-value"
-vibe secret delete mysecret
-vibe get secrets                   # List secret names (values not shown)
-```
-
-**Note:** Secret values are write-only for security reasons. You can list secret names with `vibe get secrets`, but individual secret values cannot be retrieved.
-
-**Environment Variables:**
-- `VIBECHECK_API_URL` or `API_BASE_URL` - API URL (default: `https://vibecheck-api-prod-681369865361.us-central1.run.app`)
-- `VIBECHECK_API_KEY` or `API_KEY` - Organization API key (required)
+[→ Full CLI Reference](./docs/cli-reference.md)
 
 ## Featured Examples
 
 ### 🌍 Multilingual Testing
-Test your model across 10+ languages with the same evaluation:
+
+Test your model across 10+ languages:
 
 ```yaml
-# examples/multilingual-pbj.yaml
 metadata:
   name: multilingual-pbj
   model: meta-llama/llama-4-maverick
@@ -179,59 +125,29 @@ evals:
     checks:
       - match: "*bread*"
       - llm_judge:
-          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in English"
-      - min_tokens: 20
-      - max_tokens: 300
-
-  - prompt: "Décrivez comment faire un sandwich au beurre d'arachide et à la confiture."
-    checks:
-      - match: "*pain*"
-      - llm_judge:
-          criteria: "Does this accurately describe how to make a peanut butter and jelly sandwich in French"
+          criteria: "Does this accurately describe how to make a PB&J in English"
       - min_tokens: 20
       - max_tokens: 300
 ```
 
 ### 🔧 MCP Tool Integration
-Validate MCP (Model Context Protocol) tool calling with external services. This example shows how to test Linear MCP integration using secrets and variables to securely configure the MCP server.
 
-**Step 1: Get Your Linear API Key**
-Obtain your Linear API key from your Linear workspace settings. Navigate to Settings → API → Personal API Keys in your Linear workspace to create a new API key.
-
-**Step 2: Set Up the Secret**
-Set your Linear API key as a secret (sensitive, write-only):
+Test MCP tool calling with secure configuration:
 
 ```bash
-vibe set secret linear.apiKey "your-linear-api-key-here"
-```
-
-**Step 3: Set Up Variables**
-Set your Linear project ID and team name as variables:
-
-```bash
+# Set up secrets and variables
+vibe set secret linear.apiKey "your-api-key"
 vibe set var linear.projectId "your-project-id"
-vibe set var linear.projectTeam "your-team-name"
-```
 
-**Step 4: Run the Evaluation**
-Run the [Linear MCP evaluation](./examples/linear-mcp.yaml) (the suite is preloaded):
-
-```bash
+# Run the evaluation
 vibe check linear-mcp
 ```
 
-The evaluation tests three scenarios:
-- Listing recent issues from your Linear workspace
-- Retrieving details on a specific Linear todo item
-- Creating a new todo item in Linear
+### 🧠 Advanced Patterns
 
-Secrets and vars are resolved at runtime when the evaluation runs, so you can update them without modifying your YAML files.
-
-### 🧠 Advanced Evaluation Patterns
-Combine multiple check types for comprehensive testing:
+Combine multiple check types:
 
 ```yaml
-# examples/hello-world.yaml
 evals:
   - prompt: How are you today?
     checks:
@@ -239,213 +155,88 @@ evals:
           expected: "I'm doing well, thank you for asking"
           threshold: 0.7
       - llm_judge:
-          criteria: "Is this a friendly and appropriate response to 'How are you today?'"
+          criteria: "Is this a friendly and appropriate response?"
       - min_tokens: 10
       - max_tokens: 100
+```
 
+[→ More Examples](./docs/examples.md)
+
+## YAML Syntax Reference
+
+vibecheck evaluations are defined in YAML with a simple, intuitive syntax.
+
+### Quick Reference
+
+**Check Types:**
+- `match` - Glob pattern matching
+- `not_match` - Negated patterns
+- `or` - OR logic for multiple patterns
+- `min_tokens` / `max_tokens` - Token length constraints
+- `semantic` - Semantic similarity using embeddings
+- `llm_judge` - LLM-based quality evaluation
+
+**Example:**
+
+```yaml
+metadata:
+  name: my-eval
+  model: anthropic/claude-3.5-sonnet
+
+evals:
   - prompt: What is 2+2?
     checks:
       - or:
           - match: "*4*"
           - match: "*four*"
-      - llm_judge:
-          criteria: "Is this a correct mathematical answer to 2+2?"
       - min_tokens: 1
       - max_tokens: 20
 ```
 
-## YAML Syntax Reference
+[→ Full YAML Syntax Reference](./docs/yaml-syntax.md)
 
-### Check Types
+## Model Comparison
 
-#### `match` - Glob Pattern Matching
-Test if the response contains text matching a glob pattern.
-
-```yaml
-checks:
-  - match: "*hello*"        # Contains "hello" anywhere
-  - match: "hello*"         # Starts with "hello"
-  - match: "*world"         # Ends with "world"
-  # For multiple patterns, use multiple check objects
-  - match: "*yes*"
-  - match: "*ok*"
-```
-
-**Examples:**
-- `match: "*hello*"` matches "Hello world", "Say hello", "hello there"
-- `match: "The answer is*"` matches "The answer is 42" but not "Answer: 42"
-
-#### `not_match` - Negated Patterns
-Ensure the response does NOT contain certain text.
-
-```yaml
-checks:
-  - not_match: "*error*"                    # Single pattern
-  # For multiple patterns, use multiple check objects
-  - not_match: "*error*"
-  - not_match: "*sorry*"
-```
-
-**Examples:**
-- `not_match: "*error*"` fails if response contains "error", "Error", "ERROR"
-- Use multiple `not_match` checks for multiple patterns (all must not match)
-
-#### `or` - Explicit OR Logic
-Use when you want ANY of multiple patterns to pass.
-
-```yaml
-checks:
-  or:                     # At least one must pass
-    - match: "*yes*"
-    - match: "*affirmative*"
-    - match: "*correct*"
-```
-
-OR checks can be mixed with AND checks:
-```yaml
-checks:
-  - min_tokens: 10          # AND (must pass)
-  - or:                     # OR (one of these must pass)
-      - match: "*hello*"
-      - match: "*hi*"
-```
-
-#### `min_tokens` / `max_tokens` - Token Length Constraints
-Control response length using token counting.
-
-```yaml
-checks:
-  min_tokens: 10          # At least 10 tokens
-  max_tokens: 100         # At most 100 tokens
-```
-
-#### `semantic` - Semantic Similarity
-Compare response meaning using embeddings.
-
-```yaml
-checks:
-  semantic:
-    expected: "I'm doing well, thank you for asking"
-    threshold: 0.8        # 0.0 to 1.0 similarity score
-```
-
-#### `llm_judge` - LLM-Based Evaluation
-Use another LLM to judge response quality.
-
-```yaml
-checks:
-  llm_judge:
-    criteria: "Is this a helpful and accurate response to the question?"
-```
-
-### Check Logic
-
-**AND Logic (Array Format)**: Multiple checks in an array must ALL pass
-```yaml
-checks:
-  - match: "*hello*"        # AND
-  - min_tokens: 5           # AND
-  - max_tokens: 100         # AND
-```
-
-**OR Logic (Explicit)**: Use the `or:` field when you want ANY of the patterns to pass
-```yaml
-checks:
-  or:                     # OR (at least one must pass)
-    - match: "*yes*"
-    - match: "*affirmative*"
-    - match: "*correct*"
-```
-
-**Combined Logic**: Mix AND and OR logic
-```yaml
-checks:
-  - min_tokens: 10          # AND (must pass)
-  - or:                     # OR (one of these must pass)
-      - match: "*hello*"
-      - match: "*hi*"
-```
-
-### Metadata Configuration
-
-```yaml
-metadata:
-  name: my-eval-suite     # Required: Suite name
-  model: anthropic/claude-3.5-sonnet  # Required: Model to test
-  system_prompt: "You are a helpful assistant"  # Optional: System prompt
-  threads: 4              # Optional: Parallel threads for execution
-  mcp_server:             # Optional: MCP server config
-    url: "https://your-server.com"
-    name: "server-name"
-    authorization_token: "your-token"
-```
-
-> Note: For a one-time run of a saved suite, you can override any metadata at the command line (model, system prompt, threads, and MCP settings).
+Run evaluations on multiple models and compare results:
 
 ```bash
-# Run a saved suite with one-time overrides
-vibe check my-eval-suite \
-  --model openai/gpt-4o \
-  --system-prompt "You are a terse, helpful assistant." \
-  --threads 8 \
-  --mcp-url https://your-mcp-server.com \
-  --mcp-name server-name \
-  --mcp-token your-token
+# Run on specific models
+vibe check -f my-eval.yaml -m "openai/gpt-4,anthropic/claude-3.5-sonnet"
+
+# Run on all OpenAI models
+vibe check -f my-eval.yaml -m "openai*"
+
+# Run on all models
+vibe check -f my-eval.yaml -m all
+
+# View results sorted by score
+vibe get runs --sort-by price-performance
 ```
 
-### Using Secrets and Variables in YAML
+[→ Model Comparison Guide](./docs/model-comparison.md)
 
-You can inject secrets and variables into your YAML evaluation files using template syntax. This allows you to:
-- Keep sensitive values (like API tokens) secure using secrets
-- Share configuration values across multiple evaluation files using variables
-- Update values without modifying YAML files
+## Programmatic API
 
-**Template Syntax:**
-- Secrets: `{{secret('secret-name')}}`
-- Variables: `{{var('var-name')}}`
+Use vibecheck in your code and tests:
 
-**Example: Using secrets and vars in metadata**
+```typescript
+import { runVibeCheck } from '@vibecheck/runner';
+import { extendExpect } from '@vibecheck/runner/jest';
 
-```bash
-# Set a secret (sensitive, write-only)
-vibe set secret api_token "sk-1234567890abcdef"
+extendExpect(expect);
 
-# Set variables (readable, can be used for non-sensitive config)
-vibe set var model_name "anthropic/claude-3.5-sonnet"
-vibe set var system_role "You are a helpful assistant"
+describe('My LLM Feature', () => {
+  it('should pass all vibe checks', async () => {
+    const results = await runVibeCheck({
+      file: './evals/my-feature.yaml'
+    });
+
+    expect(results).toHavePassedAll();
+  });
+});
 ```
 
-```yaml
-metadata:
-  name: my-eval-suite
-  model: "{{var('model_name')}}"
-  system_prompt: "{{var('system_role')}}"
-  mcp_server:
-    url: "{{var('mcp_url')}}"
-    authorization_token: "{{secret('api_token')}}"
-```
-
-**Example: Using vars in evaluation prompts**
-
-```bash
-vibe set var company_name "Acme Corp"
-vibe set var project_name "Project Alpha"
-```
-
-```yaml
-evals:
-  - prompt: "List all issues for {{var('project_name')}} at {{var('company_name')}}"
-    checks:
-      - match: "*{{var('project_name')}}*"
-      - min_tokens: 10
-```
-
-**Key Points:**
-- Secrets are **write-only** (values cannot be read for security)
-- Variables are **readable** (you can view values with `vibe get var <name>`)
-- Template resolution happens **at runtime** when evaluations run
-- If a secret or variable is not found, the evaluation will fail with a clear error message
-- Use quotes around template expressions in YAML: `"{{secret('name')}}"` or `"{{var('name')}}"`
+[→ Programmatic API Guide](./docs/programmatic-api.md)
 
 ## Success Rates
 
@@ -463,172 +254,29 @@ Success rates are displayed as percentages with color coding:
 - `0` - Moderate or high success rate (≥50% pass rate)
 - `1` - Low success rate (<50% pass rate)
 
-## Model Comparison & Scoring
+## Contributing
 
-vibecheck provides a comprehensive scoring system to help you compare models across multiple dimensions.
+We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines.
 
-### Score Calculation
-
-The **Score** column in `vibe get runs` combines three key factors:
-
-```
-Score = success_percentage / (cost * 1000 + duration_seconds * 0.1)
-```
-
-**Components:**
-- **Success Rate**: Percentage of evaluations that passed
-- **Cost Factor**: Total cost in dollars (multiplied by 1000 for scaling)
-- **Latency Factor**: Duration in seconds (multiplied by 0.1 for small penalty)
-
-**Higher scores indicate better overall performance** (more accurate, cheaper, and faster).
-
-### Score Color Coding
-
-- 🟢 **Green (≥1.0)**: Excellent performance
-- 🟡 **Yellow (0.3-1.0)**: Good performance  
-- 🔴 **Red (<0.3)**: Poor performance
-- ⚪ **Gray (N/A)**: Cannot calculate (incomplete runs or missing cost data)
-
-**Note**: Scores are only calculated for completed runs to ensure fair cost comparisons. Incomplete runs show "N/A" to avoid skewing results with partial token processing.
-
-### Multi-Model Comparison
-
-Run evaluations on multiple models using flexible selection patterns:
-
-#### Comma-Delimited Models
-```bash
-# Run on specific models
-vibe check -f my-eval.yaml -m "anthropic/claude-3.5-sonnet,openai/gpt-4"
-
-# Mix and match any combination
-vibe check -f my-eval.yaml -m "openai/gpt-4,anthropic/claude-3.5-sonnet,google/gemini-pro"
-```
-
-#### Wildcard Selection
-```bash
-# Run on all OpenAI models
-vibe check -f my-eval.yaml -m "openai*"
-
-# Run on multiple providers
-vibe check -f my-eval.yaml -m "openai*,anthropic*"
-
-# Mix wildcards and specific models
-vibe check -f my-eval.yaml -m "openai*,anthropic/claude-3.5-sonnet"
-```
-
-#### Select All Models
-```bash
-# Run on all available models
-vibe check -f my-eval.yaml -m all
-```
-
-#### Filter by Criteria
-Combine selection with filters to narrow down:
+**Development Setup:**
 
 ```bash
-# All $ models with MCP support
-vibe check -f my-eval.yaml -m all --price 1 --mcp
+# Install dependencies
+npm install
 
-# All OpenAI models in the cheapest quartile
-vibe check -f my-eval.yaml -m openai* --price 1
-
-# All Anthropic and Google models with MCP
-vibe check -f my-eval.yaml -m "anthropic*,google*" --mcp
-```
-
-**View results sorted by score:**
-```bash
-vibe get runs --sort-by price-performance
-```
-
-### Sorting Options
-
-Sort runs by different criteria:
-
-```bash
-vibe get runs --sort-by created          # Default: chronological
-vibe get runs --sort-by success          # By success rate
-vibe get runs --sort-by cost             # By total cost
-vibe get runs --sort-by time             # By duration
-vibe get runs --sort-by price-performance # By score (recommended)
-```
-
-## Programmatic API
-
-The `@vibecheck/runner` package allows you to run vibe checks directly in your code and tests.
-
-### Installation
-
-```bash
-npm install --save-dev @vibecheck/runner
-```
-
-### Basic Usage
-
-```typescript
-import { runVibeCheck } from '@vibecheck/runner';
-
-const results = await runVibeCheck({
-  file: './examples/hello-world.yaml'
-});
-
-console.log(`Passed: ${results.filter(r => r.passed).length}/${results.length}`);
-```
-
-### Jest Integration
-
-```typescript
-import { runVibeCheck } from '@vibecheck/runner';
-import { extendExpect } from '@vibecheck/runner/jest';
-
-// Extend Jest with custom matchers
-extendExpect(expect);
-
-describe('My LLM Feature', () => {
-  it('should pass all vibe checks', async () => {
-    const results = await runVibeCheck({
-      file: './evals/my-feature.yaml'
-    });
-
-    expect(results).toHavePassedAll();
-  });
-});
-```
-
-**Available Jest matchers:**
-- `toHavePassedAll()` - Assert all evaluations passed
-- `toHaveSuccessRateAbove(threshold)` - Assert success rate above threshold
-- `toHaveSuccessRateBelow(threshold)` - Assert success rate below threshold
-- `toHavePassedCount(count)` - Assert exact number of passed evaluations
-- `toHaveFailedCount(count)` - Assert exact number of failed evaluations
-
-See the [runner package README](./packages/runner/README.md) for full API documentation.
-
-## Example Tests
-
-The repository includes automated tests that run all example evaluations to validate the runner package and examples.
-
-### Run Example Tests
-
-```bash
-# Set your API key first
-export VIBECHECK_API_KEY=your-api-key
-
-# Build and run examples
+# Build packages
 npm run build
-npm run test:examples
+
+# Run tests
+npm test
+
+# Run CLI locally
+npm run start -- check -f examples/hello-world.yaml
 ```
 
-This will run all examples in parallel:
-- ✅ `hello-world.yaml` - Basic checks
-- ✅ `finance.yaml` - Financial knowledge
-- ✅ `healthcare.yaml` - Medical knowledge
-- ✅ `lang.yaml` - Multilingual capabilities
-- ✅ `politics.yaml` - Political knowledge
-- ✅ `sports.yaml` - Sports knowledge
-- ✅ `strawberry.yaml` - Reasoning capabilities
+## License
 
-Example tests are automatically run on pull requests via GitHub Actions. See [tests/examples/README.md](./tests/examples/README.md) for details.
+Apache 2.0 - See [LICENSE](./LICENSE) for details.
 
 ---
 

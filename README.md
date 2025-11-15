@@ -61,6 +61,7 @@ hello-world: Success Pct: 2/2 (100.0%)
 - **[Examples](./docs/examples.md)** - Featured examples and best practices
 - **[Model Comparison & Scoring](./docs/model-comparison.md)** - Compare models and understand scoring
 - **[Programmatic API](./docs/programmatic-api.md)** - Use vibecheck in your code and tests
+- **[Claude Code Skills](./docs/claude-code-skills.md)** - Custom skills for Claude Code integration
 
 ### Quick Links
 

@@ -5,7 +5,7 @@
 [![npm version](https://img.shields.io/npm/v/vibecheck-cli)](https://www.npmjs.com/package/vibecheck-cli)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](https://opensource.org/licenses/Apache-2.0)
 
-**An agent evaluation framework for any LLM** - A simple and intuitive YAML based DSL for language evals.
+**An agent evaluation framework for any LLM** - A simple and intuitive YAML based DSL for agent evals.
 
 vibecheck makes it easy to evaluate any language model with a simple YAML configuration. Run evals, save the results, and tweak your system prompts with incredibly tight feedback loop from the command line.
 

@@ -15,6 +15,7 @@ import { redeemCommand, redeemFlow } from './commands/redeem';
 import { stopRunCommand, stopAllQueuedRunsCommand } from './commands/stop';
 import { varSetCommand, varUpdateCommand, varGetCommand, varListCommand, varDeleteCommand } from './commands/var';
 import { secretSetCommand, secretUpdateCommand, secretDeleteCommand, secretListCommand } from './commands/secret';
+import { validateCommand } from './commands/validate';
 import { fetchOrgInfo, promptYesNo } from './utils/command-helpers';
 import { getApiUrl } from './utils/config';
 import { resolveModels } from './utils/model-resolver';
@@ -415,6 +416,7 @@ const getCommand = program
   .option('--max-duration <seconds>', 'Filter runs with maximum duration in seconds', (val) => parseFloat(val))
   .option('--sort-by <field>', 'Sort runs by field: created, success, cost, time, price-performance (default: created)')
   .option('--csv', 'Export runs to CSV file (./eval-runs.csv)')
+  .option('-w, --watch', 'Watch mode: continuously poll for updates (press Ctrl+C to exit)')
   .action(async (noun: string, identifier?: string, options?: any) => {
     const normalizedNoun = noun.toLowerCase();
     const debug = options?.debug || false;
@@ -464,6 +466,7 @@ const getCommand = program
       
       if (options?.sortBy) listOptions.sortBy = options.sortBy;
       if (options?.csv) listOptions.csv = options.csv;
+      if (options?.watch) listOptions.watch = options.watch;
       listRunsCommand(listOptions, debug);
       return;
     }
@@ -594,5 +597,21 @@ const deleteCommand = program
     process.exit(1);
   });
 deleteCommand.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging').hideHelp());
+
+// Validate command
+const validateCmd = program
+  .command('validate [file]')
+  .description('Validate an evaluation YAML file without running it')
+  .addHelpText('after', `
+Examples:
+  $ vibe validate                          Validate auto-detected eval file (evals.yaml, eval.yaml, etc.)
+  $ vibe validate my-eval.yaml             Validate a specific YAML file
+  $ vibe validate examples/hello-world.yaml  Validate an example file
+`)
+  .action((file: string | undefined, options: any) => {
+    const debug = options?.debug || false;
+    validateCommand({ file, debug });
+  });
+validateCmd.addOption(new (require('commander').Option)('-d, --debug', 'Enable debug logging').hideHelp());
 
 program.parse(process.argv);

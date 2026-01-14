@@ -29,6 +29,18 @@ vibe check -f path/to/eval.yaml
 vibe check -f eval.yaml --async
 ```
 
+### Validate Evaluations
+```bash
+# Validate YAML without running (no API key required)
+vibe validate
+
+# Validate specific file
+vibe validate path/to/eval.yaml
+
+# Auto-detect and validate (looks for evals.yaml, eval.yaml, etc.)
+vibe validate
+```
+
 ### Manage Suites
 ```bash
 # Save a suite
@@ -110,11 +122,12 @@ vibe get credits
 
 ## Important Notes
 
-1. **API Key Required**: Set `VIBECHECK_API_KEY` in `~/.vibecheck/.env`
-2. **Exit Codes**: Returns exit code 1 if success rate < 50%
-3. **Auto-detection**: `vibe check` looks for `evals.yaml`, `eval.yaml`, `evals.yml`, or `eval.yml`
-4. **Secrets**: Secret values are write-only and cannot be read back
-5. **Variables**: Variable values are readable via `vibe get var <name>`
+1. **API Key Required**: Most commands require `VIBECHECK_API_KEY` in `~/.vibecheck/.env` (except `vibe validate`)
+2. **Validation**: Use `vibe validate` to check YAML syntax and structure before running (no API key needed)
+3. **Exit Codes**: Returns exit code 1 if success rate < 50%
+4. **Auto-detection**: `vibe check` and `vibe validate` look for `evals.yaml`, `eval.yaml`, `evals.yml`, or `eval.yml`
+5. **Secrets**: Secret values are write-only and cannot be read back
+6. **Variables**: Variable values are readable via `vibe get var <name>`
 
 ## Setup
 
@@ -130,6 +143,9 @@ echo "VIBECHECK_API_KEY=your-api-key-here" > ~/.vibecheck/.env
 
 ### Running and Saving
 ```bash
+# Validate your eval file first (recommended)
+vibe validate my-eval.yaml
+
 # Run an eval file
 vibe check -f my-eval.yaml
 
@@ -150,12 +166,37 @@ vibe check -f eval-with-vars.yaml
 vibe get vars
 ```
 
+### Running Experiments
+
+Compare multiple models to find the best price-performance tradeoff:
+
+```bash
+# Run eval across multiple models (comma-delimited)
+vibe check -f my-eval.yaml -m "anthropic/claude-3.5-sonnet,anthropic/claude-3-opus,openai/gpt-4o,openai/gpt-4o-mini,google/gemini-2.0-flash-exp"
+
+# View results filtered by suite to compare
+vibe get runs --suite my-eval-suite
+
+# The output includes a "score" column showing:
+# - Success rate (% of checks passed)
+# - Cost (relative pricing)
+# - Time (duration in seconds)
+```
+
+**Price-Performance Analysis:**
+When comparing models, use the `score` column from `vibe get runs --suite <name>`:
+- **High score + low cost** = Best value
+- **High score + high cost** = Premium performance
+- **Lower score + low cost** = Budget option
+
+Use this data to make informed decisions about which model to use in production.
+
 ### Reviewing Results
 ```bash
 # View recent runs
 vibe get runs --limit 20
 
-# Filter by suite
+# Filter by suite (great for comparing experiments)
 vibe get runs --suite my-suite
 
 # Get detailed run info

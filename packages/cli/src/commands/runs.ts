@@ -63,6 +63,352 @@ interface ListRunsOptions extends RunsListFilters {
   offset?: number;
   sortBy?: string;
   csv?: boolean;
+  watch?: boolean;
+}
+
+// Helper function to display runs list (used by both normal and watch mode)
+async function displayRunsList(options: ListRunsOptions, debug: boolean): Promise<void> {
+  const { csv, suite } = options;
+  const defaultLimit = csv ? 100 : 50;
+  const { limit = defaultLimit, offset = 0, sortBy = 'created' } = options;
+
+  // Build filter object for buildRunsQueryParams
+  const filters: RunsListFilters = {
+    status: options.status,
+    statusIn: options.statusIn,
+    statusNe: options.statusNe,
+    model: options.model,
+    modelLike: options.modelLike,
+    suite: options.suite,
+    minCost: options.minCost,
+    maxCost: options.maxCost,
+    minSuccess: options.minSuccess,
+    maxSuccess: options.maxSuccess,
+    dateFrom: options.dateFrom,
+    dateTo: options.dateTo,
+    completedFrom: options.completedFrom,
+    completedTo: options.completedTo,
+    minDuration: options.minDuration,
+    maxDuration: options.maxDuration,
+  };
+
+  const spinner = suite
+    ? ora(csv ? `Fetching runs for suite "${suite}" for CSV export...` : `Fetching runs for suite "${suite}"...`).start()
+    : ora(csv ? 'Fetching runs for CSV export...' : 'Fetching runs...').start();
+
+  // Always use /api/runs endpoint with query params
+  const url = `${getApiUrl()}/api/runs`;
+  const queryString = buildRunsQueryParams(filters, limit, offset);
+  const fullUrl = queryString ? `${url}?${queryString}` : url;
+
+  if (debug) {
+    spinner.stop();
+    console.log(chalk.gray(`[DEBUG] Request URL: ${fullUrl}`));
+    spinner.start();
+  }
+
+  const response = await axios.get(fullUrl, {
+    headers: getAuthHeaders()
+  });
+
+  if (debug) {
+    spinner.stop();
+    console.log(chalk.gray(`[DEBUG] Response status: ${response.status}`));
+    console.log(chalk.gray(`[DEBUG] Response data:`), JSON.stringify(response.data, null, 2));
+    spinner.start();
+  }
+
+  if (response.data.error) {
+    spinner.fail(chalk.redBright('Failed to list runs'));
+    const error = response.data.error;
+    const errorMessage = typeof error === 'string'
+      ? error
+      : error?.message || JSON.stringify(error);
+
+    // Handle filter validation errors specifically
+    if (typeof error === 'object' && error?.message?.includes('Invalid filter')) {
+      console.error(chalk.redBright(`❌ Invalid filter parameter`));
+      console.error(chalk.yellow(`   ${error.message}`));
+    } else {
+      console.error(chalk.redBright(`Error: ${errorMessage}`));
+    }
+    throw new Error(errorMessage);
+  }
+
+  spinner.stop();
+
+  const { runs, pagination } = response.data;
+
+  // Sort runs based on sortBy parameter
+  const sortedRuns = [...runs].sort((a: any, b: any) => {
+    switch (sortBy) {
+      case 'created':
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      case 'success':
+        const aSuccess = parseFloat(a.success_percentage) || 0;
+        const bSuccess = parseFloat(b.success_percentage) || 0;
+        return bSuccess - aSuccess;
+      case 'cost':
+        const aCost = a.total_cost ? parseFloat(a.total_cost) : 0;
+        const bCost = b.total_cost ? parseFloat(b.total_cost) : 0;
+        return aCost - bCost; // Lower cost first
+      case 'time':
+        const aTime = parseFloat(a.duration_seconds) || 0;
+        const bTime = parseFloat(b.duration_seconds) || 0;
+        return aTime - bTime; // Lower time first
+      case 'price-performance':
+        // Calculate scores for completed and partial_failure runs
+        const aEligible = a.status === 'completed' || a.status === 'partial_failure';
+        const bEligible = b.status === 'completed' || b.status === 'partial_failure';
+
+        if (!aEligible && !bEligible) return 0; // Both ineligible, maintain order
+        if (!aEligible) return 1; // Put ineligible runs at end
+        if (!bEligible) return -1; // Put ineligible runs at end
+
+        // Both eligible, calculate and compare scores
+        const aScore = calculatePricePerformanceScore(parseFloat(a.success_percentage) || 0, a.total_cost ? parseFloat(a.total_cost) : null, parseFloat(a.duration_seconds) || null);
+        const bScore = calculatePricePerformanceScore(parseFloat(b.success_percentage) || 0, b.total_cost ? parseFloat(b.total_cost) : null, parseFloat(b.duration_seconds) || null);
+        if (aScore === null && bScore === null) return 0;
+        if (aScore === null) return 1; // Put null scores at end
+        if (bScore === null) return -1;
+        return bScore - aScore; // Higher score first
+      default:
+        return 0; // No sorting
+    }
+  });
+
+  if (sortedRuns.length === 0) {
+    if (suite) {
+      console.log(chalk.yellow(`No runs found for suite "${suite}"`));
+      console.log(chalk.gray('Use "vibe get suites" to list available suites'));
+    } else {
+      console.log(chalk.yellow('No runs found'));
+    }
+    return;
+  }
+
+  // Display sort indicator
+  const sortDirection = sortBy === 'created' ? 'descending' : 'ascending';
+  console.log(chalk.gray(`Sorted by: ${sortBy} (${sortDirection})`));
+  console.log(chalk.bold('\nRuns:\n'));
+  console.log(
+    chalk.bold('ID'.padEnd(38)) +
+    chalk.bold('Suite Name'.padEnd(20)) +
+    chalk.bold('Model'.padEnd(35)) +
+    chalk.bold('Status'.padEnd(18)) +
+    chalk.bold('Pass/Fail'.padEnd(20)) +
+    chalk.bold('Time'.padEnd(12)) +
+    chalk.bold('Cost'.padEnd(12)) +
+    chalk.bold('Score'.padEnd(12)) +
+    chalk.bold('Date')
+  );
+  console.log('='.repeat(187));
+
+  sortedRuns.forEach((run: any) => {
+    const statusColor = run.status === 'completed' ? chalk.green : (run.status === 'failed' || run.status === 'cancelled' || run.status === 'error') ? chalk.redBright : chalk.yellow;
+
+    // Parse fields from API (they come as strings)
+    const resultsCount = parseInt(run.results_count, 10) || 0;
+    const evalsPassed = parseInt(run.evals_passed, 10) || 0;
+    const successPercentage = parseFloat(run.success_percentage) || 0;
+    const durationSeconds = parseFloat(run.duration_seconds);
+    const totalCost = run.total_cost ? parseFloat(run.total_cost) : null;
+
+    // Use results_count and evals_passed from API response
+    const passRateText = resultsCount > 0
+      ? `${evalsPassed}/${resultsCount} (${successPercentage.toFixed(0)}%)`
+      : 'N/A';
+
+    // Color code based on success percentage (pad BEFORE coloring)
+    let passRate;
+    if (resultsCount === 0) {
+      passRate = chalk.white(passRateText.padEnd(20));
+    } else if (successPercentage > 80) {
+      passRate = chalk.green(passRateText.padEnd(20));
+    } else if (successPercentage >= 50) {
+      passRate = chalk.yellow(passRateText.padEnd(20));
+    } else {
+      passRate = chalk.redBright(passRateText.padEnd(20));
+    }
+
+    // Use duration_seconds from API response
+    const time = !isNaN(durationSeconds)
+      ? `${durationSeconds.toFixed(1)}s`
+      : 'N/A';
+
+    // Format cost from API response (keep compact for table)
+    const cost = totalCost !== null
+      ? formatCost(totalCost)
+      : 'N/A';
+
+    // Calculate and format Score (price-performance-latency)
+    // Show scores for completed and partial_failure runs
+    let ppScore = null;
+    let ppScoreText = 'N/A';
+    let ppScoreColor = chalk.gray;
+
+    if (run.status === 'completed' || run.status === 'partial_failure') {
+      ppScore = calculatePricePerformanceScore(successPercentage, totalCost, durationSeconds);
+
+      if (ppScore !== null) {
+        ppScoreText = ppScore.toFixed(2);
+        if (ppScore >= 1.0) {
+          ppScoreColor = chalk.green;
+        } else if (ppScore >= 0.3) {
+          ppScoreColor = chalk.yellow;
+        } else {
+          ppScoreColor = chalk.redBright;
+        }
+      }
+    }
+
+    // Truncate suite name if too long
+    const suiteName = run.suite_name || 'N/A';
+    const truncatedSuite = suiteName.length > 20
+      ? suiteName.substring(0, 17) + '...'
+      : suiteName;
+
+    // Truncate model name if too long
+    const modelName = run.model || 'N/A';
+    const truncatedModel = modelName.length > 35
+      ? modelName.substring(0, 32) + '...'
+      : modelName;
+
+    // Format date from created_at
+    const dateStr = formatDate(run.created_at);
+
+    console.log(
+      chalk.cyan(run.id.padEnd(38)) +
+      chalk.white(truncatedSuite.padEnd(20)) +
+      chalk.white(truncatedModel.padEnd(35)) +
+      statusColor(run.status.padEnd(18)) +
+      passRate +
+      chalk.gray(time.padEnd(12)) +
+      chalk.gray(cost.padEnd(12)) +
+      ppScoreColor(ppScoreText.padEnd(12)) +
+      chalk.gray(dateStr)
+    );
+  });
+
+  console.log('');
+
+  // Calculate summary metrics for the filtered runs
+  if (sortedRuns.length > 0) {
+    const totalSuccessRate = sortedRuns.reduce((sum: number, run: any) => {
+      return sum + (parseFloat(run.success_percentage) || 0);
+    }, 0);
+    const avgSuccessRate = totalSuccessRate / sortedRuns.length;
+
+    const costsWithValues = sortedRuns
+      .map((run: any) => run.total_cost ? parseFloat(run.total_cost) : null)
+      .filter((cost: number | null) => cost !== null);
+    const totalCost = costsWithValues.reduce((sum: number, cost: number) => sum + cost, 0);
+
+    const totalDuration = sortedRuns.reduce((sum: number, run: any) => {
+      const duration = parseFloat(run.duration_seconds);
+      return sum + (!isNaN(duration) ? duration : 0);
+    }, 0);
+    const avgDuration = totalDuration / sortedRuns.length;
+
+    // Calculate token usage totals if available
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+    let totalThinkingTokens = 0;
+    let totalTokens = 0;
+    let hasTokenData = false;
+
+    let totalInputCost = 0;
+    let totalOutputCost = 0;
+    let hasCostBreakdown = false;
+
+    sortedRuns.forEach((run: any) => {
+      const promptTokens = run.total_prompt_tokens !== undefined && run.total_prompt_tokens !== null
+        ? (typeof run.total_prompt_tokens === 'string' ? parseInt(run.total_prompt_tokens, 10) : run.total_prompt_tokens)
+        : 0;
+      const completionTokens = run.total_completion_tokens !== undefined && run.total_completion_tokens !== null
+        ? (typeof run.total_completion_tokens === 'string' ? parseInt(run.total_completion_tokens, 10) : run.total_completion_tokens)
+        : 0;
+      const thinkingTokens = run.total_thinking_tokens !== undefined && run.total_thinking_tokens !== null
+        ? (typeof run.total_thinking_tokens === 'string' ? parseInt(run.total_thinking_tokens, 10) : run.total_thinking_tokens)
+        : 0;
+      const tokens = run.total_tokens !== undefined && run.total_tokens !== null
+        ? (typeof run.total_tokens === 'string' ? parseInt(run.total_tokens, 10) : run.total_tokens)
+        : 0;
+
+      if (promptTokens > 0 || completionTokens > 0 || tokens > 0) {
+        hasTokenData = true;
+        totalPromptTokens += promptTokens;
+        totalCompletionTokens += completionTokens;
+        totalThinkingTokens += thinkingTokens;
+        totalTokens += tokens;
+      }
+
+      const inputCost = run.total_input_cost !== undefined && run.total_input_cost !== null
+        ? (typeof run.total_input_cost === 'string' ? parseFloat(run.total_input_cost) : run.total_input_cost)
+        : 0;
+      const outputCost = run.total_output_cost !== undefined && run.total_output_cost !== null
+        ? (typeof run.total_output_cost === 'string' ? parseFloat(run.total_output_cost) : run.total_output_cost)
+        : 0;
+
+      if (inputCost > 0 || outputCost > 0) {
+        hasCostBreakdown = true;
+        totalInputCost += inputCost;
+        totalOutputCost += outputCost;
+      }
+    });
+
+    console.log(chalk.bold('Summary:'));
+    console.log(
+      chalk.gray('  Avg Success Rate: ') + chalk.white(`${avgSuccessRate.toFixed(1)}%`) +
+      chalk.gray('  │  Total Cost: ') + chalk.white(`$${totalCost.toFixed(6)}`) +
+      chalk.gray('  │  Avg Time: ') + chalk.white(`${avgDuration.toFixed(1)}s`)
+    );
+
+    // Show cost breakdown if available
+    if (hasCostBreakdown) {
+      console.log(
+        chalk.gray('  Cost Breakdown: ') +
+        chalk.white(`Input: ${formatCost(totalInputCost)}`) +
+        chalk.gray(' | ') +
+        chalk.white(`Output: ${formatCost(totalOutputCost)}`) +
+        chalk.gray(' | ') +
+        chalk.white(`Total: ${formatCost(totalCost)}`)
+      );
+    }
+
+    // Show token usage if available
+    if (hasTokenData) {
+      const tokenParts: string[] = [];
+      if (totalPromptTokens > 0) {
+        tokenParts.push(`Input: ${formatTokenCount(totalPromptTokens)}`);
+      }
+      if (totalCompletionTokens > 0) {
+        tokenParts.push(`Output: ${formatTokenCount(totalCompletionTokens)}`);
+      }
+      if (totalThinkingTokens > 0) {
+        tokenParts.push(`Thinking: ${formatTokenCount(totalThinkingTokens)}`);
+      }
+      if (totalTokens > 0) {
+        tokenParts.push(`Total: ${formatTokenCount(totalTokens)}`);
+      }
+      if (tokenParts.length > 0) {
+        console.log(chalk.gray('  Token Usage:     ') + chalk.white(tokenParts.join(' | ')));
+      }
+    }
+
+    // Score formula note
+    console.log(chalk.gray('  Score formula: success% / (cost*1000 + duration_seconds*0.1). Higher is better.'));
+    console.log(chalk.gray('  Scores shown for completed and partial_failure runs.'));
+    console.log('');
+  }
+
+  if (pagination) {
+    console.log(chalk.gray(`Showing ${offset + 1}-${offset + sortedRuns.length} of ${pagination.total} runs`));
+    if (pagination.hasMore) {
+      console.log(chalk.gray(`Use --limit and --offset to paginate`));
+    }
+    console.log('');
+  }
 }
 
 // CSV escape helper function
@@ -192,10 +538,52 @@ function exportRunsToCSV(runs: any[], filePath: string): void {
 
 // List all runs with pagination
 export async function listRunsCommand(options: ListRunsOptions = {}, debug: boolean = false) {
-  const { csv } = options;
+  const { csv, watch } = options;
   const defaultLimit = csv ? 100 : 50;
   const { limit = defaultLimit, offset = 0, suite, sortBy = 'created' } = options;
-  
+
+  // Watch mode not compatible with CSV export
+  if (watch && csv) {
+    console.error(chalk.redBright('Error: Watch mode is not compatible with CSV export'));
+    process.exit(1);
+  }
+
+  // Watch mode setup
+  if (watch) {
+    let shouldContinue = true;
+
+    // Handle Ctrl+C gracefully
+    const exitHandler = () => {
+      shouldContinue = false;
+      console.log(chalk.yellow('\n\nExiting watch mode...'));
+      process.exit(0);
+    };
+
+    process.on('SIGINT', exitHandler);
+
+    console.log(chalk.cyan('Watch mode enabled. Press Ctrl+C to exit.\n'));
+
+    // Polling loop
+    while (shouldContinue) {
+      // Clear screen and move cursor to top
+      process.stdout.write('\x1Bc');
+
+      console.log(chalk.cyan(`Watching runs... (refreshing every 3s, press Ctrl+C to exit)\n`));
+
+      // Call the actual display logic
+      try {
+        await displayRunsList(options, debug);
+      } catch (error: any) {
+        console.error(chalk.redBright('Error fetching runs:'), error.message);
+      }
+
+      // Wait 3 seconds before next poll
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+
+    return;
+  }
+
   // Build filter object for buildRunsQueryParams
   const filters: RunsListFilters = {
     status: options.status,
@@ -215,105 +603,53 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
     minDuration: options.minDuration,
     maxDuration: options.maxDuration,
   };
-  
-  const spinner = suite 
-    ? ora(csv ? `Fetching runs for suite "${suite}" for CSV export...` : `Fetching runs for suite "${suite}"...`).start()
-    : ora(csv ? 'Fetching runs for CSV export...' : 'Fetching runs...').start();
 
-  try {
-    // Always use /api/runs endpoint with query params
-    const url = `${getApiUrl()}/api/runs`;
-    const queryString = buildRunsQueryParams(filters, limit, offset);
-    const fullUrl = queryString ? `${url}?${queryString}` : url;
+  // If CSV export is requested, handle it separately with auto-pagination
+  if (csv) {
+    const spinner = suite
+      ? ora(`Fetching runs for suite "${suite}" for CSV export...`).start()
+      : ora('Fetching runs for CSV export...').start();
 
-    if (debug) {
-      spinner.stop();
-      console.log(chalk.gray(`[DEBUG] Request URL: ${fullUrl}`));
-      spinner.start();
-    }
+    try {
+      const url = `${getApiUrl()}/api/runs`;
+      const queryString = buildRunsQueryParams(filters, limit, offset);
+      const fullUrl = queryString ? `${url}?${queryString}` : url;
 
-    const response = await axios.get(fullUrl, {
-      headers: getAuthHeaders()
-    });
-
-    if (debug) {
-      spinner.stop();
-      console.log(chalk.gray(`[DEBUG] Response status: ${response.status}`));
-      console.log(chalk.gray(`[DEBUG] Response data:`), JSON.stringify(response.data, null, 2));
-      spinner.start();
-    }
-
-    if (response.data.error) {
-      spinner.fail(chalk.redBright('Failed to list runs'));
-      const error = response.data.error;
-      const errorMessage = typeof error === 'string' 
-        ? error 
-        : error?.message || JSON.stringify(error);
-      
-      // Handle filter validation errors specifically
-      if (typeof error === 'object' && error?.message?.includes('Invalid filter')) {
-        console.error(chalk.redBright(`❌ Invalid filter parameter`));
-        console.error(chalk.yellow(`   ${error.message}`));
-      } else {
-        console.error(chalk.redBright(`Error: ${errorMessage}`));
+      if (debug) {
+        spinner.stop();
+        console.log(chalk.gray(`[DEBUG] Request URL: ${fullUrl}`));
+        spinner.start();
       }
-      process.exit(1);
-    }
 
-    spinner.stop();
+      const response = await axios.get(fullUrl, {
+        headers: getAuthHeaders()
+      });
 
-    const { runs, pagination } = response.data;
-
-    // Sort runs based on sortBy parameter
-    const sortedRuns = [...runs].sort((a: any, b: any) => {
-      switch (sortBy) {
-        case 'created':
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-        case 'success':
-          const aSuccess = parseFloat(a.success_percentage) || 0;
-          const bSuccess = parseFloat(b.success_percentage) || 0;
-          return bSuccess - aSuccess;
-        case 'cost':
-          const aCost = a.total_cost ? parseFloat(a.total_cost) : 0;
-          const bCost = b.total_cost ? parseFloat(b.total_cost) : 0;
-          return aCost - bCost; // Lower cost first
-        case 'time':
-          const aTime = parseFloat(a.duration_seconds) || 0;
-          const bTime = parseFloat(b.duration_seconds) || 0;
-          return aTime - bTime; // Lower time first
-        case 'price-performance':
-          // Calculate scores for completed and partial_failure runs
-          const aEligible = a.status === 'completed' || a.status === 'partial_failure';
-          const bEligible = b.status === 'completed' || b.status === 'partial_failure';
-          
-          if (!aEligible && !bEligible) return 0; // Both ineligible, maintain order
-          if (!aEligible) return 1; // Put ineligible runs at end
-          if (!bEligible) return -1; // Put ineligible runs at end
-          
-          // Both eligible, calculate and compare scores
-          const aScore = calculatePricePerformanceScore(parseFloat(a.success_percentage) || 0, a.total_cost ? parseFloat(a.total_cost) : null, parseFloat(a.duration_seconds) || null);
-          const bScore = calculatePricePerformanceScore(parseFloat(b.success_percentage) || 0, b.total_cost ? parseFloat(b.total_cost) : null, parseFloat(b.duration_seconds) || null);
-          if (aScore === null && bScore === null) return 0;
-          if (aScore === null) return 1; // Put null scores at end
-          if (bScore === null) return -1;
-          return bScore - aScore; // Higher score first
-        default:
-          return 0; // No sorting
+      if (debug) {
+        spinner.stop();
+        console.log(chalk.gray(`[DEBUG] Response status: ${response.status}`));
+        console.log(chalk.gray(`[DEBUG] Response data:`), JSON.stringify(response.data, null, 2));
+        spinner.start();
       }
-    });
 
-    if (sortedRuns.length === 0) {
-      if (suite) {
-        console.log(chalk.yellow(`No runs found for suite "${suite}"`));
-        console.log(chalk.gray('Use "vibe get suites" to list available suites'));
-      } else {
-        console.log(chalk.yellow('No runs found'));
+      if (response.data.error) {
+        spinner.fail(chalk.redBright('Failed to list runs'));
+        const error = response.data.error;
+        const errorMessage = typeof error === 'string'
+          ? error
+          : error?.message || JSON.stringify(error);
+
+        // Handle filter validation errors specifically
+        if (typeof error === 'object' && error?.message?.includes('Invalid filter')) {
+          console.error(chalk.redBright(`❌ Invalid filter parameter`));
+          console.error(chalk.yellow(`   ${error.message}`));
+        } else {
+          console.error(chalk.redBright(`Error: ${errorMessage}`));
+        }
+        process.exit(1);
       }
-      return;
-    }
 
-    // If CSV export is requested, auto-paginate, export and exit
-    if (csv) {
+      const { runs, pagination } = response.data;
       const filePath = path.resolve('./eval-runs.csv');
       try {
         // Accumulate all runs across pages
@@ -387,227 +723,17 @@ export async function listRunsCommand(options: ListRunsOptions = {}, debug: bool
         spinner.fail(chalk.redBright(`Failed to export CSV: ${error.message}`));
         process.exit(1);
       }
-      return;
+    } catch (error: any) {
+      spinner.fail(chalk.redBright('Failed to fetch runs for CSV export'));
+      handleError(error, `${getApiUrl()}/api/runs`);
     }
+    return;
+  }
 
-    // Display sort indicator
-    const sortDirection = sortBy === 'created' ? 'descending' : 'ascending';
-    console.log(chalk.gray(`Sorted by: ${sortBy} (${sortDirection})`));
-    console.log(chalk.bold('\nRuns:\n'));
-    console.log(
-      chalk.bold('ID'.padEnd(38)) +
-      chalk.bold('Suite Name'.padEnd(20)) +
-      chalk.bold('Model'.padEnd(35)) +
-      chalk.bold('Status'.padEnd(18)) +
-      chalk.bold('Pass/Fail'.padEnd(20)) +
-      chalk.bold('Time'.padEnd(12)) +
-      chalk.bold('Cost'.padEnd(12)) +
-      chalk.bold('Score'.padEnd(12)) +
-      chalk.bold('Date')
-    );
-    console.log('='.repeat(187));
-
-    sortedRuns.forEach((run: any) => {
-      const statusColor = run.status === 'completed' ? chalk.green : (run.status === 'failed' || run.status === 'cancelled' || run.status === 'error') ? chalk.redBright : chalk.yellow;
-
-      // Parse fields from API (they come as strings)
-      const resultsCount = parseInt(run.results_count, 10) || 0;
-      const evalsPassed = parseInt(run.evals_passed, 10) || 0;
-      const successPercentage = parseFloat(run.success_percentage) || 0;
-      const durationSeconds = parseFloat(run.duration_seconds);
-      const totalCost = run.total_cost ? parseFloat(run.total_cost) : null;
-
-      // Use results_count and evals_passed from API response
-      const passRateText = resultsCount > 0
-        ? `${evalsPassed}/${resultsCount} (${successPercentage.toFixed(0)}%)`
-        : 'N/A';
-
-      // Color code based on success percentage (pad BEFORE coloring)
-      let passRate;
-      if (resultsCount === 0) {
-        passRate = chalk.white(passRateText.padEnd(20));
-      } else if (successPercentage > 80) {
-        passRate = chalk.green(passRateText.padEnd(20));
-      } else if (successPercentage >= 50) {
-        passRate = chalk.yellow(passRateText.padEnd(20));
-      } else {
-        passRate = chalk.redBright(passRateText.padEnd(20));
-      }
-
-      // Use duration_seconds from API response
-      const time = !isNaN(durationSeconds)
-        ? `${durationSeconds.toFixed(1)}s`
-        : 'N/A';
-
-      // Format cost from API response (keep compact for table)
-      const cost = totalCost !== null
-        ? formatCost(totalCost)
-        : 'N/A';
-
-      // Calculate and format Score (price-performance-latency)
-      // Show scores for completed and partial_failure runs
-      let ppScore = null;
-      let ppScoreText = 'N/A';
-      let ppScoreColor = chalk.gray;
-      
-      if (run.status === 'completed' || run.status === 'partial_failure') {
-        ppScore = calculatePricePerformanceScore(successPercentage, totalCost, durationSeconds);
-        
-        if (ppScore !== null) {
-          ppScoreText = ppScore.toFixed(2);
-          if (ppScore >= 1.0) {
-            ppScoreColor = chalk.green;
-          } else if (ppScore >= 0.3) {
-            ppScoreColor = chalk.yellow;
-          } else {
-            ppScoreColor = chalk.redBright;
-          }
-        }
-      }
-
-      // Truncate model name if too long
-      const modelName = run.model || 'N/A';
-      const truncatedModel = modelName.length > 35
-        ? modelName.substring(0, 32) + '...'
-        : modelName;
-
-      // Format date from created_at
-      const dateStr = formatDate(run.created_at);
-
-      console.log(
-        chalk.cyan(run.id.padEnd(38)) +
-        chalk.white(run.suite_name.padEnd(20)) +
-        chalk.white(truncatedModel.padEnd(35)) +
-        statusColor(run.status.padEnd(18)) +
-        passRate +
-        chalk.gray(time.padEnd(12)) +
-        chalk.gray(cost.padEnd(12)) +
-        ppScoreColor(ppScoreText.padEnd(12)) +
-        chalk.gray(dateStr)
-      );
-    });
-
-    console.log('');
-
-    // Calculate summary metrics for the filtered runs
-    if (sortedRuns.length > 0) {
-      const totalSuccessRate = sortedRuns.reduce((sum: number, run: any) => {
-        return sum + (parseFloat(run.success_percentage) || 0);
-      }, 0);
-      const avgSuccessRate = totalSuccessRate / sortedRuns.length;
-
-      const costsWithValues = sortedRuns
-        .map((run: any) => run.total_cost ? parseFloat(run.total_cost) : null)
-        .filter((cost: number | null) => cost !== null);
-      const totalCost = costsWithValues.reduce((sum: number, cost: number) => sum + cost, 0);
-
-      const totalDuration = sortedRuns.reduce((sum: number, run: any) => {
-        const duration = parseFloat(run.duration_seconds);
-        return sum + (!isNaN(duration) ? duration : 0);
-      }, 0);
-      const avgDuration = totalDuration / sortedRuns.length;
-
-      // Calculate token usage totals if available
-      let totalPromptTokens = 0;
-      let totalCompletionTokens = 0;
-      let totalThinkingTokens = 0;
-      let totalTokens = 0;
-      let hasTokenData = false;
-      
-      let totalInputCost = 0;
-      let totalOutputCost = 0;
-      let hasCostBreakdown = false;
-
-      sortedRuns.forEach((run: any) => {
-        const promptTokens = run.total_prompt_tokens !== undefined && run.total_prompt_tokens !== null
-          ? (typeof run.total_prompt_tokens === 'string' ? parseInt(run.total_prompt_tokens, 10) : run.total_prompt_tokens)
-          : 0;
-        const completionTokens = run.total_completion_tokens !== undefined && run.total_completion_tokens !== null
-          ? (typeof run.total_completion_tokens === 'string' ? parseInt(run.total_completion_tokens, 10) : run.total_completion_tokens)
-          : 0;
-        const thinkingTokens = run.total_thinking_tokens !== undefined && run.total_thinking_tokens !== null
-          ? (typeof run.total_thinking_tokens === 'string' ? parseInt(run.total_thinking_tokens, 10) : run.total_thinking_tokens)
-          : 0;
-        const tokens = run.total_tokens !== undefined && run.total_tokens !== null
-          ? (typeof run.total_tokens === 'string' ? parseInt(run.total_tokens, 10) : run.total_tokens)
-          : 0;
-
-        if (promptTokens > 0 || completionTokens > 0 || tokens > 0) {
-          hasTokenData = true;
-          totalPromptTokens += promptTokens;
-          totalCompletionTokens += completionTokens;
-          totalThinkingTokens += thinkingTokens;
-          totalTokens += tokens;
-        }
-
-        const inputCost = run.total_input_cost !== undefined && run.total_input_cost !== null
-          ? (typeof run.total_input_cost === 'string' ? parseFloat(run.total_input_cost) : run.total_input_cost)
-          : 0;
-        const outputCost = run.total_output_cost !== undefined && run.total_output_cost !== null
-          ? (typeof run.total_output_cost === 'string' ? parseFloat(run.total_output_cost) : run.total_output_cost)
-          : 0;
-
-        if (inputCost > 0 || outputCost > 0) {
-          hasCostBreakdown = true;
-          totalInputCost += inputCost;
-          totalOutputCost += outputCost;
-        }
-      });
-
-      console.log(chalk.bold('Summary:'));
-      console.log(
-        chalk.gray('  Avg Success Rate: ') + chalk.white(`${avgSuccessRate.toFixed(1)}%`) +
-        chalk.gray('  │  Total Cost: ') + chalk.white(`$${totalCost.toFixed(6)}`) +
-        chalk.gray('  │  Avg Time: ') + chalk.white(`${avgDuration.toFixed(1)}s`)
-      );
-
-      // Show cost breakdown if available
-      if (hasCostBreakdown) {
-        console.log(
-          chalk.gray('  Cost Breakdown: ') +
-          chalk.white(`Input: ${formatCost(totalInputCost)}`) +
-          chalk.gray(' | ') +
-          chalk.white(`Output: ${formatCost(totalOutputCost)}`) +
-          chalk.gray(' | ') +
-          chalk.white(`Total: ${formatCost(totalCost)}`)
-        );
-      }
-
-      // Show token usage if available
-      if (hasTokenData) {
-        const tokenParts: string[] = [];
-        if (totalPromptTokens > 0) {
-          tokenParts.push(`Input: ${formatTokenCount(totalPromptTokens)}`);
-        }
-        if (totalCompletionTokens > 0) {
-          tokenParts.push(`Output: ${formatTokenCount(totalCompletionTokens)}`);
-        }
-        if (totalThinkingTokens > 0) {
-          tokenParts.push(`Thinking: ${formatTokenCount(totalThinkingTokens)}`);
-        }
-        if (totalTokens > 0) {
-          tokenParts.push(`Total: ${formatTokenCount(totalTokens)}`);
-        }
-        if (tokenParts.length > 0) {
-          console.log(chalk.gray('  Token Usage:     ') + chalk.white(tokenParts.join(' | ')));
-        }
-      }
-
-      // Score formula note
-      console.log(chalk.gray('  Score formula: success% / (cost*1000 + duration_seconds*0.1). Higher is better.'));
-      console.log(chalk.gray('  Scores shown for completed and partial_failure runs.'));
-      console.log('');
-    }
-
-    if (pagination) {
-      console.log(chalk.gray(`Showing ${offset + 1}-${offset + sortedRuns.length} of ${pagination.total} runs`));
-      if (pagination.hasMore) {
-        console.log(chalk.gray(`Use --limit and --offset to paginate`));
-      }
-      console.log('');
-    }
+  // Normal display mode - use displayRunsList helper
+  try {
+    await displayRunsList(options, debug);
   } catch (error: any) {
-    spinner.fail(chalk.redBright('Failed to list runs'));
     handleError(error, `${getApiUrl()}/api/runs`);
   }
 }

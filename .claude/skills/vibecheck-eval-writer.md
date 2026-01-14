@@ -253,15 +253,16 @@ metadata:
 
 ## Best Practices
 
-1. **Start Simple**: Begin with basic `match` checks, add complexity as needed
-2. **Use OR for Flexibility**: Accept multiple valid responses with `or:`
-3. **Combine Checks**: Use both content and length checks together
-4. **Secure Tokens**: Always use `{{secret('...')}}` for API keys/tokens
-5. **Test Locally**: Run `vibe check -f eval.yaml` to test before saving
-6. **Descriptive Names**: Use clear, descriptive suite names (kebab-case)
-7. **System Prompts**: Add system prompts to guide model behavior
-8. **Semantic for Meaning**: Use `semantic` when exact wording doesn't matter
-9. **LLM Judge for Quality**: Use `llm_judge` for subjective quality checks
+1. **Validate First**: Always run `vibe validate eval.yaml` before testing to catch syntax errors
+2. **Start Simple**: Begin with basic `match` checks, add complexity as needed
+3. **Use OR for Flexibility**: Accept multiple valid responses with `or:`
+4. **Combine Checks**: Use both content and length checks together
+5. **Secure Tokens**: Always use `{{secret('...')}}` for API keys/tokens
+6. **Test Locally**: Run `vibe check -f eval.yaml` to test before saving
+7. **Descriptive Names**: Use clear, descriptive suite names (kebab-case)
+8. **System Prompts**: Add system prompts to guide model behavior
+9. **Semantic for Meaning**: Use `semantic` when exact wording doesn't matter
+10. **LLM Judge for Quality**: Use `llm_judge` for subjective quality checks
 
 ## Key Rules
 

@@ -15,8 +15,8 @@ const (
 )
 
 var (
-	apiKeyRegex = regexp.MustCompile(`^VIBECHECK_API_KEY=(.+)$`)
-	apiURLRegex = regexp.MustCompile(`^VIBECHECK_URL=(.+)$`)
+	apiKeyRegex = regexp.MustCompile(`(?m)^VIBECHECK_API_KEY=(.+)$`)
+	apiURLRegex = regexp.MustCompile(`(?m)^VIBECHECK_URL=(.+)$`)
 )
 
 // GetConfigDir returns the path to the config directory (~/.vibecheck)

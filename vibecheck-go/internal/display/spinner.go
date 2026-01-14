@@ -44,3 +44,14 @@ func (sp *Spinner) Fail(message string) {
 func (sp *Spinner) UpdateMessage(message string) {
 	sp.s.Suffix = " " + message
 }
+
+// UpdateText is an alias for UpdateMessage
+func (sp *Spinner) UpdateText(message string) {
+	sp.UpdateMessage(message)
+}
+
+// Succeed stops the spinner with a success message
+func (sp *Spinner) Succeed(message string) {
+	sp.s.Stop()
+	Success(message)
+}
